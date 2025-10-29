@@ -1,0 +1,3 @@
+[console_scripts]
+subsearch = subsearch.cli:main
+subsearch-web = subsearch.web_app:run

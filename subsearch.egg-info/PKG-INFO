@@ -1,3 +1,15 @@
+Metadata-Version: 2.4
+Name: subsearch
+Version: 0.1.0
+Summary: Private Reddit subreddit analyzer with a simple Flask web UI
+Author: Eric Rosenberg
+License: Proprietary
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: flask>=3.0
+Requires-Dist: praw>=7.7
+Requires-Dist: python-dotenv>=1.0
+
 # Subsearch — Reddit Subreddit Analyzer (Web UI)
 
 Subsearch is a small, private web app for discovering and exporting subreddit lists, with an emphasis on “unmoderated-only” discovery, name keyword search, activity filtering, and quick CSV export. It wraps the Reddit API (via PRAW) with a clean Flask UI that you can run locally or on your own server.
@@ -50,14 +62,11 @@ REDDIT_PASSWORD=...
 REDDIT_USER_AGENT=unmoderated_subreddit_finder/1.0 by /u/<your-username>
 ```
 
-Or use the built‑in Settings page (top right) to edit and save these values directly to your local `.env`. Secrets are masked and blank fields are ignored (existing values kept). Changes take effect immediately for new runs.
-
 Optional settings:
 
 - `FLASK_SECRET_KEY` — Flask session secret (generate a random string for production)
 - `SITE_URL` — Canonical URL (e.g. https://your.domain/subsearch)
 - `PORT` — Port to bind (default 5055)
-- `REDDIT_TIMEOUT` — HTTP request timeout seconds (default 10)
 
 ## Linux Server Install
 
@@ -170,3 +179,4 @@ When running from source, ensure your `.env` is present in the project root.
 ## License
 
 Proprietary. All rights reserved.
+

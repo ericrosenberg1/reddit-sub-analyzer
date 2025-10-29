@@ -1,0 +1,14 @@
+README.md
+pyproject.toml
+subsearch/__init__.py
+subsearch/auto_sub_analyzer.py
+subsearch/cli.py
+subsearch/web_app.py
+subsearch.egg-info/PKG-INFO
+subsearch.egg-info/SOURCES.txt
+subsearch.egg-info/dependency_links.txt
+subsearch.egg-info/entry_points.txt
+subsearch.egg-info/requires.txt
+subsearch.egg-info/top_level.txt
+subsearch/static/styles.css
+subsearch/templates/index.html
