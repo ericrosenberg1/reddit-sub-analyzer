@@ -38,6 +38,29 @@ subsearch
 
 By default the app listens on http://localhost:5055. Override via `PORT` if desired.
 
+## Update with pipx
+
+If you installed via pipx from local source (this repo), reinstall to pick up changes:
+
+```
+# From the repo root with your changes checked out
+pipx install --force .
+
+# Then run
+subsearch
+```
+
+If you installed from PyPI (when available), upgrade with:
+
+```
+pipx upgrade subsearch
+```
+
+Tips:
+
+- Verify which binary runs: `which subsearch` (pipx vs a venv).
+- The Settings page writes `.env` in your current working directory. Launch `subsearch` from the folder where you want `.env` saved (e.g., the repo root), or export env vars before starting.
+
 ## Configuration
 
 Create a `.env` file next to your install or set environment variables. Minimum required Reddit credentials:
