@@ -12,7 +12,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <!-- styles moved to static/styles.css -->
   </head>
   <body>
     <div class="page">
@@ -91,7 +90,7 @@
           <div class="result">
             <div class="stat" style="justify-content:space-between; width:100%">
               <div style="display:flex; align-items:center; gap:10px;">
-                <div class="loader" style="width:28px;height:28px;border-radius:50%;background:conic-gradient(var(--accent), var(--primary)); filter:hue-rotate(20deg); animation: spin 1s linear infinite;"></div>
+                <div class="loader"></div>
                 <div>
                   <div><strong>Running…</strong> <span class="muted" id="status-sub">checking</span></div>
                   <div class="muted" style="font-size:12px">Checked <span id="checked">0</span> of <span id="limit_count">0</span> • Found <span id="found">0</span></div>
@@ -182,8 +181,8 @@
           setVal('limit', data.limit);
           setVal('min_subs', data.min_subs);
           setChk('unmoderated_only', data.unmoderated_only);
-          setChk('activity_enabled', data.activity_enabled);
           setChk('exclude_nsfw', data.exclude_nsfw);
+          setChk('activity_enabled', data.activity_enabled);
           setVal('activity_mode', data.activity_mode);
           setVal('activity_date', data.activity_date);
           // Apply activity toggle after values are set
@@ -297,3 +296,4 @@
     </script>
   </body>
   </html>
+

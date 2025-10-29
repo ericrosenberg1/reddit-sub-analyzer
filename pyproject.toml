@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "subsearch"
+version = "0.1.0"
+description = "Private Reddit subreddit analyzer with a simple Flask web UI"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+  {name = "Eric Rosenberg"}
+]
+license = {text = "Proprietary"}
+dependencies = [
+  "flask>=3.0",
+  "praw>=7.7",
+  "python-dotenv>=1.0",
+]
+
+[project.scripts]
+subsearch = "subsearch.cli:main"
+subsearch-web = "subsearch.web_app:run"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["subsearch*"]
+
+[tool.setuptools.package-data]
+subsearch = [
+  "templates/*.html",
+  "static/**/*",
+]
+

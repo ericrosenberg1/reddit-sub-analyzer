@@ -10,12 +10,12 @@ from flask import Flask, render_template, request, send_file, flash, redirect, u
 from dotenv import load_dotenv
 
 # Reuse core analyzer functions
-from auto_sub_analyzer import find_unmoderated_subreddits, save_to_csv
+from .auto_sub_analyzer import find_unmoderated_subreddits, save_to_csv
 
 
 load_dotenv()
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
 
 # Logging setup
@@ -256,10 +256,14 @@ def helpdocs():
     return redirect('https://www.youtube.com/watch?v=dQw4w9WgXcQ', code=302)
 
 
-if __name__ == "__main__":
+def run():
     # Run on a non-standard port for easy access
     port = int(os.getenv("PORT", "5055"))
     # Elevate logging when running in debug mode
     logger.setLevel(logging.DEBUG)
     logging.getLogger("analyzer").setLevel(logging.DEBUG)
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=False)
+
+
+if __name__ == "__main__":
+    run()
