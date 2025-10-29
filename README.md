@@ -50,11 +50,14 @@ REDDIT_PASSWORD=...
 REDDIT_USER_AGENT=unmoderated_subreddit_finder/1.0 by /u/<your-username>
 ```
 
+Or use the built‑in Settings page (top right) to edit and save these values directly to your local `.env`. Secrets are masked and blank fields are ignored (existing values kept). Changes take effect immediately for new runs.
+
 Optional settings:
 
 - `FLASK_SECRET_KEY` — Flask session secret (generate a random string for production)
 - `SITE_URL` — Canonical URL (e.g. https://your.domain/subsearch)
 - `PORT` — Port to bind (default 5055)
+- `REDDIT_TIMEOUT` — HTTP request timeout seconds (default 10)
 
 ## Linux Server Install
 
@@ -167,4 +170,3 @@ When running from source, ensure your `.env` is present in the project root.
 ## License
 
 Proprietary. All rights reserved.
-

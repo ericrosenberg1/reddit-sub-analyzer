@@ -7,10 +7,13 @@ import re
 from datetime import datetime, timezone
 
 from flask import Flask, render_template, request, send_file, flash, redirect, url_for, session, make_response, jsonify
-from dotenv import load_dotenv
+from dotenv import load_dotenv, dotenv_values, set_key
 
 # Reuse core analyzer functions
 from .auto_sub_analyzer import find_unmoderated_subreddits, save_to_csv
+
+import praw
+import prawcore
 
 
 load_dotenv()
@@ -29,12 +32,28 @@ jobs_lock = threading.Lock()
 
 # Restrict directory browsing removed (no server-side saving)
 BASE_DIR = os.path.abspath(os.getcwd())
+DOTENV_PATH = os.path.join(BASE_DIR, ".env")
 SITE_URL = os.getenv("SITE_URL", "")
 
 
 def default_output_filename():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     return f"unmoderated_subreddits_{timestamp}.csv"
+
+
+def _current_env_settings(keys):
+    """Return a dict of effective values for given keys (env overrides file)."""
+    file_vals = {}
+    try:
+        file_vals = dotenv_values(DOTENV_PATH) or {}
+    except Exception:
+        file_vals = {}
+    out = {}
+    for k in keys:
+        out[k] = os.getenv(k)
+        if out[k] is None:
+            out[k] = file_vals.get(k)
+    return out
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -181,6 +200,121 @@ def index():
         return redirect(url_for('index', job=job_id))
 
     return render_template("index.html", result=result, job_id=job_id, site_url=SITE_URL)
+
+
+@app.route("/settings", methods=["GET", "POST"])
+def settings():
+    # Keys we allow managing via the UI
+    allowed_keys = [
+        "REDDIT_CLIENT_ID",
+        "REDDIT_CLIENT_SECRET",
+        "REDDIT_USERNAME",
+        "REDDIT_PASSWORD",
+        "REDDIT_USER_AGENT",
+        "REDDIT_TIMEOUT",
+        "FLASK_SECRET_KEY",
+        "PORT",
+        "SITE_URL",
+    ]
+    secret_keys = {"REDDIT_CLIENT_SECRET", "REDDIT_PASSWORD", "FLASK_SECRET_KEY"}
+
+    if request.method == "POST":
+        action = request.form.get("action", "save")
+
+        if action == "test":
+            # Build effective test config: prefer provided form values, else current env
+            current = _current_env_settings(allowed_keys)
+            def fv(key):
+                v = request.form.get(key, "").strip()
+                return v if v != "" else (current.get(key) or "")
+
+            client_id = fv("REDDIT_CLIENT_ID")
+            client_secret = fv("REDDIT_CLIENT_SECRET")
+            username = fv("REDDIT_USERNAME")
+            password = fv("REDDIT_PASSWORD")
+            user_agent = fv("REDDIT_USER_AGENT") or "subsearch/1.0"
+            timeout_raw = fv("REDDIT_TIMEOUT")
+            try:
+                timeout = int(timeout_raw) if timeout_raw else 10
+                if timeout <= 0 or timeout > 120:
+                    raise ValueError
+            except ValueError:
+                timeout = 10
+
+            try:
+                kwargs = {"client_id": client_id, "client_secret": client_secret, "user_agent": user_agent, "requestor_kwargs": {"timeout": timeout}}
+                if username and password:
+                    kwargs.update({"username": username, "password": password})
+                reddit = praw.Reddit(**kwargs)
+                auth_mode = "script" if username and password else "read-only"
+                # Make a cheap request to validate connectivity
+                whoami = None
+                try:
+                    whoami = str(reddit.user.me()) if username and password else None
+                except Exception:
+                    whoami = None
+                # Always hit a public endpoint to confirm
+                try:
+                    _ = next(reddit.subreddits.default(limit=1))
+                except StopIteration:
+                    pass
+                flash_msg = f"Credentials OK. Mode: {auth_mode}." + (f" Authenticated as u/{whoami}." if whoami else "")
+                flash(flash_msg, "success")
+            except prawcore.exceptions.ResponseException as e:
+                status = getattr(e.response, 'status_code', 'error')
+                flash(f"Reddit API rejected credentials (HTTP {status}). Check client id/secret and password (use an App Password if 2FA).", "error")
+            except prawcore.exceptions.OAuthException:
+                flash("OAuth error. Verify app type is 'script' and secrets are correct.", "error")
+            except Exception as e:
+                flash(f"Credential test failed: {e}", "error")
+            return redirect(url_for("settings"))
+        else:
+            # Persist non-empty inputs to .env, do not overwrite with blanks
+            updated = []
+            os.makedirs(BASE_DIR, exist_ok=True)
+            for key in allowed_keys:
+                raw = request.form.get(key)
+                if raw is None:
+                    continue
+                val = str(raw).strip()
+                if val == "":
+                    continue  # leave as-is
+                try:
+                    # Quote to preserve spaces/specials safely
+                    set_key(DOTENV_PATH, key, val, quote_mode="always")
+                    updated.append(key)
+                except Exception as e:
+                    logger.exception("Failed to set %s in .env: %s", key, e)
+                    flash(f"Failed saving {key}: {e}", "error")
+            # Reload into process env so changes take effect immediately
+            try:
+                load_dotenv(DOTENV_PATH, override=True)
+            except Exception:
+                pass
+
+            if updated:
+                flash(f"Saved settings for: {', '.join(updated)}", "success")
+            else:
+                flash("No changes submitted (blank fields are ignored).", "info")
+            return redirect(url_for("settings"))
+
+    # GET: show current values (mask secrets)
+    values = _current_env_settings(allowed_keys)
+    masked = {}
+    for k in allowed_keys:
+        v = values.get(k)
+        if k in secret_keys:
+            masked[k] = ""  # do not prefill sensitive values
+        else:
+            masked[k] = v or ""
+    has_secret = {k: bool(values.get(k)) for k in secret_keys}
+    return render_template(
+        "settings.html",
+        values=masked,
+        has_secret=has_secret,
+        site_url=SITE_URL,
+        dotenv_path=DOTENV_PATH,
+    )
 
 
 @app.route("/download")

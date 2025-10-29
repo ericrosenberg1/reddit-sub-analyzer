@@ -23,8 +23,30 @@ REDDIT_CLIENT_SECRET = os.getenv("REDDIT_CLIENT_SECRET", "your_client_secret_her
 REDDIT_USERNAME = os.getenv("REDDIT_USERNAME", "your_username_here")
 REDDIT_PASSWORD = os.getenv("REDDIT_PASSWORD", "your_password_here")
 REDDIT_USER_AGENT = os.getenv("REDDIT_USER_AGENT", "unmoderated_subreddit_finder/1.0")
+REDDIT_TIMEOUT = int(os.getenv("REDDIT_TIMEOUT", "10") or 10)
 
 logger = logging.getLogger("analyzer")
+
+def _current_reddit_config():
+    """Resolve current Reddit configuration from environment (runtime).
+
+    Falls back to module defaults if env is unset, so settings changed via
+    the web UI apply without restarting the process.
+    """
+    # Reload .env if present (non-fatal if missing)
+    try:
+        load_dotenv(override=True)
+    except Exception:
+        pass
+    return {
+        'client_id': os.getenv("REDDIT_CLIENT_ID") or REDDIT_CLIENT_ID,
+        'client_secret': os.getenv("REDDIT_CLIENT_SECRET") or REDDIT_CLIENT_SECRET,
+        'username': os.getenv("REDDIT_USERNAME") or REDDIT_USERNAME,
+        'password': os.getenv("REDDIT_PASSWORD") or REDDIT_PASSWORD,
+        'user_agent': os.getenv("REDDIT_USER_AGENT") or REDDIT_USER_AGENT,
+        'timeout': int(os.getenv("REDDIT_TIMEOUT") or REDDIT_TIMEOUT or 10),
+    }
+
 
 def find_unmoderated_subreddits(
     limit=100,
@@ -47,16 +69,30 @@ def find_unmoderated_subreddits(
     Returns:
         List of dictionaries containing subreddit info
     """
-    logger.debug("Connecting to Reddit API with user_agent=%s", REDDIT_USER_AGENT)
+    cfg = _current_reddit_config()
+    logger.debug("Connecting to Reddit API with user_agent=%s", cfg['user_agent'])
 
     # Initialize Reddit instance
-    reddit = praw.Reddit(
-        client_id=REDDIT_CLIENT_ID,
-        client_secret=REDDIT_CLIENT_SECRET,
-        username=REDDIT_USERNAME,
-        password=REDDIT_PASSWORD,
-        user_agent=REDDIT_USER_AGENT
-    )
+    # Build Reddit instance. Prefer authenticated script mode when username/password present, else read-only.
+    requestor_kwargs = {"timeout": max(3, min(int(cfg.get('timeout') or 10), 120))}
+    reddit_kwargs = {
+        'client_id': cfg['client_id'],
+        'client_secret': cfg['client_secret'],
+        'user_agent': cfg['user_agent'],
+        'requestor_kwargs': requestor_kwargs,
+        'check_for_async': False,
+    }
+    if cfg.get('username') and cfg.get('password') and cfg['username'] != 'your_username_here' and cfg['password'] != 'your_password_here':
+        reddit_kwargs.update({'username': cfg['username'], 'password': cfg['password']})
+        auth_mode = 'script'
+    else:
+        auth_mode = 'read-only'
+    reddit = praw.Reddit(**reddit_kwargs)
+    if auth_mode == 'read-only':
+        try:
+            reddit.read_only = True
+        except Exception:
+            pass
 
     unmoderated_subs = []
     checked = 0
@@ -264,4 +300,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
