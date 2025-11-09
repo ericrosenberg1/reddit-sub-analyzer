@@ -1,58 +1,61 @@
 {% extends "base.html" %}
-{% block title %}Eric Rosenberg Reddit Analyzer{% endblock %}
+{% block title %}Eric Rosenberg Sub Search{% endblock %}
 
 {% block content %}
 <section class="panel-surface overflow-hidden p-6 shadow-2xl lg:p-10">
   <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-    <div class="max-w-3xl">
+    <div class="max-w-3xl space-y-4">
       <p class="text-sm font-semibold uppercase tracking-[0.4em] text-white/60">An <a href="https://ericrosenberg.com">Eric Rosenberg</a> project</p>
-      <h1 class="font-display text-4xl text-white sm:text-5xl">Eric Rosenberg Reddit Analyzer</h1>
-      <p class="mt-4 text-lg text-white/80">A free, open-source toolkit for discovering and cataloging subreddits. Every search feeds the All The Subs database, giving you a living directory of communities for research, marketing, and growth.</p>
+      <h1 class="font-display text-4xl text-white sm:text-5xl">Sub Search</h1>
+      <p class="text-lg text-white/80">A subway-sandwich inspired toolkit for discovering and cataloging subreddits. Every run scoops full names, descriptions, moderator counts, and the last human touch, then feeds the All The Subs directory.</p>
       <div class="mt-6 flex flex-wrap gap-3">
-        <a href="{{ url_for('analyzer') }}" class="rounded-2xl bg-gradient-to-r from-brand to-brand-light px-6 py-3 text-base font-semibold text-white shadow-brand transition hover:scale-[1.01]">Launch Analyzer</a>
+        <a href="{{ url_for('analyzer') }}" class="rounded-2xl bg-gradient-to-r from-brand to-brand-light px-6 py-3 text-base font-semibold text-slate-950 shadow-brand transition hover:scale-[1.01]">Launch Sub Search</a>
         <a href="{{ url_for('all_subs') }}" class="nav-link text-sm">Browse All The Subs</a>
         <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" rel="noopener" class="nav-link text-sm">View on GitHub</a>
       </div>
-      <p class="mt-3 text-xs uppercase tracking-[0.3em] text-white/60">Runs locally or at allthesubs.ericrosenberg.com</p>
+      <p class="text-xs uppercase tracking-[0.3em] text-white/60">Runs locally or at allthesubs.ericrosenberg.com</p>
     </div>
-    <div class="rounded-3xl border border-white/10 bg-slate-900/50 p-6 text-sm text-white/70 shadow-lg lg:max-w-sm">
-      <p class="text-xs uppercase tracking-[0.3em] text-white/50">Data health</p>
-      <ul class="mt-4 space-y-3">
-        <li class="flex items-center justify-between">
-          <span>Total subreddits indexed</span>
-          <span class="text-lg font-semibold text-white">{{ (stats.total_subreddits or 0)|int }}</span>
-        </li>
-        <li class="flex items-center justify-between">
-          <span>Total analyzer runs</span>
-          <span class="text-lg font-semibold text-white">{{ (stats.total_runs or 0)|int }}</span>
-        </li>
-        <li class="flex items-center justify-between">
-          <span>Last indexed</span>
-          <span class="font-mono text-sm text-white/80">{{ stats.last_indexed_display or "pending" }}</span>
-        </li>
-        <li class="flex items-center justify-between">
-          <span>Last run started</span>
-          <span class="font-mono text-sm text-white/80">{{ stats.last_run_display or "pending" }}</span>
-        </li>
-      </ul>
+    <div class="flex flex-col gap-4 lg:max-w-sm">
+      <img src="{{ url_for('static', filename='img/sub-sando-hero.svg') }}" alt="Sub Search sandwich illustration" class="hero-art w-full rounded-3xl border border-white/10 bg-slate-900/40 p-3">
+      <div class="rounded-3xl border border-white/10 bg-slate-900/50 p-6 text-sm text-white/70 shadow-lg">
+        <p class="text-xs uppercase tracking-[0.3em] text-white/50">Data health</p>
+        <ul class="mt-4 space-y-3">
+          <li class="flex items-center justify-between">
+            <span>Total subreddits indexed</span>
+            <span class="text-lg font-semibold text-white">{{ (stats.total_subreddits or 0)|int }}</span>
+          </li>
+          <li class="flex items-center justify-between">
+            <span>Total Sub Search runs</span>
+            <span class="text-lg font-semibold text-white">{{ (stats.total_runs or 0)|int }}</span>
+          </li>
+          <li class="flex items-center justify-between">
+            <span>Last indexed</span>
+            <span class="font-mono text-sm text-white/80">{{ stats.last_indexed_display or "pending" }}</span>
+          </li>
+          <li class="flex items-center justify-between">
+            <span>Last run started</span>
+            <span class="font-mono text-sm text-white/80">{{ stats.last_run_display or "pending" }}</span>
+          </li>
+        </ul>
+      </div>
     </div>
   </div>
 
   <div class="mt-10 grid gap-4 md:grid-cols-3">
     <article class="rounded-3xl border border-white/10 bg-slate-900/40 p-5 shadow-lg">
-      <p class="text-xs uppercase tracking-[0.3em] text-white/60">1. Homepage</p>
+      <p class="text-xs uppercase tracking-[0.3em] text-white/60">1. Sub Search mission</p>
       <h3 class="mt-2 text-xl font-semibold text-white">Explain & Invite</h3>
-      <p class="mt-2 text-sm text-white/80">Share why you built the analyzer, highlight that it’s open-source, and welcome contributions. Link to the GitHub repo for features / bug reports.</p>
+      <p class="mt-2 text-sm text-white/80">Share why this sandwich-inspired toolkit exists, highlight that it’s open-source, and welcome contributions. Link to the GitHub repo for feature ideas and bug reports.</p>
     </article>
     <article class="rounded-3xl border border-white/10 bg-slate-900/40 p-5 shadow-lg">
-      <p class="text-xs uppercase tracking-[0.3em] text-white/60">2. Reddit Sub Analyzer</p>
+      <p class="text-xs uppercase tracking-[0.3em] text-white/60">2. Sub Search</p>
       <h3 class="mt-2 text-xl font-semibold text-white">Search & Export</h3>
-      <p class="mt-2 text-sm text-white/80">High-powered search UI with keyword filters, moderation toggles, NSFW exclusion, and CSV download. Every query saves directly to the shared database.</p>
+      <p class="mt-2 text-sm text-white/80">High-powered search UI with keyword filters, moderation toggles, NSFW exclusion, CSV download, moderator counts, and last mod activity timestamps.</p>
     </article>
     <article class="rounded-3xl border border-white/10 bg-slate-900/40 p-5 shadow-lg">
       <p class="text-xs uppercase tracking-[0.3em] text-white/60">3. All The Subs</p>
       <h3 class="mt-2 text-xl font-semibold text-white">Browse & Filter</h3>
-      <p class="mt-2 text-sm text-white/80">A Reddit-like directory with sorting, filtering, and in-app search—backed by automated ingestion jobs that respect Reddit’s API limits.</p>
+      <p class="mt-2 text-sm text-white/80">A Reddit-like directory with sorting, filtering, and in-app search—now enriched with descriptions, moderator counts, and mod activity clocks.</p>
     </article>
   </div>
 </section>
@@ -62,7 +65,7 @@
     <div class="flex items-center justify-between">
       <div>
         <p class="text-xs uppercase tracking-[0.3em] text-white/60">Activity</p>
-        <h2 class="text-2xl font-semibold text-white">Recent analyzer runs</h2>
+        <h2 class="text-2xl font-semibold text-white">Recent Sub Search runs</h2>
       </div>
       <a href="{{ url_for('analyzer') }}" class="nav-link text-sm">Start a run →</a>
     </div>

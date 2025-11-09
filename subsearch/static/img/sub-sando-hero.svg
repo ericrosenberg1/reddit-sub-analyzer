@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="360" viewBox="0 0 720 360">
+  <defs>
+    <linearGradient id="bread" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8d38f" />
+      <stop offset="100%" stop-color="#e0a451" />
+    </linearGradient>
+    <linearGradient id="plate" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0f172a" stop-opacity="0" />
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.35" />
+    </linearGradient>
+  </defs>
+  <rect width="720" height="360" rx="36" fill="#05121d" />
+  <rect x="40" y="70" width="640" height="220" rx="28" fill="url(#plate)" opacity="0.5" />
+  <g transform="translate(60 90)">
+    <g transform="translate(0 0)">
+      <rect width="260" height="70" rx="35" fill="url(#bread)" />
+      <rect x="10" y="18" width="240" height="12" rx="6" fill="#2ba84a" />
+      <rect x="10" y="34" width="240" height="10" rx="5" fill="#f04d2e" opacity="0.85" />
+      <rect x="15" y="48" width="230" height="8" rx="4" fill="#fbe36b" />
+      <circle cx="220" cy="22" r="9" fill="#f6854f" />
+      <circle cx="238" cy="43" r="9" fill="#f6854f" />
+    </g>
+    <g transform="translate(300 25)">
+      <rect width="260" height="70" rx="35" fill="url(#bread)" />
+      <rect x="12" y="18" width="230" height="12" rx="6" fill="#2ba84a" />
+      <rect x="12" y="34" width="230" height="10" rx="5" fill="#f04d2e" opacity="0.85" />
+      <rect x="20" y="48" width="210" height="8" rx="4" fill="#fbe36b" />
+      <circle cx="205" cy="22" r="9" fill="#f6854f" />
+      <circle cx="225" cy="42" r="9" fill="#f6854f" />
+    </g>
+    <g transform="translate(150 130)">
+      <rect width="260" height="70" rx="35" fill="url(#bread)" />
+      <rect x="10" y="18" width="230" height="12" rx="6" fill="#2ba84a" />
+      <rect x="10" y="34" width="230" height="10" rx="5" fill="#f04d2e" opacity="0.85" />
+      <rect x="18" y="48" width="210" height="8" rx="4" fill="#fbe36b" />
+      <circle cx="200" cy="22" r="9" fill="#f6854f" />
+      <circle cx="220" cy="42" r="9" fill="#f6854f" />
+    </g>
+  </g>
+  <text x="60" y="315" fill="#fbe36b" font-family="'Space Grotesk', 'Inter', sans-serif" font-size="20" letter-spacing="4">FRESH DATA DAILY</text>
+</svg>

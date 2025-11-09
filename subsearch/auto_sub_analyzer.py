@@ -7,6 +7,7 @@ import csv
 import os
 import time
 from datetime import datetime
+from typing import Dict, Optional
 
 import praw
 import prawcore
@@ -28,11 +29,25 @@ REDDIT_TIMEOUT = int(os.getenv("REDDIT_TIMEOUT", "10") or 10)
 
 logger = logging.getLogger("analyzer")
 
+
+def _int_from_env(key: str, default: int) -> int:
+    try:
+        return int(os.getenv(key, default))
+    except (TypeError, ValueError):
+        return default
+
+
+# Limits to keep moderator lookups in check while still surfacing activity.
+# Sample size controls how many moderators per subreddit we inspect (sorted by
+# newest assignment). Fetch limit bounds total Redditor lookups per run.
+MOD_ACTIVITY_SAMPLE_SIZE = max(0, _int_from_env("SUBSEARCH_MOD_ACTIVITY_SAMPLE_SIZE", 5))
+MOD_ACTIVITY_FETCH_LIMIT = max(0, _int_from_env("SUBSEARCH_MOD_ACTIVITY_FETCH_LIMIT", 8000))
+
 def _current_reddit_config():
     """Resolve current Reddit configuration from environment (runtime).
 
-    Falls back to module defaults if env is unset, so settings changed via
-    the web UI apply without restarting the process.
+    Falls back to module defaults if env is unset so environment changes take
+    effect without restarting the process.
     """
     # Reload .env if present (non-fatal if missing)
     try:
@@ -95,6 +110,43 @@ def find_unmoderated_subreddits(
             reddit.read_only = True
         except Exception:
             pass
+
+    mod_activity_cache: Dict[str, Optional[int]] = {}
+    mod_activity_fetches = 0
+
+    def _fetch_mod_activity(mod_name: str) -> Optional[int]:
+        """Return most recent known activity UTC for the given moderator."""
+        nonlocal mod_activity_fetches
+        if not mod_name:
+            return None
+        if MOD_ACTIVITY_SAMPLE_SIZE <= 0:
+            return None
+        key = mod_name.lower()
+        if key in mod_activity_cache:
+            return mod_activity_cache[key]
+        if MOD_ACTIVITY_FETCH_LIMIT and mod_activity_fetches >= MOD_ACTIVITY_FETCH_LIMIT:
+            mod_activity_cache[key] = None
+            return None
+        mod_activity_fetches += 1
+        last_ts: Optional[int] = None
+        try:
+            redditor = reddit.redditor(mod_name)
+            for item in redditor.new(limit=1):
+                ts = getattr(item, 'created_utc', None)
+                if ts is None:
+                    continue
+                try:
+                    last_ts = int(ts)
+                except (TypeError, ValueError):
+                    last_ts = None
+                if last_ts is not None:
+                    break
+        except (praw.exceptions.PRAWException, prawcore.exceptions.PrawcoreException):
+            last_ts = None
+        except Exception:
+            last_ts = None
+        mod_activity_cache[key] = last_ts
+        return last_ts
 
     unmoderated_subs = []
     checked = 0
@@ -168,61 +220,74 @@ def find_unmoderated_subreddits(
                 except (praw.exceptions.PRAWException, prawcore.exceptions.PrawcoreException, AttributeError):
                     continue
 
-            if unmoderated_only:
-                # Get moderator list
-                try:
-                    moderators = list(subreddit.moderator())
-                except (praw.exceptions.PRAWException, prawcore.exceptions.PrawcoreException, AttributeError):
-                    # Skip private/quarantined/inaccessible
-                    continue
-
-                # Check if there are no moderators (excluding AutoModerator)
-                real_mods = [mod for mod in moderators if getattr(mod, 'name', '').lower() != 'automoderator']
-
-                if len(real_mods) == 0:
-                    # Safely get subscribers (may 403 on some subs)
-                    subscribers = None
-                    try:
-                        subscribers = subreddit.subscribers
-                    except (praw.exceptions.PRAWException, prawcore.exceptions.PrawcoreException, AttributeError):
-                        subscribers = None
-
-                    subs_count = subscribers if isinstance(subscribers, int) else (subscribers or 0)
-                    if subs_count < (min_subscribers or 0):
-                        continue
-                    sub_info = {
-                        'name': getattr(subreddit, 'display_name', 'unknown'),
-                        'subscribers': subs_count,
-                        'url': f"https://reddit.com{getattr(subreddit, 'url', '/') }",
-                        'is_unmoderated': True,
-                        'is_nsfw': bool(getattr(subreddit, 'over18', False)),
-                        'mod_count': len(real_mods),
-                        'last_activity_utc': latest_post_utc,
-                        'keyword': name_keyword,
-                    }
-                    unmoderated_subs.append(sub_info)
-                    logger.info("Found: r/%s (%s subscribers)", sub_info['name'], sub_info['subscribers'])
-            else:
-                # Include all subs that match, without moderator check
+            subscribers = None
+            try:
+                subscribers = subreddit.subscribers
+            except (praw.exceptions.PRAWException, prawcore.exceptions.PrawcoreException, AttributeError):
                 subscribers = None
-                try:
-                    subscribers = subreddit.subscribers
-                except (praw.exceptions.PRAWException, prawcore.exceptions.PrawcoreException, AttributeError):
-                    subscribers = None
-                subs_count = subscribers if isinstance(subscribers, int) else (subscribers or 0)
-                if subs_count < (min_subscribers or 0):
+            subs_count = subscribers if isinstance(subscribers, int) else (subscribers or 0)
+            if subs_count < (min_subscribers or 0):
+                continue
+
+            try:
+                moderators = list(subreddit.moderator())
+                real_mods = [
+                    mod for mod in moderators
+                    if getattr(mod, 'name', '').lower() not in ('automoderator', '')
+                ]
+                mod_count = len(real_mods)
+            except (praw.exceptions.PRAWException, prawcore.exceptions.PrawcoreException, AttributeError):
+                real_mods = []
+                mod_count = None
+
+            if unmoderated_only:
+                if mod_count is None:
                     continue
-                sub_info = {
-                    'name': getattr(subreddit, 'display_name', 'unknown'),
-                    'subscribers': subs_count,
-                    'url': f"https://reddit.com{getattr(subreddit, 'url', '/') }",
-                    'is_unmoderated': False,
-                    'is_nsfw': bool(getattr(subreddit, 'over18', False)),
-                    'mod_count': None,
-                    'last_activity_utc': latest_post_utc,
-                    'keyword': name_keyword,
-                }
-                unmoderated_subs.append(sub_info)
+                if mod_count != 0:
+                    continue
+
+            last_mod_activity_utc = None
+            if real_mods and MOD_ACTIVITY_SAMPLE_SIZE > 0:
+                def _mod_sort_key(mod_obj):
+                    raw = getattr(mod_obj, 'date', None)
+                    if isinstance(raw, datetime):
+                        return int(raw.timestamp())
+                    try:
+                        return int(raw or 0)
+                    except (TypeError, ValueError):
+                        return 0
+
+                sorted_mods = sorted(real_mods, key=_mod_sort_key, reverse=True)
+                for mod in sorted_mods[:MOD_ACTIVITY_SAMPLE_SIZE]:
+                    mod_name = getattr(mod, 'name', None)
+                    if not mod_name or mod_name.lower() == 'automoderator':
+                        continue
+                    ts = _fetch_mod_activity(mod_name)
+                    if ts is None:
+                        continue
+                    if last_mod_activity_utc is None or ts > last_mod_activity_utc:
+                        last_mod_activity_utc = ts
+
+            display_name = getattr(subreddit, 'display_name', 'unknown')
+            display_name_prefixed = getattr(subreddit, 'display_name_prefixed', f"r/{display_name}")
+            title = getattr(subreddit, 'title', display_name)
+            public_description = getattr(subreddit, 'public_description', '') or ''
+            sub_info = {
+                'name': display_name,
+                'display_name_prefixed': display_name_prefixed,
+                'title': title,
+                'public_description': public_description,
+                'subscribers': subs_count,
+                'url': f"https://reddit.com{getattr(subreddit, 'url', '/') }",
+                'is_unmoderated': bool(mod_count == 0) if mod_count is not None else False,
+                'is_nsfw': bool(getattr(subreddit, 'over18', False)),
+                'mod_count': mod_count,
+                'last_activity_utc': latest_post_utc,
+                'last_mod_activity_utc': last_mod_activity_utc,
+            }
+            unmoderated_subs.append(sub_info)
+            if unmoderated_only:
+                logger.info("Found unmoderated: %s (%s subscribers)", sub_info['display_name_prefixed'], sub_info['subscribers'])
 
         except Exception:
             # Any unexpected error per-subreddit should not abort the run

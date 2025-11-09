@@ -66,11 +66,15 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS subreddits (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT UNIQUE NOT NULL,
+                display_name_prefixed TEXT,
+                title TEXT,
+                public_description TEXT,
                 url TEXT,
                 subscribers INTEGER,
                 is_unmoderated INTEGER NOT NULL DEFAULT 0,
                 is_nsfw INTEGER NOT NULL DEFAULT 0,
                 last_activity_utc INTEGER,
+                last_mod_activity_utc INTEGER,
                 mod_count INTEGER,
                 last_seen_run_id INTEGER,
                 last_keyword TEXT,
@@ -81,6 +85,18 @@ def init_db() -> None:
             )
             """
         )
+        existing_cols = {
+            row["name"]
+            for row in conn.execute("PRAGMA table_info(subreddits)").fetchall()
+        }
+        if "display_name_prefixed" not in existing_cols:
+            conn.execute("ALTER TABLE subreddits ADD COLUMN display_name_prefixed TEXT")
+        if "title" not in existing_cols:
+            conn.execute("ALTER TABLE subreddits ADD COLUMN title TEXT")
+        if "public_description" not in existing_cols:
+            conn.execute("ALTER TABLE subreddits ADD COLUMN public_description TEXT")
+        if "last_mod_activity_utc" not in existing_cols:
+            conn.execute("ALTER TABLE subreddits ADD COLUMN last_mod_activity_utc INTEGER")
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_subreddits_subscribers ON subreddits(subscribers DESC)"
         )
@@ -182,14 +198,23 @@ def persist_subreddits(
                 last_activity_val = int(last_activity) if last_activity is not None else None
             except (TypeError, ValueError):
                 last_activity_val = None
+            last_mod_activity = sub.get("last_mod_activity_utc")
+            try:
+                last_mod_activity_val = int(last_mod_activity) if last_mod_activity is not None else None
+            except (TypeError, ValueError):
+                last_mod_activity_val = None
             payload.append(
                 {
                     "name": name,
+                    "display_name_prefixed": sub.get("display_name_prefixed") or f"r/{name}",
+                    "title": sub.get("title") or name,
+                    "public_description": sub.get("public_description") or "",
                     "url": sub.get("url"),
                     "subscribers": int(sub.get("subscribers") or 0),
                     "is_unmoderated": 1 if sub.get("is_unmoderated") else 0,
                     "is_nsfw": 1 if sub.get("is_nsfw") else 0,
                     "last_activity_utc": last_activity_val,
+                    "last_mod_activity_utc": last_mod_activity_val,
                     "mod_count": mod_count_val,
                     "run_id": run_id,
                     "last_keyword": (sub.get("keyword") or keyword or "")[:128],
@@ -203,12 +228,28 @@ def persist_subreddits(
             conn.executemany(
                 """
                 INSERT INTO subreddits
-                (name, url, subscribers, is_unmoderated, is_nsfw, last_activity_utc,
-                 mod_count, last_seen_run_id, last_keyword, source, first_seen_at, updated_at)
+                (name, display_name_prefixed, title, public_description, url,
+                 subscribers, is_unmoderated, is_nsfw, last_activity_utc,
+                 last_mod_activity_utc, mod_count, last_seen_run_id, last_keyword,
+                 source, first_seen_at, updated_at)
                 VALUES
-                (:name, :url, :subscribers, :is_unmoderated, :is_nsfw, :last_activity_utc,
-                 :mod_count, :run_id, :last_keyword, :source, :now, :now)
+                (:name, :display_name_prefixed, :title, :public_description, :url,
+                 :subscribers, :is_unmoderated, :is_nsfw, :last_activity_utc,
+                 :last_mod_activity_utc, :mod_count, :run_id, :last_keyword,
+                 :source, :now, :now)
                 ON CONFLICT(name) DO UPDATE SET
+                    display_name_prefixed = COALESCE(
+                        NULLIF(excluded.display_name_prefixed, ''),
+                        subreddits.display_name_prefixed
+                    ),
+                    title = CASE
+                        WHEN excluded.title IS NOT NULL AND excluded.title != '' THEN excluded.title
+                        ELSE subreddits.title
+                    END,
+                    public_description = CASE
+                        WHEN excluded.public_description IS NOT NULL THEN excluded.public_description
+                        ELSE subreddits.public_description
+                    END,
                     url = excluded.url,
                     subscribers = CASE
                         WHEN excluded.subscribers IS NOT NULL THEN excluded.subscribers
@@ -220,6 +261,7 @@ def persist_subreddits(
                     END,
                     is_nsfw = excluded.is_nsfw,
                     last_activity_utc = COALESCE(excluded.last_activity_utc, subreddits.last_activity_utc),
+                    last_mod_activity_utc = COALESCE(excluded.last_mod_activity_utc, subreddits.last_mod_activity_utc),
                     mod_count = COALESCE(excluded.mod_count, subreddits.mod_count),
                     last_seen_run_id = excluded.last_seen_run_id,
                     last_keyword = CASE
@@ -289,9 +331,12 @@ def search_subreddits(
     page_size = max(1, min(page_size, 200))
     sort_map = {
         "name": "name COLLATE NOCASE",
+        "title": "title COLLATE NOCASE",
         "subscribers": "subscribers",
         "updated_at": "updated_at",
         "first_seen_at": "first_seen_at",
+        "mod_count": "COALESCE(mod_count, 0)",
+        "mod_activity": "last_mod_activity_utc",
     }
     sort_column = sort_map.get(sort, "subscribers")
     order_dir = "ASC" if order.lower() == "asc" else "DESC"
@@ -339,8 +384,10 @@ def search_subreddits(
         total = total_row["c"] if total_row else 0
         rows = conn.execute(
             f"""
-            SELECT name, url, subscribers, is_unmoderated, is_nsfw,
-                   last_activity_utc, last_keyword, source, first_seen_at, updated_at
+            SELECT name, display_name_prefixed, title, public_description,
+                   url, subscribers, is_unmoderated, is_nsfw,
+                   last_activity_utc, last_mod_activity_utc,
+                   mod_count, source, first_seen_at, updated_at
             FROM subreddits
             {where_clause}
             ORDER BY {sort_column} {order_dir}

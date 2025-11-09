@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140">
+  <defs>
+    <linearGradient id="breadBadge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8d38f" />
+      <stop offset="100%" stop-color="#d88c3c" />
+    </linearGradient>
+  </defs>
+  <rect width="140" height="140" rx="28" fill="#0b1724" />
+  <g transform="translate(20 40)">
+    <rect width="100" height="50" rx="25" fill="url(#breadBadge)" />
+    <rect x="10" y="16" width="80" height="8" rx="4" fill="#2ba84a" />
+    <rect x="10" y="28" width="80" height="6" rx="3" fill="#f04d2e" opacity="0.85" />
+    <circle cx="80" cy="24" r="7" fill="#f6854f" />
+    <circle cx="65" cy="34" r="7" fill="#f6854f" />
+  </g>
+  <text x="70" y="120" text-anchor="middle" font-family="'Space Grotesk', 'Inter', sans-serif" font-size="16" fill="#fbe36b" letter-spacing="1.5">SUB SEARCH</text>
+</svg>

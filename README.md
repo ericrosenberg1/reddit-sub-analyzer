@@ -1,4 +1,4 @@
-# Eric Rosenberg Reddit Analyzer (Subsearch)
+# Eric Rosenberg Sub Search
 
 ![Stars](https://img.shields.io/github/stars/ericrosenberg1/reddit-sub-analyzer?style=for-the-badge&color=ff4500)
 ![Contributors](https://img.shields.io/github/contributors/ericrosenberg1/reddit-sub-analyzer?style=for-the-badge)
@@ -11,7 +11,7 @@
 Subsearch is a self-hostable Flask app that wraps the Reddit API with:
 
 - **Homepage**: Project overview, live ingestion stats, and recent run history.
-- **Reddit Sub Analyzer**: Advanced search with keyword filters, NSFW toggle, unmoderated-only discovery, minimum subscriber gates, activity filters, and CSV export.
+- **Sub Search**: Advanced search with keyword filters, NSFW toggle, unmoderated-only discovery, minimum subscriber gates, activity filters, moderator counts, last moderator activity, and CSV export.
 - **All The Subs**: A Reddit-inspired directory backed by SQLite + caching, featuring instant filtering, sorting, pagination, and an `/api/subreddits` endpoint.
 - **Automated ingestion**: Background jobs (configurable via env vars) continuously fetch fresh subreddits while honoring Reddit’s API rate limits.
 
@@ -36,8 +36,8 @@ The UI now uses Tailwind CSS with a modern Reddit-adjacent palette, better acces
 
 ## Highlights
 
-- **Full-stack coverage**: Homepage → Analyzer → All The Subs → Settings, all sharing a cohesive Tailwind design.
-- **Live data capture**: Every analyzer run and auto-ingest cycle writes to SQLite (`data/subsearch.db` by default).
+- **Full-stack coverage**: Homepage → Sub Search → All The Subs, all sharing a cohesive Tailwind design.
+- **Live data capture**: Every Sub Search run and auto-ingest cycle writes to SQLite (`data/subsearch.db` by default).
 - **Optimized caching**: In-memory TTL caches keep summary stats and All The Subs queries snappy while respecting low-traffic constraints.
 - **Safe exports**: CSVs are generated in sandboxed temp directories with sanitized filenames.
 - **Open-source invites**: Clear calls to action for GitHub issues/PRs plus README badges inspired by the Immich project.
@@ -50,7 +50,7 @@ The UI now uses Tailwind CSS with a modern Reddit-adjacent palette, better acces
 | --- | --- | --- |
 | UI | Tailwind CSS, modern Reddit-inspired layout, responsive components | Flask + Jinja templates |
 | API | `/api/subreddits` JSON endpoint with filtering/pagination | Flask Blueprint |
-| Jobs | Manual Analyzer + automated auto-ingest thread (interval + keyword aware) | `praw`, background thread |
+| Jobs | Manual Sub Search + automated auto-ingest thread (interval + keyword aware) | `praw`, background thread |
 | Persistence | SQLite (WAL mode) storing `query_runs` + `subreddits` | `sqlite3`, custom DAO |
 | Caching | TTL caches for summary data + search responses, invalidated on write | `subsearch.cache.TTLCache` |
 
@@ -164,7 +164,25 @@ Tips:
 | `AUTO_INGEST_DELAY_SEC` | `0.25` | Delay between subreddit lookups to remain within API limits. |
 | `AUTO_INGEST_KEYWORDS` | `` | Optional comma-separated keywords to target segments in each cycle. |
 
-The Settings page masks secrets and ignores blank fields, making it safe to update production instances without shell access.
+Configuration updates now flow exclusively through your `.env`. Edit it manually (or distribute secrets via your deployment tooling) so credentials never traverse a web UI.
+
+---
+
+## Build Numbers
+
+Every deployment advertises a sandwich-styled build number in the site footer. The number lives in `subsearch/BUILD_NUMBER` and follows `YYYY.MM.sequence`:
+
+- First Sub Search deploy in November 2025 → `2025.11.1`
+- Second deploy that same month → `2025.11.2`
+
+Bump the build number whenever you cut a release:
+
+```bash
+python3 -m subsearch.build_info
+git add subsearch/BUILD_NUMBER
+```
+
+The helper reads, increments, and persists the correct sequence per month, so you never have to edit the file by hand.
 
 ---
 
@@ -184,7 +202,7 @@ The Settings page masks secrets and ignores blank fields, making it safe to upda
 - `GET /api/subreddits`: JSON response with total count, pagination metadata, and filtered row data. Parameters:
   - `q`, `min_subs`, `max_subs`, `unmoderated`, `nsfw`, `sort`, `order`, `page`, `page_size`.
 - Frontend powered by Tailwind + CDN (no build step) with custom Reddit-like gradients and glassmorphism touches.
-- Analyzer form preserves inputs for an hour locally, provides live status updates, and prevents path traversal with strict server-side validation.
+- Sub Search form preserves inputs for an hour locally, provides live status updates, and prevents path traversal with strict server-side validation.
 
 ---
 
@@ -192,9 +210,9 @@ The Settings page masks secrets and ignores blank fields, making it safe to upda
 
 ✅ **Security**
 - Server-side validation for numeric limits, filenames, and activity dates.
-- Download endpoints only serve analyzer-generated files tied to known job IDs.
+- Download endpoints only serve Sub Search-generated files tied to known job IDs.
 - Background ingestion honors Reddit rate limits (configurable delay + max fetches).
-- `.env` secrets masked in the Settings UI; blank submissions never overwrite existing values.
+- Secrets live in `.env`; deploy updates through your preferred secret management workflow so the UI never touches Reddit credentials.
 
 ✅ **Code Quality & Performance**
 - Modular storage layer with isolated database + cache utilities, reducing duplication.

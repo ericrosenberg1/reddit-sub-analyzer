@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% block title %}All The Subs • Eric Rosenberg Reddit Analyzer{% endblock %}
+{% block title %}All The Subs • Eric Rosenberg Sub Search{% endblock %}
 
 {% block content %}
 <section class="panel-surface p-6 shadow-2xl lg:p-10">
   <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
     <div>
       <p class="text-xs uppercase tracking-[0.3em] text-white/60">Tool · All The Subs</p>
-      <h1 class="font-display text-3xl text-white sm:text-4xl">The continuously growing subreddit directory</h1>
-      <p class="mt-2 max-w-3xl text-sm text-white/80">Every analyzer run & background auto-ingest job lands here. Filter, sort, and export the largest curated list of subreddits without leaving your browser.</p>
+      <h1 class="font-display text-3xl text-white sm:text-4xl">The continuously growing subreddit deli case</h1>
+      <p class="mt-2 max-w-3xl text-sm text-white/80">Every Sub Search run & background auto-ingest job lands here with full names, titles, descriptions, moderator counts, and last mod activity.</p>
     </div>
     <a href="{{ url_for('analyzer') }}" class="nav-link active text-sm">Run a new query</a>
   </div>
@@ -49,11 +49,11 @@
         <thead class="bg-white/5 text-left text-xs uppercase tracking-[0.3em] text-white/40">
           <tr>
             <th class="cursor-pointer px-4 py-3" data-sort="name">Subreddit</th>
+            <th class="px-4 py-3">Title & description</th>
             <th class="cursor-pointer px-4 py-3" data-sort="subscribers">Subscribers</th>
-            <th class="cursor-pointer px-4 py-3" data-sort="updated_at">Last updated</th>
-            <th class="cursor-pointer px-4 py-3" data-sort="first_seen_at">First seen</th>
-            <th class="px-4 py-3">Flags</th>
-            <th class="px-4 py-3">Keyword</th>
+            <th class="cursor-pointer px-4 py-3" data-sort="mod_count">Moderators</th>
+            <th class="cursor-pointer px-4 py-3" data-sort="mod_activity">Last mod activity</th>
+            <th class="cursor-pointer px-4 py-3" data-sort="updated_at">Last indexed</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-white/5">
@@ -162,6 +162,13 @@
     return value.replace('T', ' ').replace('+00:00', ' UTC');
   }
 
+  function formatEpoch(value){
+    if (value === null || value === undefined) return '—';
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return '—';
+    return new Date(n * 1000).toISOString().replace('T', ' ').replace('Z', ' UTC');
+  }
+
   function escapeHtml(str){
     if (!str) return '';
     return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]));
@@ -213,16 +220,30 @@
     }
     tableBody.innerHTML = rows.map(row => {
       const flags = [];
-      if (row.is_unmoderated) flags.push('Unmoderated');
-      if (row.is_nsfw) flags.push('NSFW');
+      if (row.is_unmoderated) flags.push('<span class="rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-green-100">Unmoderated</span>');
+      if (row.is_nsfw) flags.push('<span class="rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-red-100">NSFW</span>');
+      const title = row.title ? escapeHtml(row.title) : `r/${escapeHtml(row.name)}`;
+      const desc = row.public_description ? escapeHtml(row.public_description) : 'No description provided yet.';
+      const hasModCount = row.mod_count !== null && row.mod_count !== undefined;
+      const modCount = hasModCount ? Number(row.mod_count).toLocaleString() : '—';
+      const modActivity = formatEpoch(row.last_mod_activity_utc);
+      const lastIndexed = formatDate(row.updated_at);
       return `
-        <tr class="hover:bg-white/5">
-          <td class="px-4 py-3 font-semibold text-white"><a class="underline decoration-dotted" href="${safeUrl(row.url)}" target="_blank" rel="noopener">r/${escapeHtml(row.name)}</a></td>
-          <td class="px-4 py-3">${formatNumber(row.subscribers)}</td>
-          <td class="px-4 py-3">${formatDate(row.updated_at)}</td>
-          <td class="px-4 py-3">${formatDate(row.first_seen_at)}</td>
-          <td class="px-4 py-3">${flags.join(', ') || '—'}</td>
-          <td class="px-4 py-3">${row.last_keyword ? escapeHtml(row.last_keyword) : '—'}</td>
+        <tr class="align-top hover:bg-white/5">
+          <td class="px-4 py-4 text-white">
+            <a class="font-semibold underline decoration-dotted" href="${safeUrl(row.url)}" target="_blank" rel="noopener">${escapeHtml(row.display_name_prefixed || `r/${row.name}`)}</a>
+            <div class="mt-1 flex flex-wrap gap-1 text-white/60 text-[11px]">
+              ${flags.join('') || ''}
+            </div>
+          </td>
+          <td class="px-4 py-4">
+            <p class="font-semibold text-white/90">${title}</p>
+            <p class="clamp-2 text-xs text-white/70">${desc}</p>
+          </td>
+          <td class="px-4 py-4">${formatNumber(row.subscribers)}</td>
+          <td class="px-4 py-4">${modCount}</td>
+          <td class="px-4 py-4">${modActivity}</td>
+          <td class="px-4 py-4">${lastIndexed}</td>
         </tr>
       `;
     }).join('');

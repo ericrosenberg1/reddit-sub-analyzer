@@ -1,17 +1,26 @@
 {% extends "base.html" %}
-{% block title %}Reddit Sub Analyzer • Eric Rosenberg Reddit Analyzer{% endblock %}
+{% block title %}Sub Search • Eric Rosenberg Sub Search{% endblock %}
 
 {% block content %}
 <section class="panel-surface relative overflow-hidden p-6 shadow-2xl lg:p-10">
-  <div class="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-    <div class="max-w-2xl">
-      <p class="text-sm font-semibold uppercase tracking-[0.3em] text-white/60">Tool · Reddit Sub Analyzer</p>
-      <h1 class="font-display text-3xl text-white sm:text-4xl">Search, filter, and export the subreddit intel you need.</h1>
-      <p class="mt-3 text-base text-white/80">Dial in keywords, subscriber floors, NSFW filters, and moderation state. Every run updates the All The Subs database automatically and saves a downloadable CSV.</p>
+  <div class="relative z-10 grid gap-6 lg:grid-cols-[1.1fr,0.9fr] lg:items-center">
+    <div class="max-w-2xl space-y-4">
+      <p class="text-sm font-semibold uppercase tracking-[0.3em] text-white/60">Tool · Sub Search</p>
+      <h1 class="font-display text-3xl text-white sm:text-4xl">Stack the perfect subreddit sandwich.</h1>
+      <p class="text-base text-white/80">Pull full subreddit names, display titles, descriptions, moderator counts, and the freshest human moderator activity. Every query feeds All The Subs and ships with a CSV export.</p>
+      <div class="flex flex-wrap gap-3 text-xs uppercase tracking-[0.3em] text-white/70">
+        <span class="sandwich-chip">Moderator intel</span>
+        <span class="sandwich-chip">Fresh activity</span>
+        <span class="sandwich-chip">Download ready</span>
+      </div>
+      <div class="flex flex-wrap gap-2 text-sm text-white/70">
+        <a class="nav-link active text-sm" href="{{ url_for('all_subs') }}">View All The Subs</a>
+        <a class="nav-link text-sm" href="{{ url_for('home') }}">About this project</a>
+      </div>
     </div>
-    <div class="flex flex-col gap-2 text-sm text-white/70">
-      <a class="nav-link active text-sm" href="{{ url_for('all_subs') }}">View All The Subs</a>
-      <a class="nav-link text-sm" href="{{ url_for('home') }}">About this project</a>
+    <div class="flex flex-col items-center gap-3">
+      <img src="{{ url_for('static', filename='img/sub-sando-hero.svg') }}" alt="Sandwich-themed Sub Search hero art" class="hero-art w-full max-w-sm">
+      <p class="text-center text-xs uppercase tracking-[0.3em] text-white/60">Fresh data daily · human moderators only</p>
     </div>
   </div>
 
@@ -68,8 +77,8 @@
       </div>
     </div>
     <div class="lg:col-span-2">
-      <button type="submit" class="flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-brand to-brand-light px-6 py-4 text-lg font-semibold text-white shadow-brand transition hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-brand-light/60">Run Analyzer</button>
-      <p class="mt-2 text-center text-xs text-white/60">Need guidance? Update credentials in <a class="underline" href="{{ url_for('settings') }}">Settings</a>.</p>
+      <button type="submit" class="flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-brand to-brand-light px-6 py-4 text-lg font-semibold text-slate-950 shadow-brand transition hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-brand-light/60">Run Sub Search</button>
+      <p class="mt-2 text-center text-xs text-white/60">Sub Search automatically stores every run with moderator counts, descriptions, and last mod activity.</p>
     </div>
   </form>
 
@@ -142,7 +151,7 @@
   let pollTimer = null;
   const POLL_MS = 5000;
 
-  const STORE_KEY = 'sub_an_form_v1';
+  const STORE_KEY = 'sub_search_form_v1';
   const STORE_TTL_MS = 60 * 60 * 1000;
 
   function saveFormState(){

@@ -32,5 +32,5 @@ include = ["subsearch*"]
 subsearch = [
   "templates/*.html",
   "static/**/*",
+  "BUILD_NUMBER",
 ]
-

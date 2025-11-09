@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{% block title %}Eric Rosenberg Reddit Analyzer{% endblock %}</title>
+    <title>{% block title %}Eric Rosenberg Sub Search{% endblock %}</title>
     {% if site_url %}
     <link rel="canonical" href="{{ site_url.rstrip('/') }}{{ request.path }}" />
     {% endif %}
@@ -21,16 +21,16 @@
             },
             colors: {
               brand: {
-                light: '#FF8A50',
-                DEFAULT: '#FF4500',
-                dark: '#B62E00',
+                light: '#FBE36B',
+                DEFAULT: '#2BA84A',
+                dark: '#1A5A30',
               },
               slate: {
-                925: '#0B141C',
+                925: '#050f18',
               },
             },
             boxShadow: {
-              brand: '0 10px 30px rgba(255, 69, 0, 0.25)',
+              brand: '0 18px 40px rgba(43, 168, 74, 0.35)',
             },
           },
         },
@@ -40,22 +40,21 @@
     {% block head_extra %}{% endblock %}
   </head>
   <body class="min-h-full bg-slate-950 text-slate-100 antialiased">
-    <div class="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_top,_rgba(255,69,0,0.18),_transparent_55%)]"></div>
+    <div class="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_top_left,_rgba(43,168,74,0.25),_transparent_50%),_radial-gradient(circle_at_bottom_right,_rgba(251,227,107,0.15),_transparent_55%)]"></div>
     <div class="relative z-10 flex min-h-screen flex-col">
       <header class="sticky top-0 z-20 border-b border-white/10 bg-slate-950/80 backdrop-blur">
         <div class="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4">
           <a href="{{ url_for('home') }}" class="flex items-center gap-3 text-white">
-            <div class="h-10 w-10 rounded-lg bg-brand shadow-brand"></div>
+            <img src="{{ url_for('static', filename='img/sub-sando-badge.svg') }}" alt="Sub Search sandwich badge" class="h-12 w-12 rounded-2xl bg-black/20 p-1 shadow-brand hero-art">
             <div class="flex flex-col leading-[1.1]">
               <span class="font-display text-lg">Eric Rosenberg</span>
-              <span class="text-xs uppercase tracking-[0.2em] text-white/70">Reddit Analyzer</span>
+              <span class="text-xs uppercase tracking-[0.3em] text-white/70">Sub Search</span>
             </div>
           </a>
           <nav class="flex items-center gap-2 text-sm font-semibold">
             <a href="{{ url_for('home') }}" class="nav-link {% if nav_active == 'home' %}active{% endif %}">Home</a>
-            <a href="{{ url_for('analyzer') }}" class="nav-link {% if nav_active == 'analyzer' %}active{% endif %}">Reddit Sub Analyzer</a>
+            <a href="{{ url_for('analyzer') }}" class="nav-link {% if nav_active == 'analyzer' %}active{% endif %}">Sub Search</a>
             <a href="{{ url_for('all_subs') }}" class="nav-link {% if nav_active == 'allsubs' %}active{% endif %}">All The Subs</a>
-            <a href="{{ url_for('settings') }}" class="nav-link {% if nav_active == 'settings' %}active{% endif %}">Settings</a>
           </nav>
         </div>
       </header>
@@ -69,6 +68,8 @@
           <span>Open source on <a class="underline decoration-dotted" href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" rel="noopener">GitHub</a></span>
           <span>•</span>
           <span><a class="underline decoration-dotted" href="{{ url_for('helpdocs') }}" rel="nofollow">Helpdocs</a></span>
+          <span>•</span>
+          <span>Build {{ build_number }}</span>
         </div>
       </footer>
     </div>

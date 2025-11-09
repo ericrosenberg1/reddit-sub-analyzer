@@ -1,9 +1,14 @@
 :root {
   color-scheme: dark;
+  --sub-green: #2ba84a;
+  --sub-yellow: #fbe36b;
+  --sub-bread: #f4b860;
+  --sub-navy: #050f18;
 }
 
 body {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: radial-gradient(circle at 10% 20%, rgba(43, 168, 74, 0.15), transparent 55%), radial-gradient(circle at 80% 0%, rgba(251, 227, 107, 0.08), transparent 50%), #02070e;
 }
 
 .nav-link {
@@ -19,16 +24,16 @@ body {
 }
 
 .nav-link.active {
-  color: #fff;
-  background: linear-gradient(120deg, #ff4500, #ff8a50);
-  box-shadow: 0 10px 25px rgba(255, 69, 0, 0.25);
+  color: #041014;
+  background: linear-gradient(120deg, var(--sub-green), var(--sub-yellow));
+  box-shadow: 0 12px 30px rgba(43, 168, 74, 0.35);
 }
 
 .panel-surface {
-  background: radial-gradient(circle at top left, rgba(255, 138, 80, 0.18), transparent 45%) rgba(15, 23, 42, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: radial-gradient(circle at top left, rgba(251, 227, 107, 0.12), transparent 45%), radial-gradient(circle at top right, rgba(43, 168, 74, 0.12), transparent 55%), rgba(8, 18, 31, 0.85);
+  border: 1px solid rgba(251, 227, 107, 0.14);
   border-radius: 1.25rem;
-  box-shadow: 0 20px 45px rgba(6, 11, 25, 0.6);
+  box-shadow: 0 25px 40px rgba(5, 10, 20, 0.65);
 }
 
 .loader {
@@ -36,8 +41,25 @@ body {
   height: 1.9rem;
   border-radius: 9999px;
   border: 3px solid rgba(255, 255, 255, 0.2);
-  border-top-color: #ff4500;
+  border-top-color: var(--sub-yellow);
   animation: spin 0.9s linear infinite;
+}
+
+.clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.hero-art {
+  filter: drop-shadow(0 20px 35px rgba(4, 16, 20, 0.8));
+}
+
+.sandwich-chip {
+  border: 1px solid rgba(251, 227, 107, 0.4);
+  background: rgba(251, 227, 107, 0.1);
+  color: rgba(251, 227, 107, 0.9);
 }
 
 @keyframes spin {
