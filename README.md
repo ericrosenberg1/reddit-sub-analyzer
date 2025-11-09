@@ -194,7 +194,7 @@ Configuration updates now flow exclusively through your `.env`. Edit it manually
 
 ## Build Numbers
 
-Every deployment advertises a sandwich-styled build number in the site footer. The number lives in `subsearch/BUILD_NUMBER` and follows `YYYY.MM.sequence`:
+Every deployment advertises a playful build number in the site footer. The number lives in `subsearch/BUILD_NUMBER` and follows `YYYY.MM.sequence`:
 
 - First Sub Search deploy in November 2025 → `2025.11.1`
 - Second deploy that same month → `2025.11.2`

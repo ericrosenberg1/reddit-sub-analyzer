@@ -5,7 +5,10 @@ import threading
 import tempfile
 import time
 import re
-from datetime import datetime, timezone
+import smtplib
+import ssl
+from datetime import datetime, timezone, timedelta
+from email.message import EmailMessage
 
 from flask import Flask, render_template, request, send_file, flash, redirect, url_for, session, make_response, jsonify
 from dotenv import load_dotenv
@@ -16,7 +19,15 @@ from .build_info import get_current_build_number
 from .storage import (
     fetch_recent_runs,
     get_summary_stats,
+    get_node_stats,
+    list_public_nodes,
     init_db,
+    create_volunteer_node,
+    get_node_by_token,
+    update_volunteer_node,
+    delete_volunteer_node,
+    mark_manage_link_sent,
+    prune_broken_nodes,
     persist_subreddits,
     record_run_complete,
     record_run_start,
@@ -42,9 +53,32 @@ jobs = {}
 jobs_lock = threading.Lock()
 auto_ingest_thread = None
 auto_ingest_lock = threading.Lock()
+node_cleanup_thread = None
+node_cleanup_lock = threading.Lock()
 
 # Restrict directory browsing removed (no server-side saving)
 SITE_URL = os.getenv("SITE_URL", "")
+
+NODE_EMAIL_SENDER = os.getenv("NODE_EMAIL_SENDER", "").strip()
+NODE_EMAIL_SENDER_NAME = os.getenv("NODE_EMAIL_SENDER_NAME", "Sub Search Nodes").strip() or "Sub Search Nodes"
+NODE_EMAIL_SMTP_HOST = os.getenv("NODE_EMAIL_SMTP_HOST", "").strip()
+try:
+    NODE_EMAIL_SMTP_PORT = int(os.getenv("NODE_EMAIL_SMTP_PORT", "587") or 587)
+except (TypeError, ValueError):
+    NODE_EMAIL_SMTP_PORT = 587
+NODE_EMAIL_SMTP_USERNAME = os.getenv("NODE_EMAIL_SMTP_USERNAME", "").strip()
+NODE_EMAIL_SMTP_PASSWORD = os.getenv("NODE_EMAIL_SMTP_PASSWORD", "").strip()
+NODE_EMAIL_USE_TLS = str(os.getenv("NODE_EMAIL_USE_TLS", "1")).strip().lower() not in {"0", "false", "off", "no"}
+try:
+    NODE_CLEANUP_INTERVAL_SECONDS = int(os.getenv("NODE_CLEANUP_INTERVAL_SECONDS", "86400") or 86400)
+except (TypeError, ValueError):
+    NODE_CLEANUP_INTERVAL_SECONDS = 86400
+NODE_CLEANUP_INTERVAL_SECONDS = max(3600, NODE_CLEANUP_INTERVAL_SECONDS)
+try:
+    NODE_BROKEN_RETENTION_DAYS = int(os.getenv("NODE_BROKEN_RETENTION_DAYS", "7") or 7)
+except (TypeError, ValueError):
+    NODE_BROKEN_RETENTION_DAYS = 7
+NODE_BROKEN_RETENTION_DAYS = max(1, NODE_BROKEN_RETENTION_DAYS)
 
 @app.route("/")
 def home():
@@ -61,11 +95,162 @@ def home():
             run["status"] = "complete"
         else:
             run["status"] = "running"
+    node_stats = get_node_stats() or {"total": 0, "active": 0, "pending": 0, "broken": 0}
+    volunteer_nodes = []
+    for entry in list_public_nodes(limit=6):
+        item = dict(entry)
+        item["last_check_display"] = _format_human_ts(entry.get("last_check_in_at") or entry.get("updated_at"))
+        volunteer_nodes.append(item)
     return render_template(
         "home.html",
         stats=stats_display,
         recent_runs=recent_runs,
+        node_stats=node_stats,
+        volunteer_nodes=volunteer_nodes,
         nav_active="home",
+    )
+
+
+@app.route("/nodes")
+def nodes_home():
+    stats = get_node_stats() or {"total": 0, "active": 0, "pending": 0, "broken": 0}
+    volunteer_nodes = []
+    for entry in list_public_nodes(limit=30):
+        item = dict(entry)
+        item["last_check_display"] = _format_human_ts(entry.get("last_check_in_at") or entry.get("updated_at"))
+        volunteer_nodes.append(item)
+    return render_template(
+        "nodes/index.html",
+        node_stats=stats,
+        volunteer_nodes=volunteer_nodes,
+        nav_active="nodes",
+    )
+
+
+@app.route("/nodes/join", methods=["GET", "POST"])
+def node_join():
+    form_data = {
+        "email": (request.form.get("email") or "").strip(),
+        "reddit_username": _normalize_username(request.form.get("reddit_username") or ""),
+        "location": (request.form.get("location") or "").strip(),
+        "system_details": (request.form.get("system_details") or "").strip(),
+        "availability": (request.form.get("availability") or "").strip(),
+        "bandwidth_notes": (request.form.get("bandwidth_notes") or "").strip(),
+        "notes": (request.form.get("notes") or "").strip(),
+    }
+    manage_link = None
+    email_sent = False
+    if request.method == "POST":
+        errors = []
+        if not form_data["email"] or "@" not in form_data["email"]:
+            errors.append("A valid contact email is required.")
+        if not form_data["reddit_username"]:
+            errors.append("Share the Reddit account you plan to run with.")
+        if errors:
+            for err in errors:
+                flash(err, "error")
+        else:
+            token = create_volunteer_node(
+                email=form_data["email"],
+                reddit_username=form_data["reddit_username"],
+                location=form_data["location"],
+                system_details=form_data["system_details"],
+                availability=form_data["availability"],
+                bandwidth_notes=form_data["bandwidth_notes"],
+                notes=form_data["notes"],
+            )
+            manage_link = _build_manage_link(token)
+            email_sent = _send_node_email(form_data["email"], manage_link)
+            if email_sent:
+                mark_manage_link_sent(token)
+                flash(
+                    "Thanks for volunteering! Check your inbox for the private link to manage your node.",
+                    "success",
+                )
+            else:
+                flash(
+                    "Thanks for volunteering! Email delivery isn't configured, so copy the private link below to manage your node.",
+                    "warning",
+                )
+            form_data = {key: "" for key in form_data}
+    return render_template(
+        "nodes/join.html",
+        form_data=form_data,
+        manage_link=manage_link,
+        email_sent=email_sent,
+        nav_active="nodes",
+    )
+
+
+@app.route("/nodes/manage/<token>", methods=["GET", "POST"])
+def node_manage(token):
+    node = get_node_by_token(token)
+    if not node:
+        flash("That node link is no longer active. Submit the join form again for a fresh link.", "error")
+        return redirect(url_for("node_join"))
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "delete":
+            delete_volunteer_node(token)
+            flash("Your node has been removed. Thanks for contributing!", "success")
+            return redirect(url_for("nodes_home"))
+        updated_email = (request.form.get("email") or "").strip()
+        updated_username = _normalize_username(request.form.get("reddit_username") or "")
+        updated_location = (request.form.get("location") or "").strip()
+        updated_system = (request.form.get("system_details") or "").strip()
+        updated_availability = (request.form.get("availability") or "").strip()
+        updated_bandwidth = (request.form.get("bandwidth_notes") or "").strip()
+        updated_notes = (request.form.get("notes") or "").strip()
+        chosen_status = request.form.get("health_status") or node.get("health_status") or "active"
+        node["email"] = updated_email
+        node["reddit_username"] = updated_username
+        node["location"] = updated_location
+        node["system_details"] = updated_system
+        node["availability"] = updated_availability
+        node["bandwidth_notes"] = updated_bandwidth
+        node["notes"] = updated_notes
+        node["health_status"] = chosen_status
+        errors = []
+        if not updated_email or "@" not in updated_email:
+            errors.append("Email is required so we can keep your node reachable.")
+        if not updated_username:
+            errors.append("Your Reddit username helps coordinate API access.")
+        if errors:
+            for err in errors:
+                flash(err, "error")
+        else:
+            broken_since = None
+            previous_status = (node.get("health_status") or "").lower()
+            if chosen_status == "broken" and (previous_status != "broken" or not node.get("broken_since")):
+                broken_since = datetime.utcnow().isoformat()
+            elif previous_status == "broken" and chosen_status != "broken":
+                broken_since = ""
+            updated = update_volunteer_node(
+                token,
+                email=updated_email,
+                reddit_username=updated_username,
+                location=updated_location,
+                system_details=updated_system,
+                availability=updated_availability,
+                bandwidth_notes=updated_bandwidth,
+                notes=updated_notes,
+                health_status=chosen_status,
+                broken_since=broken_since,
+            )
+            if updated:
+                flash("Node details updated.", "success")
+                return redirect(url_for("node_manage", token=token))
+            flash("No changes detected.", "info")
+    manage_link = _build_manage_link(token)
+    last_check_display = _format_human_ts(
+        node.get("last_check_in_at") or node.get("updated_at") or node.get("created_at")
+    )
+    return render_template(
+        "nodes/manage.html",
+        node=node,
+        manage_link=manage_link,
+        last_check_display=last_check_display,
+        nav_active="nodes",
     )
 
 
@@ -133,6 +318,65 @@ def _format_human_ts(ts):
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+
+def _normalize_username(value: str) -> str:
+    if not value:
+        return ""
+    cleaned = value.strip()
+    lowered = cleaned.lower()
+    if lowered.startswith("/u/"):
+        cleaned = cleaned[3:]
+    elif lowered.startswith("u/"):
+        cleaned = cleaned[2:]
+    return cleaned.strip().lstrip("/")
+
+
+def _build_manage_link(token: str) -> str:
+    if not token:
+        return ""
+    path = url_for("node_manage", token=token, _external=False)
+    if SITE_URL:
+        return f"{SITE_URL.rstrip('/')}{path}"
+    return url_for("node_manage", token=token, _external=True)
+
+
+def _send_node_email(recipient: str, manage_link: str) -> bool:
+    if not recipient or not manage_link:
+        return False
+    if not NODE_EMAIL_SENDER or not NODE_EMAIL_SMTP_HOST:
+        logger.warning("Node email not sent because SMTP settings are incomplete.")
+        return False
+    message = EmailMessage()
+    sender = NODE_EMAIL_SENDER
+    if NODE_EMAIL_SENDER_NAME:
+        sender = f"{NODE_EMAIL_SENDER_NAME} <{NODE_EMAIL_SENDER}>"
+    message["From"] = sender
+    message["To"] = recipient
+    message["Subject"] = "Your Sub Search volunteer node link"
+    message.set_content(
+        (
+            "Thanks for offering your machine to help grow the Sub Search dataset!\n\n"
+            "Here is your private link to manage your node:\n"
+            f"{manage_link}\n\n"
+            "Use it to update hardware details, pause contributions, or delete the node entirely.\n"
+            "We keep nodes that report a broken state for 7+ days automatically cleared out each night.\n\n"
+            "- Sub Search"
+        )
+    )
+    try:
+        with smtplib.SMTP(NODE_EMAIL_SMTP_HOST, NODE_EMAIL_SMTP_PORT, timeout=20) as smtp:
+            if NODE_EMAIL_USE_TLS:
+                context = ssl.create_default_context()
+                smtp.starttls(context=context)
+            if NODE_EMAIL_SMTP_USERNAME:
+                smtp.login(NODE_EMAIL_SMTP_USERNAME, NODE_EMAIL_SMTP_PASSWORD)
+            smtp.send_message(message)
+        logger.info("Sent volunteer node link to %s", recipient)
+        return True
+    except Exception:
+        logger.exception("Unable to send volunteer node email to %s", recipient)
+        return False
 
 
 AUTO_INGEST_ENABLED = str(os.getenv("AUTO_INGEST_ENABLED", "1")).strip().lower() not in {"0", "false", "off", "no"}
@@ -215,9 +459,34 @@ def _start_auto_ingest_thread_if_needed():
         auto_ingest_thread.start()
 
 
+def _node_cleanup_loop():
+    while True:
+        try:
+            removed = prune_broken_nodes(NODE_BROKEN_RETENTION_DAYS)
+            if removed:
+                logger.info(
+                    "Nightly node cleanup removed %d broken node(s) older than %d days",
+                    removed,
+                    NODE_BROKEN_RETENTION_DAYS,
+                )
+        except Exception:
+            logger.exception("Nightly node cleanup failed.")
+        time.sleep(NODE_CLEANUP_INTERVAL_SECONDS)
+
+
+def _start_node_cleanup_thread_if_needed():
+    global node_cleanup_thread
+    with node_cleanup_lock:
+        if node_cleanup_thread and node_cleanup_thread.is_alive():
+            return
+        node_cleanup_thread = threading.Thread(target=_node_cleanup_loop, name="node-cleanup", daemon=True)
+        node_cleanup_thread.start()
+
+
 # Prepare storage and background ingestion
 init_db()
 _start_auto_ingest_thread_if_needed()
+_start_node_cleanup_thread_if_needed()
 
 
 @app.route("/analyzer", methods=["GET", "POST"])

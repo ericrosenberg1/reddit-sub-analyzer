@@ -45,7 +45,7 @@
       <header class="sticky top-0 z-20 border-b border-white/10 bg-slate-950/80 backdrop-blur">
         <div class="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4">
           <a href="{{ url_for('home') }}" class="flex items-center gap-3 text-white">
-            <img src="{{ url_for('static', filename='img/sub-sando-badge.svg') }}" alt="Sub Search sandwich badge" class="h-12 w-12 rounded-2xl bg-black/20 p-1 shadow-brand hero-art">
+            <img src="{{ url_for('static', filename='img/sub-sando-badge.svg') }}" alt="Sub Search badge" class="h-12 w-12 rounded-2xl bg-black/20 p-1 shadow-brand hero-art">
             <div class="flex flex-col leading-[1.1]">
               <span class="font-display text-lg">Eric Rosenberg</span>
               <span class="text-xs uppercase tracking-[0.3em] text-white/70">Sub Search</span>
@@ -54,6 +54,7 @@
           <nav class="flex items-center gap-2 text-sm font-semibold">
             <a href="{{ url_for('home') }}" class="nav-link {% if nav_active == 'home' %}active{% endif %}">Home</a>
             <a href="{{ url_for('analyzer') }}" class="nav-link {% if nav_active == 'analyzer' %}active{% endif %}">Sub Search</a>
+            <a href="{{ url_for('nodes_home') }}" class="nav-link {% if nav_active == 'nodes' %}active{% endif %}">Nodes</a>
             <a href="{{ url_for('all_subs') }}" class="nav-link {% if nav_active == 'allsubs' %}active{% endif %}">All The Subs</a>
           </nav>
         </div>

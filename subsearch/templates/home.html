@@ -7,7 +7,7 @@
     <div class="max-w-3xl space-y-4">
       <p class="text-sm font-semibold uppercase tracking-[0.4em] text-white/60">An <a href="https://ericrosenberg.com">Eric Rosenberg</a> project</p>
       <h1 class="font-display text-4xl text-white sm:text-5xl">Sub Search</h1>
-      <p class="text-lg text-white/80">A subway-sandwich inspired toolkit for discovering and cataloging subreddits. Every run scoops full names, descriptions, moderator counts, and the last human touch, then feeds the All The Subs directory.</p>
+      <p class="text-lg text-white/80">Sub Search keeps a living index of subreddit names, descriptions, moderator counts, and last human moderator activity so you can audit communities and export targeted lists.</p>
       <div class="mt-6 flex flex-wrap gap-3">
         <a href="{{ url_for('analyzer') }}" class="rounded-2xl bg-gradient-to-r from-brand to-brand-light px-6 py-3 text-base font-semibold text-slate-950 shadow-brand transition hover:scale-[1.01]">Launch Sub Search</a>
         <a href="{{ url_for('all_subs') }}" class="nav-link text-sm">Browse All The Subs</a>
@@ -16,7 +16,7 @@
       <p class="text-xs uppercase tracking-[0.3em] text-white/60">Runs locally or at allthesubs.ericrosenberg.com</p>
     </div>
     <div class="flex flex-col gap-4 lg:max-w-sm">
-      <img src="{{ url_for('static', filename='img/sub-sando-hero.svg') }}" alt="Sub Search sandwich illustration" class="hero-art w-full rounded-3xl border border-white/10 bg-slate-900/40 p-3">
+      <img src="{{ url_for('static', filename='img/sub-sando-hero.svg') }}" alt="Sub Search hero illustration" class="hero-art w-full rounded-3xl border border-white/10 bg-slate-900/40 p-3">
       <div class="rounded-3xl border border-white/10 bg-slate-900/50 p-6 text-sm text-white/70 shadow-lg">
         <p class="text-xs uppercase tracking-[0.3em] text-white/50">Data health</p>
         <ul class="mt-4 space-y-3">
@@ -43,19 +43,19 @@
 
   <div class="mt-10 grid gap-4 md:grid-cols-3">
     <article class="rounded-3xl border border-white/10 bg-slate-900/40 p-5 shadow-lg">
-      <p class="text-xs uppercase tracking-[0.3em] text-white/60">1. Sub Search mission</p>
+      <p class="text-xs uppercase tracking-[0.3em] text-white/60">1. The Always Growing Sub Database</p>
       <h3 class="mt-2 text-xl font-semibold text-white">Explain & Invite</h3>
-      <p class="mt-2 text-sm text-white/80">Share why this sandwich-inspired toolkit exists, highlight that it’s open-source, and welcome contributions. Link to the GitHub repo for feature ideas and bug reports.</p>
+      <p class="mt-2 text-sm text-white/80">Document why this project exists, keep the roadmap public, and direct contributors to <a class="underline decoration-dotted" href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" rel="noopener">GitHub</a> for issues and feature pitches.</p>
     </article>
     <article class="rounded-3xl border border-white/10 bg-slate-900/40 p-5 shadow-lg">
-      <p class="text-xs uppercase tracking-[0.3em] text-white/60">2. Sub Search</p>
+      <p class="text-xs uppercase tracking-[0.3em] text-white/60">2. Fueled by Your Queries and Nodes</p>
+      <h3 class="mt-2 text-xl font-semibold text-white">Dual ingestion</h3>
+      <p class="mt-2 text-sm text-white/80">Manual searches, the built-in auto-ingest bot, and opt-in community nodes all write to the same dataset so gaps get filled fast.</p>
+    </article>
+    <article class="rounded-3xl border border-white/10 bg-slate-900/40 p-5 shadow-lg">
+      <p class="text-xs uppercase tracking-[0.3em] text-white/60">3. Search and Export Custom Sub Lists</p>
       <h3 class="mt-2 text-xl font-semibold text-white">Search & Export</h3>
-      <p class="mt-2 text-sm text-white/80">High-powered search UI with keyword filters, moderation toggles, NSFW exclusion, CSV download, moderator counts, and last mod activity timestamps.</p>
-    </article>
-    <article class="rounded-3xl border border-white/10 bg-slate-900/40 p-5 shadow-lg">
-      <p class="text-xs uppercase tracking-[0.3em] text-white/60">3. All The Subs</p>
-      <h3 class="mt-2 text-xl font-semibold text-white">Browse & Filter</h3>
-      <p class="mt-2 text-sm text-white/80">A Reddit-like directory with sorting, filtering, and in-app search—now enriched with descriptions, moderator counts, and mod activity clocks.</p>
+      <p class="mt-2 text-sm text-white/80">Collect keyword-matched subs, filter by moderation style, exclude NSFW, and download CSVs with moderator counts plus last mod activity timestamps.</p>
     </article>
   </div>
 </section>
@@ -65,7 +65,7 @@
     <div class="flex items-center justify-between">
       <div>
         <p class="text-xs uppercase tracking-[0.3em] text-white/60">Activity</p>
-        <h2 class="text-2xl font-semibold text-white">Recent Sub Search runs</h2>
+        <h2 class="text-2xl font-semibold text-white">Recent Sub Searches</h2>
       </div>
       <a href="{{ url_for('analyzer') }}" class="nav-link text-sm">Start a run →</a>
     </div>
@@ -95,32 +95,78 @@
 
   <div class="panel-surface p-6 shadow-xl">
     <p class="text-xs uppercase tracking-[0.3em] text-white/60">Pipeline</p>
-    <h2 class="text-2xl font-semibold text-white">How the data flows</h2>
+    <h2 class="text-2xl font-semibold text-white">How the sandwich is made</h2>
     <ol class="mt-4 space-y-4 text-sm text-white/80">
       <li class="flex gap-3">
         <span class="rounded-full bg-brand/30 px-3 py-1 font-semibold text-brand">1</span>
         <div>
-          <p class="font-semibold text-white">Queries & Auto-ingest</p>
-          <p>Manual runs plus scheduled auto-ingest jobs fetch data via Reddit’s official API, respecting rate limits via built-in pacing controls.</p>
+          <p class="font-semibold text-white">Manual Sub Searches</p>
+          <p>Every time you run Sub Search, we capture names, descriptions, moderator counts, and last mod activity for anything that matches your filters.</p>
         </div>
       </li>
       <li class="flex gap-3">
         <span class="rounded-full bg-brand/30 px-3 py-1 font-semibold text-brand">2</span>
         <div>
-          <p class="font-semibold text-white">SQLite + Caching</p>
-          <p>Results land in an optimized SQLite database with WAL mode, connection guards, and in-memory TTL caching for summary + directory queries.</p>
+          <p class="font-semibold text-white">Auto-ingest bot + volunteer nodes</p>
+          <p>A paced background bot—and now opt-in community nodes—sweep scheduled keywords so fresh subs show up even when nobody is at the keyboard.</p>
         </div>
       </li>
       <li class="flex gap-3">
         <span class="rounded-full bg-brand/30 px-3 py-1 font-semibold text-brand">3</span>
         <div>
-          <p class="font-semibold text-white">All The Subs UI</p>
-          <p>The Tailwind-powered UI serves canonical data through the `/api/subreddits` endpoint, giving you a modern Reddit-inspired browsing experience.</p>
+          <p class="font-semibold text-white">Shared dataset</p>
+          <p>Results flow into the same directory that powers Sub Search exports and All The Subs, keeping everything in sync without extra clicks.</p>
         </div>
       </li>
     </ol>
-    <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" rel="noopener" class="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-brand-light hover:text-white">Read the code on GitHub →</a>
   </div>
+</section>
+
+<section class="panel-surface mt-10 p-6 shadow-xl">
+  <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div>
+      <p class="text-xs uppercase tracking-[0.3em] text-white/60">Distributed help</p>
+      <h2 class="text-2xl font-semibold text-white">Bring your machine + Reddit account</h2>
+      <p class="mt-2 text-sm text-white/80">Volunteer nodes get a private link via email—no login—to update or delete their entry anytime. Mark a node “broken” if it goes offline; anything broken for 7+ days is automatically removed during the nightly cleanup.</p>
+    </div>
+    <a href="{{ url_for('node_join') }}" class="rounded-2xl bg-gradient-to-r from-brand to-brand-light px-6 py-3 text-base font-semibold text-slate-950 shadow-brand transition hover:scale-[1.01]">Add a node</a>
+  </div>
+  <div class="mt-6 grid gap-4 md:grid-cols-3">
+    <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-4 text-sm text-white/70">
+      <p class="text-xs uppercase tracking-[0.3em] text-white/50">Nodes in pool</p>
+      <p class="mt-2 text-3xl font-semibold text-white">{{ node_stats.total or 0 }}</p>
+      <p class="mt-1 text-xs text-white/50">Active {{ node_stats.active or 0 }} • Pending {{ node_stats.pending or 0 }}</p>
+    </div>
+    <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-4 text-sm text-white/70">
+      <p class="text-xs uppercase tracking-[0.3em] text-white/50">Nightly cleanup</p>
+      <p class="mt-2 text-3xl font-semibold text-white">7 days</p>
+      <p class="mt-1 text-xs text-white/50">Broken nodes age out automatically.</p>
+    </div>
+    <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-4 text-sm text-white/70">
+      <p class="text-xs uppercase tracking-[0.3em] text-white/50">Manual + auto</p>
+      <p class="mt-2 text-3xl font-semibold text-white">Dual fuel</p>
+      <p class="mt-1 text-xs text-white/50">Manual searches fuel niche leads while nodes sweep background keywords.</p>
+    </div>
+  </div>
+  {% if volunteer_nodes %}
+  <ul class="mt-6 grid gap-4 lg:grid-cols-3">
+    {% for node in volunteer_nodes %}
+    <li class="rounded-2xl border border-white/10 bg-slate-900/50 p-4">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <p class="text-base font-semibold text-white">{{ node.reddit_username and ('u/' ~ node.reddit_username) or 'Handle pending' }}</p>
+          <p class="text-xs text-white/60">{{ node.location or 'Location TBD' }}</p>
+        </div>
+        <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white/70">{{ (node.health_status or 'pending')|title }}</span>
+      </div>
+      <p class="mt-3 text-xs text-white/60">Last check-in: {{ node.last_check_display or 'New' }}</p>
+      {% if node.notes %}<p class="mt-2 text-sm text-white/70">“{{ node.notes }}”</p>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="mt-6 text-sm text-white/70">No volunteer nodes yet—add yours to speed things up.</p>
+  {% endif %}
 </section>
 
 <section class="panel-surface mt-10 p-6 text-white shadow-xl lg:p-10">

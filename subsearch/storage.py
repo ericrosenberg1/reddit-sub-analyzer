@@ -1,7 +1,8 @@
 import os
+import secrets
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, Iterable, List, Optional
 
 from .cache import search_cache, summary_cache
@@ -12,6 +13,15 @@ DB_PATH = os.getenv("SUBSEARCH_DB_PATH") or os.path.join(DATA_DIR, "subsearch.db
 
 def _now_iso() -> str:
     return datetime.utcnow().isoformat()
+
+
+def _clean_text(value: Optional[str], *, limit: int = 255) -> str:
+    if not value:
+        return ""
+    text = str(value).strip()
+    if not text:
+        return ""
+    return text[:limit]
 
 
 def _connect() -> sqlite3.Connection:
@@ -105,6 +115,35 @@ def init_db() -> None:
         )
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_subreddits_unmod ON subreddits(is_unmoderated, subscribers DESC)"
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS volunteer_nodes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL,
+                reddit_username TEXT,
+                location TEXT,
+                system_details TEXT,
+                availability TEXT,
+                bandwidth_notes TEXT,
+                notes TEXT,
+                health_status TEXT NOT NULL DEFAULT 'pending',
+                last_check_in_at TEXT,
+                broken_since TEXT,
+                manage_token TEXT UNIQUE NOT NULL,
+                manage_token_sent_at TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                is_deleted INTEGER NOT NULL DEFAULT 0,
+                deleted_at TEXT
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_volunteer_nodes_health ON volunteer_nodes(health_status, updated_at DESC)"
+        )
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_volunteer_nodes_token ON volunteer_nodes(manage_token)"
         )
         conn.commit()
 
@@ -407,3 +446,201 @@ def search_subreddits(
 
 def get_database_path() -> str:
     return DB_PATH
+
+
+def create_volunteer_node(
+    *,
+    email: str,
+    reddit_username: str,
+    location: Optional[str] = None,
+    system_details: Optional[str] = None,
+    availability: Optional[str] = None,
+    bandwidth_notes: Optional[str] = None,
+    notes: Optional[str] = None,
+) -> str:
+    token = secrets.token_urlsafe(32)
+    now = _now_iso()
+    with db_conn() as conn, conn:
+        conn.execute(
+            """
+            INSERT INTO volunteer_nodes (
+                email, reddit_username, location, system_details,
+                availability, bandwidth_notes, notes, health_status,
+                last_check_in_at, manage_token, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)
+            """,
+            (
+                _clean_text(email, limit=256),
+                _clean_text(reddit_username, limit=256),
+                _clean_text(location, limit=256),
+                _clean_text(system_details, limit=512),
+                _clean_text(availability, limit=256),
+                _clean_text(bandwidth_notes, limit=256),
+                _clean_text(notes, limit=1000),
+                now,
+                token,
+                now,
+                now,
+            ),
+        )
+    return token
+
+
+def list_public_nodes(limit: int = 12) -> List[Dict]:
+    with db_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT reddit_username, location, system_details, availability,
+                   bandwidth_notes, notes, health_status, last_check_in_at, updated_at
+            FROM volunteer_nodes
+            WHERE is_deleted = 0
+              AND (health_status IS NULL OR health_status != 'broken')
+            ORDER BY updated_at DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def get_node_stats() -> Dict:
+    with db_conn() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                COUNT(*) AS total,
+                SUM(CASE WHEN health_status = 'active' AND is_deleted = 0 THEN 1 ELSE 0 END) AS active,
+                SUM(CASE WHEN health_status = 'pending' AND is_deleted = 0 THEN 1 ELSE 0 END) AS pending,
+                SUM(CASE WHEN health_status = 'broken' AND is_deleted = 0 THEN 1 ELSE 0 END) AS broken
+            FROM volunteer_nodes
+            WHERE is_deleted = 0
+            """
+        ).fetchone()
+    if not row:
+        return {"total": 0, "active": 0, "pending": 0, "broken": 0}
+    return {
+        "total": row["total"] or 0,
+        "active": row["active"] or 0,
+        "pending": row["pending"] or 0,
+        "broken": row["broken"] or 0,
+    }
+
+
+def get_node_by_token(token: str) -> Optional[Dict]:
+    if not token:
+        return None
+    with db_conn() as conn:
+        row = conn.execute(
+            """
+            SELECT *
+            FROM volunteer_nodes
+            WHERE manage_token = ?
+              AND is_deleted = 0
+            """,
+            (token,),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def update_volunteer_node(
+    token: str,
+    *,
+    email: Optional[str] = None,
+    reddit_username: Optional[str] = None,
+    location: Optional[str] = None,
+    system_details: Optional[str] = None,
+    availability: Optional[str] = None,
+    bandwidth_notes: Optional[str] = None,
+    notes: Optional[str] = None,
+    health_status: Optional[str] = None,
+    broken_since: Optional[str] = None,
+) -> bool:
+    if not token:
+        return False
+    fields = []
+    params: List = []
+    mapping = {
+        "email": email,
+        "reddit_username": reddit_username,
+        "location": location,
+        "system_details": system_details,
+        "availability": availability,
+        "bandwidth_notes": bandwidth_notes,
+        "notes": notes,
+    }
+    for column, value in mapping.items():
+        if value is not None:
+            limit = 1000 if column == "notes" else 512 if column == "system_details" else 256
+            fields.append(f"{column} = ?")
+            params.append(_clean_text(value, limit=limit))
+    now = _now_iso()
+    fields.append("updated_at = ?")
+    params.append(now)
+    fields.append("last_check_in_at = ?")
+    params.append(now)
+    if health_status:
+        fields.append("health_status = ?")
+        params.append(health_status)
+    if broken_since is not None:
+        value = broken_since if broken_since else None
+        fields.append("broken_since = ?")
+        params.append(value)
+    if not fields:
+        return False
+    params.append(token)
+    with db_conn() as conn, conn:
+        cur = conn.execute(
+            f"UPDATE volunteer_nodes SET {', '.join(fields)} WHERE manage_token = ? AND is_deleted = 0",
+            params,
+        )
+    return cur.rowcount > 0
+
+
+def delete_volunteer_node(token: str) -> bool:
+    if not token:
+        return False
+    now = _now_iso()
+    with db_conn() as conn, conn:
+        cur = conn.execute(
+            """
+            UPDATE volunteer_nodes
+            SET is_deleted = 1,
+                deleted_at = ?,
+                updated_at = ?
+            WHERE manage_token = ? AND is_deleted = 0
+            """,
+            (now, now, token),
+        )
+    return cur.rowcount > 0
+
+
+def mark_manage_link_sent(token: str) -> None:
+    if not token:
+        return
+    now = _now_iso()
+    with db_conn() as conn, conn:
+        conn.execute(
+            """
+            UPDATE volunteer_nodes
+            SET manage_token_sent_at = ?
+            WHERE manage_token = ? AND is_deleted = 0
+            """,
+            (now, token),
+        )
+
+
+def prune_broken_nodes(max_age_days: int = 7) -> int:
+    max_age_days = max(1, int(max_age_days or 7))
+    cutoff = datetime.utcnow() - timedelta(days=max_age_days)
+    cutoff_iso = cutoff.isoformat()
+    with db_conn() as conn, conn:
+        cur = conn.execute(
+            """
+            DELETE FROM volunteer_nodes
+            WHERE is_deleted = 0
+              AND health_status = 'broken'
+              AND COALESCE(broken_since, last_check_in_at, updated_at, created_at) <= ?
+            """,
+            (cutoff_iso,),
+        )
+    return cur.rowcount or 0

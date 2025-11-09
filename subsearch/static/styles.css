@@ -56,7 +56,7 @@ body {
   filter: drop-shadow(0 20px 35px rgba(4, 16, 20, 0.8));
 }
 
-.sandwich-chip {
+.data-chip {
   border: 1px solid rgba(251, 227, 107, 0.4);
   background: rgba(251, 227, 107, 0.1);
   color: rgba(251, 227, 107, 0.9);
