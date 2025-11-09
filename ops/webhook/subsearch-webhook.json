@@ -1,0 +1,30 @@
+[
+  {
+    "id": "subsearch-deploy",
+    "execute-command": "/usr/local/bin/deploy_subsearch.sh",
+    "command-working-directory": "/opt/subsearch",
+    "include-command-output-in-response": true,
+    "pass-environment-to-command": [
+      { "source": "payload", "name": "head_commit.id", "envname": "GIT_COMMIT" },
+      { "source": "payload", "name": "repository.full_name", "envname": "GIT_REPO" }
+    ],
+    "trigger-rule": {
+      "and": [
+        {
+          "match": {
+            "type": "payload-hash-sha256",
+            "parameter": { "source": "header", "name": "X-Hub-Signature-256" },
+            "secret": "@BASH(cat /etc/subsearch-webhook.secret)"
+          }
+        },
+        {
+          "match": {
+            "type": "value",
+            "value": "refs/heads/main",
+            "parameter": { "source": "payload", "name": "ref" }
+          }
+        }
+      ]
+    }
+  }
+]

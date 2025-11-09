@@ -1,0 +1,14 @@
+[Unit]
+Description=GitHub webhook listener for Subsearch auto-deploys
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/webhook -hooks /opt/subsearch/hooks/subsearch-webhook.json -ip 127.0.0.1 -port 9000 -template
+Restart=on-failure
+RestartSec=3
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

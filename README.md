@@ -145,6 +145,30 @@ Tips:
    ```
 5. **HTTPS**: `sudo certbot --nginx -d allthesubs.ericrosenberg.com`
 
+### Automated Deploys (Webhook + Script)
+
+After the first manual install you can let GitHub push events redeploy the app automatically:
+
+1. **Install the deploy helper.** Copy `scripts/deploy_subsearch.sh` to the server and install it system-wide:
+   ```bash
+   sudo install -m 0755 scripts/deploy_subsearch.sh /usr/local/bin/deploy_subsearch.sh
+   # Optional: keep overrides in /etc/subsearch-deploy.env
+   ```
+   The script accepts overrides via env vars (`APP_DIR`, `APP_USER`, `VENV_PATH`, `BRANCH`, `SERVICE_NAME`, `PIP_FLAGS`). Run it once manually to confirm the service restarts cleanly:
+   ```bash
+   sudo APP_DIR=/opt/subsearch APP_USER=subsearch SERVICE_NAME=subsearch /usr/local/bin/deploy_subsearch.sh
+   ```
+
+2. **Provision the webhook listener.** Install the lightweight [`webhook`](https://github.com/adnanh/webhook) binary (`sudo apt install webhook`), then place the sample config + service from `ops/webhook/subsearch-webhook.json` and `ops/systemd/subsearch-webhook.service`. Adjust paths/ports as needed and keep the config in `/opt/subsearch/hooks/subsearch-webhook.json`. Store the shared secret outside git:
+   ```bash
+   echo "super-long-random-string" | sudo tee /etc/subsearch-webhook.secret
+   sudo systemctl enable --now subsearch-webhook
+   ```
+
+3. **Wire up GitHub.** In your repo settings add a webhook pointing to `https://allthesubs.ericrosenberg.com/hooks/subsearch-deploy`, choose `application/json`, limit it to push events, and paste the same secret. The `webhook` daemon validates the `X-Hub-Signature-256` header before executing `/usr/local/bin/deploy_subsearch.sh`, so every push to `main` automatically fetches, reinstalls, and restarts the `subsearch` service.
+
+If you prefer polling-based automation, point a cron entry at `/usr/local/bin/deploy_subsearch.sh` instead of using the webhook listener.
+
 ---
 
 ## Configuration
