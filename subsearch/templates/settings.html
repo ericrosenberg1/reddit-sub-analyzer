@@ -1,107 +1,104 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Settings • Subsearch</title>
-    {% if site_url %}
-    <link rel="canonical" href="{{ site_url }}" />
-    {% endif %}
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3CradialGradient id='g' cx='50%25' cy='50%25' r='60%25'%3E%3Cstop offset='0%25' stop-color='%2322d3ee'/%3E%3Cstop offset='100%25' stop-color='%237c3aed'/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Ccircle cx='32' cy='32' r='10' fill='white' opacity='0.9'/%3E%3C/svg%3E" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-  </head>
-  <body>
-    <div class="page">
-      <div class="container">
-        <div class="panel">
-          <div class="panel-head">
-            <div class="brand"><span class="dot"></span>Subsearch Settings</div>
-            <div class="nav-right"><a href="{{ url_for('index') }}">Back</a></div>
-          </div>
+{% extends "base.html" %}
+{% block title %}Settings • Eric Rosenberg Reddit Analyzer{% endblock %}
 
-          <div class="flash">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-              {% if messages %}
-                {% for category, message in messages %}
-                  <div class="msg {{ category }}">{{ message }}</div>
-                {% endfor %}
-              {% endif %}
-            {% endwith %}
-          </div>
+{% block content %}
+<section class="panel-surface p-6 shadow-2xl lg:p-10">
+  <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+    <div>
+      <p class="text-sm font-semibold uppercase tracking-[0.3em] text-white/60">Admin</p>
+      <h1 class="font-display text-3xl text-white sm:text-4xl">Instance configuration</h1>
+      <p class="mt-2 max-w-3xl text-white/70">Update Reddit credentials, server settings, and app secrets. Values are stored securely in <code class="rounded bg-white/10 px-2 py-1 text-xs">{{ dotenv_path }}</code>. Leave a field blank to keep the current value.</p>
+    </div>
+    <div class="rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/60">Self-hosted</div>
+  </div>
 
-          <form method="post" autocomplete="off" novalidate>
-            <h3 class="section-title">Reddit API</h3>
-            <div class="group two-cols">
-              <div class="field">
-                <label for="REDDIT_CLIENT_ID">Client ID</label>
-                <input type="text" id="REDDIT_CLIENT_ID" name="REDDIT_CLIENT_ID" value="{{ values['REDDIT_CLIENT_ID'] }}" maxlength="128" />
-              </div>
-              <div class="field">
-                <label for="REDDIT_CLIENT_SECRET">Client Secret</label>
-                <input type="password" id="REDDIT_CLIENT_SECRET" name="REDDIT_CLIENT_SECRET" value="" autocomplete="new-password" maxlength="256" />
-                {% if has_secret.get('REDDIT_CLIENT_SECRET') %}
-                  <div class="muted" style="font-size:12px;">Saved (hidden). Leave blank to keep.</div>
-                {% endif %}
-              </div>
-              <div class="field">
-                <label for="REDDIT_USERNAME">Username</label>
-                <input type="text" id="REDDIT_USERNAME" name="REDDIT_USERNAME" value="{{ values['REDDIT_USERNAME'] }}" maxlength="128" />
-              </div>
-              <div class="field">
-                <label for="REDDIT_PASSWORD">Password / App Password</label>
-                <input type="password" id="REDDIT_PASSWORD" name="REDDIT_PASSWORD" value="" autocomplete="new-password" maxlength="256" />
-                {% if has_secret.get('REDDIT_PASSWORD') %}
-                  <div class="muted" style="font-size:12px;">Saved (hidden). Leave blank to keep.</div>
-                {% endif %}
-              </div>
-              <div class="field" style="grid-column: 1 / -1;">
-                <label for="REDDIT_USER_AGENT">User Agent</label>
-                <input type="text" id="REDDIT_USER_AGENT" name="REDDIT_USER_AGENT" value="{{ values['REDDIT_USER_AGENT'] }}" maxlength="200" placeholder="example: unmoderated_subreddit_finder/1.0 by /u/yourname" />
-              </div>
-            </div>
+  <div class="mt-6 space-y-3">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="rounded-2xl border px-4 py-3 text-sm {% if category == 'success' %}border-green-500/40 bg-green-500/10 text-green-100{% elif category == 'error' %}border-red-500/40 bg-red-500/10 text-red-100{% else %}border-sky-500/40 bg-sky-500/10 text-sky-100{% endif %}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
 
-            <h3 class="section-title" style="margin-top:14px;">App</h3>
-            <div class="group two-cols">
-              <div class="field">
-                <label for="PORT">Port</label>
-                <input type="text" id="PORT" name="PORT" value="{{ values['PORT'] }}" maxlength="10" />
-              </div>
-              <div class="field">
-                <label for="SITE_URL">Site URL (canonical)</label>
-                <input type="text" id="SITE_URL" name="SITE_URL" value="{{ values['SITE_URL'] }}" maxlength="200" />
-              </div>
-              <div class="field" style="grid-column: 1 / -1;">
-                <label for="FLASK_SECRET_KEY">Flask Secret Key</label>
-                <input type="password" id="FLASK_SECRET_KEY" name="FLASK_SECRET_KEY" value="" autocomplete="new-password" maxlength="256" />
-                {% if has_secret.get('FLASK_SECRET_KEY') %}
-                  <div class="muted" style="font-size:12px;">Saved (hidden). Leave blank to keep.</div>
-                {% endif %}
-              </div>
-            </div>
-
-            <h3 class="section-title" style="margin-top:14px;">Performance</h3>
-            <div class="group two-cols">
-              <div class="field">
-                <label for="REDDIT_TIMEOUT">HTTP timeout (seconds)</label>
-                <input type="text" id="REDDIT_TIMEOUT" name="REDDIT_TIMEOUT" value="{{ values['REDDIT_TIMEOUT'] }}" maxlength="3" placeholder="10" />
-                <div class="muted" style="font-size:12px;">Use 5–30. Lower fails fast on network hiccups.</div>
-              </div>
-            </div>
-
-            <div class="group">
-              <div class="muted" style="font-size:12px;">Blank fields are ignored (existing values kept). Settings are saved to <code>{{ dotenv_path }}</code>.</div>
-            </div>
-
-            <div class="actions" style="margin-top:8px; display:grid; gap:10px; grid-template-columns: 1fr 1fr;">
-              <button type="submit" name="action" value="save">Save Settings</button>
-              <button type="submit" name="action" value="test" class="secondary">Test Credentials</button>
-            </div>
-          </form>
+  <form method="post" autocomplete="off" novalidate class="mt-6 space-y-8">
+    <div class="rounded-2xl border border-white/10 bg-slate-900/50 p-6 shadow-lg">
+      <h2 class="text-lg font-semibold text-white">Reddit API</h2>
+      <div class="mt-4 grid gap-4 lg:grid-cols-2">
+        <div>
+          <label for="REDDIT_CLIENT_ID" class="text-xs uppercase tracking-[0.3em] text-white/50">Client ID</label>
+          <input type="text" id="REDDIT_CLIENT_ID" name="REDDIT_CLIENT_ID" value="{{ values['REDDIT_CLIENT_ID'] }}" maxlength="128" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white focus:border-brand focus:ring-brand/40" />
+        </div>
+        <div>
+          <label for="REDDIT_CLIENT_SECRET" class="text-xs uppercase tracking-[0.3em] text-white/50">Client Secret</label>
+          <input type="password" id="REDDIT_CLIENT_SECRET" name="REDDIT_CLIENT_SECRET" maxlength="256" autocomplete="new-password" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white focus:border-brand focus:ring-brand/40" />
+          {% if has_secret.get('REDDIT_CLIENT_SECRET') %}
+          <p class="mt-1 text-xs text-white/60">Saved (hidden). Leave blank to keep current value.</p>
+          {% endif %}
+        </div>
+        <div>
+          <label for="REDDIT_USERNAME" class="text-xs uppercase tracking-[0.3em] text-white/50">Username</label>
+          <input type="text" id="REDDIT_USERNAME" name="REDDIT_USERNAME" value="{{ values['REDDIT_USERNAME'] }}" maxlength="128" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white focus:border-brand focus:ring-brand/40" />
+        </div>
+        <div>
+          <label for="REDDIT_PASSWORD" class="text-xs uppercase tracking-[0.3em] text-white/50">Password / App Password</label>
+          <input type="password" id="REDDIT_PASSWORD" name="REDDIT_PASSWORD" maxlength="256" autocomplete="new-password" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white focus:border-brand focus:ring-brand/40" />
+          {% if has_secret.get('REDDIT_PASSWORD') %}
+          <p class="mt-1 text-xs text-white/60">Saved (hidden). Leave blank to keep current value.</p>
+          {% endif %}
+        </div>
+        <div class="lg:col-span-2">
+          <label for="REDDIT_USER_AGENT" class="text-xs uppercase tracking-[0.3em] text-white/50">User Agent</label>
+          <input type="text" id="REDDIT_USER_AGENT" name="REDDIT_USER_AGENT" value="{{ values['REDDIT_USER_AGENT'] }}" maxlength="200" placeholder="unmoderated_subreddit_finder/1.0 by /u/yourname" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white focus:border-brand focus:ring-brand/40" />
         </div>
       </div>
     </div>
-  </body>
-  </html>
+
+    <div class="grid gap-6 lg:grid-cols-2">
+      <div class="rounded-2xl border border-white/10 bg-slate-900/50 p-6 shadow-lg">
+        <h2 class="text-lg font-semibold text-white">App</h2>
+        <div class="mt-4 space-y-4">
+          <div>
+            <label for="PORT" class="text-xs uppercase tracking-[0.3em] text-white/50">Port</label>
+            <input type="text" id="PORT" name="PORT" value="{{ values['PORT'] }}" maxlength="10" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white focus:border-brand focus:ring-brand/40" />
+          </div>
+          <div>
+            <label for="SITE_URL" class="text-xs uppercase tracking-[0.3em] text-white/50">Site URL</label>
+            <input type="text" id="SITE_URL" name="SITE_URL" value="{{ values['SITE_URL'] }}" maxlength="200" placeholder="https://allthesubs.ericrosenberg.com" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white focus:border-brand focus:ring-brand/40" />
+          </div>
+          <div>
+            <label for="FLASK_SECRET_KEY" class="text-xs uppercase tracking-[0.3em] text-white/50">Flask Secret Key</label>
+            <input type="password" id="FLASK_SECRET_KEY" name="FLASK_SECRET_KEY" maxlength="256" autocomplete="new-password" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white focus:border-brand focus:ring-brand/40" />
+            {% if has_secret.get('FLASK_SECRET_KEY') %}
+            <p class="mt-1 text-xs text-white/60">Saved (hidden). Leave blank to keep current value.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="rounded-2xl border border-white/10 bg-slate-900/50 p-6 shadow-lg">
+        <h2 class="text-lg font-semibold text-white">Performance</h2>
+        <div class="mt-4 space-y-4">
+          <div>
+            <label for="REDDIT_TIMEOUT" class="text-xs uppercase tracking-[0.3em] text-white/50">HTTP timeout (seconds)</label>
+            <input type="text" id="REDDIT_TIMEOUT" name="REDDIT_TIMEOUT" value="{{ values['REDDIT_TIMEOUT'] }}" maxlength="3" placeholder="10" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white focus:border-brand focus:ring-brand/40" />
+            <p class="mt-1 text-xs text-white/60">Use 5–30s. Lower values fail fast on slower networks.</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-slate-950/40 p-4 text-xs text-white/70">
+            <p>Need to regenerate environment variables later? Delete the relevant line from <code class="rounded bg-white/10 px-2 py-1 text-[10px]">{{ dotenv_path }}</code> and save a new value here.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-4 text-sm text-white/70">
+      Blank fields are ignored; existing values remain untouched. Values save immediately to your `.env`.
+    </div>
+
+    <div class="grid gap-4 lg:grid-cols-2">
+      <button type="submit" name="action" value="save" class="rounded-2xl bg-gradient-to-r from-brand to-brand-light px-6 py-4 text-center text-base font-semibold text-white shadow-brand transition hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-brand-light/60">Save Settings</button>
+      <button type="submit" name="action" value="test" class="rounded-2xl border border-white/10 px-6 py-4 text-center text-base font-semibold text-white/80 transition hover:border-white/40 hover:text-white">Test Reddit Credentials</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

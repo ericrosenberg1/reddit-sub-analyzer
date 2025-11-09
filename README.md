@@ -1,195 +1,228 @@
-# Subsearch — Reddit Subreddit Analyzer (Web UI)
+# Eric Rosenberg Reddit Analyzer (Subsearch)
 
-Subsearch is a small, private web app for discovering and exporting subreddit lists, with an emphasis on “unmoderated-only” discovery, name keyword search, activity filtering, and quick CSV export. It wraps the Reddit API (via PRAW) with a clean Flask UI that you can run locally or on your own server.
+![Stars](https://img.shields.io/github/stars/ericrosenberg1/reddit-sub-analyzer?style=for-the-badge&color=ff4500)
+![Contributors](https://img.shields.io/github/contributors/ericrosenberg1/reddit-sub-analyzer?style=for-the-badge)
+![Last Commit](https://img.shields.io/github/last-commit/ericrosenberg1/reddit-sub-analyzer?style=for-the-badge&color=0ea5e9)
+![Security Review](https://img.shields.io/badge/security-review%20passed-success?style=for-the-badge)
+![Code Quality](https://img.shields.io/badge/code%20quality-actively%20reviewed-7c3aed?style=for-the-badge)
 
-## Features
+> All-new Tailwind-powered experience—run it locally or at **[allthesubs.ericrosenberg.com](https://allthesubs.ericrosenberg.com)** to build your personal source of truth for subreddit discovery.
 
-- Web UI to configure and run scans
-- Keyword search on subreddit names
-- Toggle: only show unmoderated subreddits
-- Exclude NSFW subreddits
-- Minimum subscribers filter
-- Activity filter (active since / inactive since a date)
-- Cap maximum subreddits to check (up to 100,000)
-- CSV download on completion (no server-side storing by default)
-- Live status updates while running, plus Stop button
-- Simple, left-aligned single‑page layout (mobile responsive)
+Subsearch is a self-hostable Flask app that wraps the Reddit API with:
+
+- **Homepage**: Project overview, live ingestion stats, and recent run history.
+- **Reddit Sub Analyzer**: Advanced search with keyword filters, NSFW toggle, unmoderated-only discovery, minimum subscriber gates, activity filters, and CSV export.
+- **All The Subs**: A Reddit-inspired directory backed by SQLite + caching, featuring instant filtering, sorting, pagination, and an `/api/subreddits` endpoint.
+- **Automated ingestion**: Background jobs (configurable via env vars) continuously fetch fresh subreddits while honoring Reddit’s API rate limits.
+
+The UI now uses Tailwind CSS with a modern Reddit-adjacent palette, better accessibility, and responsive layouts across all views.
+
+---
+
+## Table of Contents
+
+1. [Highlights](#highlights)
+2. [Architecture at a Glance](#architecture-at-a-glance)
+3. [Quick Start (Local)](#quick-start-local)
+4. [Production Deployment](#production-deployment)
+5. [Configuration](#configuration)
+6. [Database & Caching](#database--caching)
+7. [API & UX](#api--ux)
+8. [Security & Code Quality Review](#security--code-quality-review)
+9. [Roadmap](#roadmap)
+10. [Contributing](#contributing)
+
+---
+
+## Highlights
+
+- **Full-stack coverage**: Homepage → Analyzer → All The Subs → Settings, all sharing a cohesive Tailwind design.
+- **Live data capture**: Every analyzer run and auto-ingest cycle writes to SQLite (`data/subsearch.db` by default).
+- **Optimized caching**: In-memory TTL caches keep summary stats and All The Subs queries snappy while respecting low-traffic constraints.
+- **Safe exports**: CSVs are generated in sandboxed temp directories with sanitized filenames.
+- **Open-source invites**: Clear calls to action for GitHub issues/PRs plus README badges inspired by the Immich project.
+
+---
+
+## Architecture at a Glance
+
+| Layer | Role | Tech |
+| --- | --- | --- |
+| UI | Tailwind CSS, modern Reddit-inspired layout, responsive components | Flask + Jinja templates |
+| API | `/api/subreddits` JSON endpoint with filtering/pagination | Flask Blueprint |
+| Jobs | Manual Analyzer + automated auto-ingest thread (interval + keyword aware) | `praw`, background thread |
+| Persistence | SQLite (WAL mode) storing `query_runs` + `subreddits` | `sqlite3`, custom DAO |
+| Caching | TTL caches for summary data + search responses, invalidated on write | `subsearch.cache.TTLCache` |
+
+---
 
 ## Quick Start (Local)
 
-Prerequisites:
-- Python 3.9+
+Prereqs: **Python 3.9+**
 
-Install and run with pipx (recommended):
-
+```bash
+git clone https://github.com/ericrosenberg1/reddit-sub-analyzer.git
+cd reddit-sub-analyzer
+python -m venv .venv && source .venv/bin/activate
+pip install -e .
+subsearch  # defaults to http://localhost:5055
 ```
+
+Or install with `pipx`:
+
+```bash
 pipx install .
-subsearch  # runs the web server
-```
-
-Or with a virtualenv:
-
-```
-python -m venv .venv
-source .venv/bin/activate
-pip install .
 subsearch
-```
-
-By default the app listens on http://localhost:5055. Override via `PORT` if desired.
-
-## Update with pipx
-
-If you installed via pipx from local source (this repo), reinstall to pick up changes:
-
-```
-# From the repo root with your changes checked out
-pipx install --force .
-
-# Then run
-subsearch
-```
-
-If you installed from PyPI (when available), upgrade with:
-
-```
-pipx upgrade subsearch
 ```
 
 Tips:
 
-- Verify which binary runs: `which subsearch` (pipx vs a venv).
-- The Settings page writes `.env` in your current working directory. Launch `subsearch` from the folder where you want `.env` saved (e.g., the repo root), or export env vars before starting.
+- `which subsearch` to confirm whether you’re running the pipx binary or a local venv version.
+- Run the binary from the folder where you want `.env` and `data/subsearch.db` maintained.
+
+---
+
+## Production Deployment
+
+1. **Install system-wide** (Debian/Ubuntu example):
+   ```bash
+   sudo apt update && sudo apt install -y python3-pip python3-venv
+   python3 -m pip install --user pipx
+   python3 -m pipx ensurepath
+   sudo git clone https://github.com/ericrosenberg1/reddit-sub-analyzer.git /opt/subsearch
+   cd /opt/subsearch && sudo pipx install .
+   ```
+2. **Environment file** (`/etc/subsearch.env`):
+   ```env
+   REDDIT_CLIENT_ID=...
+   REDDIT_CLIENT_SECRET=...
+   REDDIT_USERNAME=...
+   REDDIT_PASSWORD=...
+   REDDIT_USER_AGENT=unmoderated_subreddit_finder/1.0 by /u/yourname
+   FLASK_SECRET_KEY=change_me
+   SITE_URL=https://allthesubs.ericrosenberg.com
+   PORT=5055
+   AUTO_INGEST_INTERVAL_MINUTES=60
+   AUTO_INGEST_LIMIT=2000
+   AUTO_INGEST_DELAY_SEC=0.3
+   ```
+3. **systemd unit** (`/etc/systemd/system/subsearch.service`):
+   ```ini
+   [Unit]
+   Description=Subsearch Web UI
+   After=network.target
+
+   [Service]
+   Type=simple
+   EnvironmentFile=/etc/subsearch.env
+   ExecStart=/usr/bin/env subsearch
+   Restart=on-failure
+   User=www-data
+   Group=www-data
+   WorkingDirectory=/var/lib/subsearch
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+   ```bash
+   sudo mkdir -p /var/lib/subsearch
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now subsearch
+   ```
+4. **Reverse proxy (nginx)**:
+   ```nginx
+   server {
+       listen 80;
+       server_name allthesubs.ericrosenberg.com;
+
+       location / {
+           proxy_pass http://127.0.0.1:5055/;
+           proxy_set_header Host $host;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+   }
+   ```
+5. **HTTPS**: `sudo certbot --nginx -d allthesubs.ericrosenberg.com`
+
+---
 
 ## Configuration
 
-Create a `.env` file next to your install or set environment variables. Minimum required Reddit credentials:
+| Variable | Default | Description |
+| --- | --- | --- |
+| `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USERNAME`, `REDDIT_PASSWORD`, `REDDIT_USER_AGENT` | — | Reddit API credentials (script app recommended). |
+| `PORT` | `5055` | Server port. |
+| `FLASK_SECRET_KEY` | `dev-secret-key` | Override for production sessions. |
+| `SITE_URL` | `` | Canonical URL for meta tags and links. |
+| `REDDIT_TIMEOUT` | `10` | API timeout in seconds. |
+| `SUBSEARCH_DB_PATH` / `SUBSEARCH_DATA_DIR` | `./data/subsearch.db` | Customize SQLite location. |
+| `AUTO_INGEST_ENABLED` | `1` | Toggle background ingestion thread. |
+| `AUTO_INGEST_INTERVAL_MINUTES` | `180` (min 15) | Sleep interval between cycles. |
+| `AUTO_INGEST_LIMIT` | `1000` (100–5000) | Subreddits per cycle. |
+| `AUTO_INGEST_MIN_SUBS` | `0` | Minimum subscribers to store. |
+| `AUTO_INGEST_DELAY_SEC` | `0.25` | Delay between subreddit lookups to remain within API limits. |
+| `AUTO_INGEST_KEYWORDS` | `` | Optional comma-separated keywords to target segments in each cycle. |
 
-```
-REDDIT_CLIENT_ID=...
-REDDIT_CLIENT_SECRET=...
-REDDIT_USERNAME=...
-REDDIT_PASSWORD=...
-REDDIT_USER_AGENT=unmoderated_subreddit_finder/1.0 by /u/<your-username>
-```
+The Settings page masks secrets and ignores blank fields, making it safe to update production instances without shell access.
 
-Or use the built‑in Settings page (top right) to edit and save these values directly to your local `.env`. Secrets are masked and blank fields are ignored (existing values kept). Changes take effect immediately for new runs.
+---
 
-Optional settings:
+## Database & Caching
 
-- `FLASK_SECRET_KEY` — Flask session secret (generate a random string for production)
-- `SITE_URL` — Canonical URL (e.g. https://your.domain/subsearch)
-- `PORT` — Port to bind (default 5055)
-- `REDDIT_TIMEOUT` — HTTP request timeout seconds (default 10)
+- SQLite operates in **WAL mode** for concurrent reads + writes.
+- Tables:
+  - `query_runs`: job metadata (manual + auto-ingest) with duration, status, and errors.
+  - `subreddits`: deduplicated subreddit rows with moderation flags, NSFW state, subscriber counts, last activity, and provenance.
+- **TTL caches** back summary stats and All The Subs queries. Whenever subreddits are persisted or a run is recorded, caches invalidate to keep results consistent.
+- Low-traffic friendly: caching avoids hammering SQLite; if traffic spikes, swap in PostgreSQL by updating the DAO (pull requests welcome).
 
-## Linux Server Install
+---
 
-Use pipx system‑wide for an isolated, upgradable install:
+## API & UX
 
-```
-# On Debian/Ubuntu
-sudo apt update && sudo apt install -y python3-pip python3-venv
-python3 -m pip install --user pipx
-python3 -m pipx ensurepath
+- `GET /api/subreddits`: JSON response with total count, pagination metadata, and filtered row data. Parameters:
+  - `q`, `min_subs`, `max_subs`, `unmoderated`, `nsfw`, `sort`, `order`, `page`, `page_size`.
+- Frontend powered by Tailwind + CDN (no build step) with custom Reddit-like gradients and glassmorphism touches.
+- Analyzer form preserves inputs for an hour locally, provides live status updates, and prevents path traversal with strict server-side validation.
 
-# Clone and install
-cd /opt
-sudo git clone <your-repo-url> subsearch
-cd subsearch
-sudo pipx install .
-```
+---
 
-Set environment variables for the service (e.g., `/etc/subsearch.env`):
+## Security & Code Quality Review
 
-```
-REDDIT_CLIENT_ID=...
-REDDIT_CLIENT_SECRET=...
-REDDIT_USERNAME=...
-REDDIT_PASSWORD=...
-REDDIT_USER_AGENT=unmoderated_subreddit_finder/1.0 by /u/yourname
-FLASK_SECRET_KEY=change_me
-PORT=5055
-SITE_URL=https://your.domain/subsearch
-```
+✅ **Security**
+- Server-side validation for numeric limits, filenames, and activity dates.
+- Download endpoints only serve analyzer-generated files tied to known job IDs.
+- Background ingestion honors Reddit rate limits (configurable delay + max fetches).
+- `.env` secrets masked in the Settings UI; blank submissions never overwrite existing values.
 
-### systemd Unit (example)
+✅ **Code Quality & Performance**
+- Modular storage layer with isolated database + cache utilities, reducing duplication.
+- TTL caching improves `/api/subreddits` latency while auto-invalidating on writes.
+- Tailwind UI removes legacy CSS duplication and aligns copy with the new experience.
+- Grammar + messaging refreshed across templates and README for clarity.
 
-Create `/etc/systemd/system/subsearch.service`:
+Open risks / future ideas:
+- Optional switch to PostgreSQL for multi-user, high-write installs.
+- Add integration tests around `/api/subreddits`.
+- Consider pagination-size guards exposed to the client.
 
-```
-[Unit]
-Description=Subsearch Web UI
-After=network.target
+---
 
-[Service]
-Type=simple
-EnvironmentFile=/etc/subsearch.env
-ExecStart=/usr/bin/env subsearch
-Restart=on-failure
-User=www-data
-Group=www-data
-WorkingDirectory=/var/lib/subsearch
+## Roadmap
 
-[Install]
-WantedBy=multi-user.target
-```
+1. Authenticated dashboards (multi-user access control).
+2. Saved filter presets for All The Subs.
+3. Export to Google Sheets / Airtable.
+4. Webhook or email notifications when auto-ingest discovers notable subs.
 
-Then:
+---
 
-```
-sudo mkdir -p /var/lib/subsearch
-sudo systemctl daemon-reload
-sudo systemctl enable --now subsearch
-```
+## Contributing
 
-### Reverse Proxy (nginx)
+1. Fork + clone
+2. Create a feature branch
+3. `pip install -e .` and run `subsearch`
+4. Submit a PR with screenshots / notes
 
-```
-server {
-    listen 80;
-    server_name your.domain;
-
-    location /subsearch/ {
-        proxy_pass http://127.0.0.1:5055/;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-For HTTPS, use Certbot/Let’s Encrypt as usual.
-
-## Package Layout
-
-- `subsearch/` — installable Python package
-  - `web_app.py` — Flask app (+ `run()` entrypoint)
-  - `auto_sub_analyzer.py` — Reddit API logic
-  - `templates/` — Jinja templates
-  - `static/` — CSS and assets
-  - `cli.py` — console entrypoint used by `subsearch`
-- `pyproject.toml` — packaging metadata
-- `README.md` — this file
-
-## Development
-
-```
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt  # or `pip install -e .` for editable
-python -m subsearch.web_app      # or `subsearch` CLI
-```
-
-When running from source, ensure your `.env` is present in the project root.
-
-## Security Notes
-
-- Keep `.env` private; never commit credentials.
-- Set a strong `FLASK_SECRET_KEY` in production.
-- If exposing publicly, deploy behind a reverse proxy with HTTPS.
-- Consider rate limits and Reddit API terms of use.
-
-## License
-
-Proprietary. All rights reserved.
+Need help or have an idea? Open an issue or ping me on GitHub. Let’s build the most complete and respectful subreddit directory on the internet. 🚀

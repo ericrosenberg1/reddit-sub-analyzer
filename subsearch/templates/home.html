@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Eric Rosenberg Reddit Analyzer{% endblock %}
+
+{% block content %}
+<section class="panel-surface overflow-hidden p-6 shadow-2xl lg:p-10">
+  <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+    <div class="max-w-3xl">
+      <p class="text-sm font-semibold uppercase tracking-[0.4em] text-white/60">An <a href="https://ericrosenberg.com">Eric Rosenberg</a> project</p>
+      <h1 class="font-display text-4xl text-white sm:text-5xl">Eric Rosenberg Reddit Analyzer</h1>
+      <p class="mt-4 text-lg text-white/80">A free, open-source toolkit for discovering and cataloging subreddits. Every search feeds the All The Subs database, giving you a living directory of communities for research, marketing, and growth.</p>
+      <div class="mt-6 flex flex-wrap gap-3">
+        <a href="{{ url_for('analyzer') }}" class="rounded-2xl bg-gradient-to-r from-brand to-brand-light px-6 py-3 text-base font-semibold text-white shadow-brand transition hover:scale-[1.01]">Launch Analyzer</a>
+        <a href="{{ url_for('all_subs') }}" class="nav-link text-sm">Browse All The Subs</a>
+        <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" rel="noopener" class="nav-link text-sm">View on GitHub</a>
+      </div>
+      <p class="mt-3 text-xs uppercase tracking-[0.3em] text-white/60">Runs locally or at allthesubs.ericrosenberg.com</p>
+    </div>
+    <div class="rounded-3xl border border-white/10 bg-slate-900/50 p-6 text-sm text-white/70 shadow-lg lg:max-w-sm">
+      <p class="text-xs uppercase tracking-[0.3em] text-white/50">Data health</p>
+      <ul class="mt-4 space-y-3">
+        <li class="flex items-center justify-between">
+          <span>Total subreddits indexed</span>
+          <span class="text-lg font-semibold text-white">{{ (stats.total_subreddits or 0)|int }}</span>
+        </li>
+        <li class="flex items-center justify-between">
+          <span>Total analyzer runs</span>
+          <span class="text-lg font-semibold text-white">{{ (stats.total_runs or 0)|int }}</span>
+        </li>
+        <li class="flex items-center justify-between">
+          <span>Last indexed</span>
+          <span class="font-mono text-sm text-white/80">{{ stats.last_indexed_display or "pending" }}</span>
+        </li>
+        <li class="flex items-center justify-between">
+          <span>Last run started</span>
+          <span class="font-mono text-sm text-white/80">{{ stats.last_run_display or "pending" }}</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="mt-10 grid gap-4 md:grid-cols-3">
+    <article class="rounded-3xl border border-white/10 bg-slate-900/40 p-5 shadow-lg">
+      <p class="text-xs uppercase tracking-[0.3em] text-white/60">1. Homepage</p>
+      <h3 class="mt-2 text-xl font-semibold text-white">Explain & Invite</h3>
+      <p class="mt-2 text-sm text-white/80">Share why you built the analyzer, highlight that it’s open-source, and welcome contributions. Link to the GitHub repo for features / bug reports.</p>
+    </article>
+    <article class="rounded-3xl border border-white/10 bg-slate-900/40 p-5 shadow-lg">
+      <p class="text-xs uppercase tracking-[0.3em] text-white/60">2. Reddit Sub Analyzer</p>
+      <h3 class="mt-2 text-xl font-semibold text-white">Search & Export</h3>
+      <p class="mt-2 text-sm text-white/80">High-powered search UI with keyword filters, moderation toggles, NSFW exclusion, and CSV download. Every query saves directly to the shared database.</p>
+    </article>
+    <article class="rounded-3xl border border-white/10 bg-slate-900/40 p-5 shadow-lg">
+      <p class="text-xs uppercase tracking-[0.3em] text-white/60">3. All The Subs</p>
+      <h3 class="mt-2 text-xl font-semibold text-white">Browse & Filter</h3>
+      <p class="mt-2 text-sm text-white/80">A Reddit-like directory with sorting, filtering, and in-app search—backed by automated ingestion jobs that respect Reddit’s API limits.</p>
+    </article>
+  </div>
+</section>
+
+<section class="mt-10 grid gap-8 lg:grid-cols-2">
+  <div class="panel-surface p-6 shadow-xl">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-xs uppercase tracking-[0.3em] text-white/60">Activity</p>
+        <h2 class="text-2xl font-semibold text-white">Recent analyzer runs</h2>
+      </div>
+      <a href="{{ url_for('analyzer') }}" class="nav-link text-sm">Start a run →</a>
+    </div>
+    {% if recent_runs %}
+    <ul class="mt-6 space-y-4">
+      {% for run in recent_runs %}
+      <li class="rounded-2xl border border-white/10 bg-slate-900/50 p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-col">
+            <span class="text-base font-semibold text-white">{{ run.keyword or "All subreddits" }}</span>
+            <span class="text-xs text-white/60">Limit {{ run.limit_value or "n/a" }} • {{ run.started_display or "—" }}</span>
+          </div>
+          <span class="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] {% if run.status == 'complete' %}bg-emerald-500/15 text-emerald-200{% elif run.status == 'error' %}bg-red-500/15 text-red-200{% else %}bg-sky-500/15 text-sky-200{% endif %}">{{ run.status }}</span>
+        </div>
+        <div class="mt-3 flex flex-wrap items-center gap-3 text-xs text-white/60">
+          <span>{{ run.result_count or 0 }} subs</span>
+          <span>Source: {{ run.source }}</span>
+          {% if run.error %}<span class="text-red-300">Error: {{ run.error }}</span>{% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="mt-6 text-white/70">No runs logged yet. Be the first to generate data!</p>
+    {% endif %}
+  </div>
+
+  <div class="panel-surface p-6 shadow-xl">
+    <p class="text-xs uppercase tracking-[0.3em] text-white/60">Pipeline</p>
+    <h2 class="text-2xl font-semibold text-white">How the data flows</h2>
+    <ol class="mt-4 space-y-4 text-sm text-white/80">
+      <li class="flex gap-3">
+        <span class="rounded-full bg-brand/30 px-3 py-1 font-semibold text-brand">1</span>
+        <div>
+          <p class="font-semibold text-white">Queries & Auto-ingest</p>
+          <p>Manual runs plus scheduled auto-ingest jobs fetch data via Reddit’s official API, respecting rate limits via built-in pacing controls.</p>
+        </div>
+      </li>
+      <li class="flex gap-3">
+        <span class="rounded-full bg-brand/30 px-3 py-1 font-semibold text-brand">2</span>
+        <div>
+          <p class="font-semibold text-white">SQLite + Caching</p>
+          <p>Results land in an optimized SQLite database with WAL mode, connection guards, and in-memory TTL caching for summary + directory queries.</p>
+        </div>
+      </li>
+      <li class="flex gap-3">
+        <span class="rounded-full bg-brand/30 px-3 py-1 font-semibold text-brand">3</span>
+        <div>
+          <p class="font-semibold text-white">All The Subs UI</p>
+          <p>The Tailwind-powered UI serves canonical data through the `/api/subreddits` endpoint, giving you a modern Reddit-inspired browsing experience.</p>
+        </div>
+      </li>
+    </ol>
+    <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" rel="noopener" class="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-brand-light hover:text-white">Read the code on GitHub →</a>
+  </div>
+</section>
+
+<section class="panel-surface mt-10 p-6 text-white shadow-xl lg:p-10">
+  <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div>
+      <h2 class="text-2xl font-semibold">Open-source and contributor friendly</h2>
+      <p class="mt-2 text-white/80">Bug reports, feature ideas, and pull requests are welcome. Help build the largest trustworthy index of subreddits on the internet.</p>
+    </div>
+    <div class="flex gap-3">
+      <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer/issues" target="_blank" rel="noopener" class="nav-link text-sm">File an issue</a>
+      <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer/pulls" target="_blank" rel="noopener" class="nav-link text-sm">Submit PR</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -5,6 +5,7 @@ Downloads a list of subreddits with no moderators to a CSV file.
 
 import csv
 import os
+import time
 from datetime import datetime
 
 import praw
@@ -58,6 +59,7 @@ def find_unmoderated_subreddits(
     activity_threshold_utc=None,
     progress_callback=None,
     stop_callback=None,
+    rate_limit_delay: float = 0.0,
 ):
     """
     Connect to Reddit API and find subreddits with no moderators.
@@ -131,6 +133,7 @@ def find_unmoderated_subreddits(
                 progress_callback(checked=checked, found=len(unmoderated_subs))
             except Exception:
                 pass
+        latest_post_utc = None
 
         try:
             # If a keyword is provided, restrict to subs whose NAME contains it
@@ -153,15 +156,14 @@ def find_unmoderated_subreddits(
             # Optional activity filter: inspect most recent post date
             if activity_mode in ("active_after", "inactive_before") and activity_threshold_utc:
                 try:
-                    latest = None
                     for post in subreddit.new(limit=1):
-                        latest = getattr(post, 'created_utc', None)
+                        latest_post_utc = getattr(post, 'created_utc', None)
                         break
-                    if latest is None:
+                    if latest_post_utc is None:
                         continue
-                    if activity_mode == "active_after" and latest < activity_threshold_utc:
+                    if activity_mode == "active_after" and latest_post_utc < activity_threshold_utc:
                         continue
-                    if activity_mode == "inactive_before" and latest >= activity_threshold_utc:
+                    if activity_mode == "inactive_before" and latest_post_utc >= activity_threshold_utc:
                         continue
                 except (praw.exceptions.PRAWException, prawcore.exceptions.PrawcoreException, AttributeError):
                     continue
@@ -191,7 +193,12 @@ def find_unmoderated_subreddits(
                     sub_info = {
                         'name': getattr(subreddit, 'display_name', 'unknown'),
                         'subscribers': subs_count,
-                        'url': f"https://reddit.com{getattr(subreddit, 'url', '/') }"
+                        'url': f"https://reddit.com{getattr(subreddit, 'url', '/') }",
+                        'is_unmoderated': True,
+                        'is_nsfw': bool(getattr(subreddit, 'over18', False)),
+                        'mod_count': len(real_mods),
+                        'last_activity_utc': latest_post_utc,
+                        'keyword': name_keyword,
                     }
                     unmoderated_subs.append(sub_info)
                     logger.info("Found: r/%s (%s subscribers)", sub_info['name'], sub_info['subscribers'])
@@ -208,16 +215,22 @@ def find_unmoderated_subreddits(
                 sub_info = {
                     'name': getattr(subreddit, 'display_name', 'unknown'),
                     'subscribers': subs_count,
-                    'url': f"https://reddit.com{getattr(subreddit, 'url', '/') }"
+                    'url': f"https://reddit.com{getattr(subreddit, 'url', '/') }",
+                    'is_unmoderated': False,
+                    'is_nsfw': bool(getattr(subreddit, 'over18', False)),
+                    'mod_count': None,
+                    'last_activity_utc': latest_post_utc,
+                    'keyword': name_keyword,
                 }
                 unmoderated_subs.append(sub_info)
 
         except Exception:
             # Any unexpected error per-subreddit should not abort the run
-            continue
-
+            pass
         if checked % 20 == 0:
             logger.debug("Progress: checked=%d found=%d", checked, len(unmoderated_subs))
+        if rate_limit_delay and rate_limit_delay > 0:
+            time.sleep(rate_limit_delay)
 
     logger.info("Total checked: %d", checked)
     if unmoderated_only:

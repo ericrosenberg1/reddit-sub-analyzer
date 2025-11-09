@@ -1,298 +1,299 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Advanced Subreddit Search Tool for Reddit</title>
-    {% if site_url %}
-    <link rel="canonical" href="{{ site_url }}" />
-    {% endif %}
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3CradialGradient id='g' cx='50%25' cy='50%25' r='60%25'%3E%3Cstop offset='0%25' stop-color='%2322d3ee'/%3E%3Cstop offset='100%25' stop-color='%237c3aed'/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Ccircle cx='32' cy='32' r='10' fill='white' opacity='0.9'/%3E%3C/svg%3E" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-  </head>
-  <body>
-    <div class="page">
-      <div class="container">
-      <div class="panel">
-        <div class="panel-head">
-          <div class="brand"><span class="dot"></span>Advanced Subreddit Search Tool</div>
-          <div class="nav-right"><a href="{{ url_for('settings') }}">Settings</a></div>
-        </div>
-        <form method="post" id="run-form" autocomplete="off" novalidate>
-          <h3 class="section-title">Options</h3>
-          <div class="group two-cols">
-          <div class="field">
-            <label for="keyword">Subreddit name contains (optional)</label>
-            <input type="text" id="keyword" name="keyword" placeholder="e.g. cats, finance, games" maxlength="64" pattern="[A-Za-z0-9 _\-]*" />
-          </div>
-          <div class="field">
-            <label for="file_name">File name (optional)</label>
-            <input type="text" id="file_name" name="file_name" placeholder="leave blank for timestamped name" maxlength="64" pattern="[A-Za-z0-9._\-]*" />
-          </div>
-          <div class="field">
-            <label for="limit">Max subreddits to check</label>
-            <input type="text" id="limit" name="limit" inputmode="numeric" pattern="[0-9,]*" value="1,000" />
-            <div class="muted" style="font-size:12px;">Up to 100,000 subreddits.</div>
-          </div>
-          <div class="field">
-            <label for="min_subs">Minimum subscribers</label>
-            <input type="text" id="min_subs" name="min_subs" inputmode="numeric" pattern="[0-9,]*" value="100" />
-            <div class="muted" style="font-size:12px;">Only include subs with at least this many subscribers.</div>
-          </div>
-          </div>
-          <div class="group">
-            <div class="field" style="margin:0;">
-              <label for="unmoderated_only"><input type="checkbox" id="unmoderated_only" name="unmoderated_only" /> Only show unmoderated subreddits</label>
-            </div>
-            <div class="field" style="margin:6px 0 0 0;">
-              <label for="exclude_nsfw"><input type="checkbox" id="exclude_nsfw" name="exclude_nsfw" /> Exclude NSFW subreddits</label>
-            </div>
-          </div>
-          
-          <div class="group two-cols">
-            <div class="field" style="grid-column: 1 / -1;">
-              <label><input type="checkbox" id="activity_enabled" name="activity_enabled" /> Enable activity filter</label>
-            </div>
-            <div class="field">
-              <label for="activity_mode">Activity filter</label>
-              <select id="activity_mode" name="activity_mode" disabled>
-                <option value="any" selected>Any activity</option>
-                <option value="active_after">Active since date</option>
-                <option value="inactive_before">Inactive since date</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="activity_date">Activity date</label>
-              <input type="date" id="activity_date" name="activity_date" disabled />
-            </div>
-          </div>
-          <h3 class="section-title" style="margin-top:14px;">Run</h3>
-          <div class="group" style="display:grid; gap:14px;">
-            <div class="actions" style="grid-column:1 / -1;">
-              <button type="submit" style="width:100%">Run Analyzer</button>
-            </div>
-          </div>
-        </form>
+{% extends "base.html" %}
+{% block title %}Reddit Sub Analyzer • Eric Rosenberg Reddit Analyzer{% endblock %}
 
-        <div class="flash">
-          {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-              {% for category, message in messages %}
-                <div class="msg {{ category }}">{{ message }}</div>
-              {% endfor %}
-            {% endif %}
-          {% endwith %}
-        </div>
-        <div id="run-state" style="display:none; margin-top:8px;">
-          <div class="result">
-            <div class="stat" style="justify-content:space-between; width:100%">
-              <div style="display:flex; align-items:center; gap:10px;">
-                <div class="loader"></div>
-                <div>
-                  <div><strong>Running…</strong> <span class="muted" id="status-sub">checking</span></div>
-                  <div class="muted" style="font-size:12px">Checked <span id="checked">0</span> of <span id="limit_count">0</span> • Found <span id="found">0</span></div>
-                </div>
-              </div>
-              <div>
-                <img alt="Working bot" width="36" height="36" style="display:block;border-radius:8px;" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' x2='1' y1='0' y2='1'><stop offset='0%' stop-color='%2322d3ee'/><stop offset='100%' stop-color='%237c3aed'/></linearGradient></defs><rect x='4' y='10' rx='10' ry='10' width='56' height='44' fill='url(%23g)'/><circle cx='26' cy='32' r='6' fill='white'/><circle cx='42' cy='32' r='6' fill='white'/><rect x='24' y='44' width='16' height='4' rx='2' fill='white' opacity='0.85'/><rect x='30' y='4' width='4' height='10' fill='%23a78bfa'/><circle cx='32' cy='4' r='3' fill='%2322d3ee'/></svg>" />
-              </div>
-            </div>
-            <div style="height:10px; background:#0b1224; border:1px solid rgba(255,255,255,0.08); border-radius:8px; overflow:hidden;">
-              <div id="bar" style="height:100%; width:0%; background:linear-gradient(90deg, var(--accent), var(--primary));"></div>
-            </div>
-            <div class="actions" style="justify-content:flex-end;">
-              <button type="button" id="stopBtn" style="background:linear-gradient(180deg,#ef4444,#dc2626); box-shadow: 0 8px 18px rgba(239,68,68,0.35);">Stop</button>
-            </div>
-          </div>
-        </div>
+{% block content %}
+<section class="panel-surface relative overflow-hidden p-6 shadow-2xl lg:p-10">
+  <div class="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+    <div class="max-w-2xl">
+      <p class="text-sm font-semibold uppercase tracking-[0.3em] text-white/60">Tool · Reddit Sub Analyzer</p>
+      <h1 class="font-display text-3xl text-white sm:text-4xl">Search, filter, and export the subreddit intel you need.</h1>
+      <p class="mt-3 text-base text-white/80">Dial in keywords, subscriber floors, NSFW filters, and moderation state. Every run updates the All The Subs database automatically and saves a downloadable CSV.</p>
+    </div>
+    <div class="flex flex-col gap-2 text-sm text-white/70">
+      <a class="nav-link active text-sm" href="{{ url_for('all_subs') }}">View All The Subs</a>
+      <a class="nav-link text-sm" href="{{ url_for('home') }}">About this project</a>
+    </div>
+  </div>
 
-        <div id="result" class="result" style="display:none;">
-          <div class="stat">
-            <strong id="result-count">0</strong>
-            <span class="muted" id="result-label">subreddits found</span>
-          </div>
-          <a class="download" id="download-link" href="#" style="display:none;">➜ Download CSV</a>
-        </div>
-
-        
-      
+  <form method="post" id="run-form" class="relative z-10 mt-8 grid gap-6 rounded-2xl border border-white/5 bg-slate-900/60 p-6 shadow-xl backdrop-blur lg:grid-cols-2">
+    <div class="space-y-4">
+      <div>
+        <label for="keyword" class="text-sm font-semibold text-white/90">Subreddit name contains</label>
+        <input type="text" id="keyword" name="keyword" placeholder="e.g. fintech, outdoor, language" maxlength="64" pattern="[A-Za-z0-9 _\-]*" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white placeholder:text-white/30 focus:border-brand focus:ring-2 focus:ring-brand/40" />
       </div>
-
+      <div>
+        <label for="limit" class="text-sm font-semibold text-white/90">Max subreddits to check</label>
+        <input type="text" id="limit" name="limit" inputmode="numeric" pattern="[0-9,]*" value="1,000" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white placeholder:text-white/30 focus:border-brand focus:ring-2 focus:ring-brand/40" />
+        <p class="mt-1 text-xs text-white/50">Up to 100,000 subreddits per run (Reddit API safe).</p>
       </div>
-      <div class="footer">
-        <span>By <a href="https://EricRosenberg.com" target="_blank" rel="noopener">Eric Rosenberg</a></span>
-        <span>•</span>
-        <span>Connect with me at <a href="https://Eric.Money" target="_blank" rel="noopener">Eric.Money</a></span>
-        <span>•</span>
-        <span><a href="https://github.com/ericrosenberg1" target="_blank" rel="noopener">GitHub: ericrosenberg1</a></span>
-        <span>•</span>
-        <span><a href="{{ url_for('helpdocs') }}" rel="nofollow">Helpdocs</a></span>
+      <div>
+        <label for="min_subs" class="text-sm font-semibold text-white/90">Minimum subscribers</label>
+        <input type="text" id="min_subs" name="min_subs" inputmode="numeric" pattern="[0-9,]*" value="100" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white placeholder:text-white/30 focus:border-brand focus:ring-2 focus:ring-brand/40" />
       </div>
     </div>
-    <script>
-      const jobId = {{ job_id|tojson }};
-      const form = document.getElementById('run-form');
-      const runState = document.getElementById('run-state');
-      const resultBox = document.getElementById('result');
-      const bar = document.getElementById('bar');
-      const checkedEl = document.getElementById('checked');
-      const foundEl = document.getElementById('found');
-      const limitEl = document.getElementById('limit_count');
-      const statusSub = document.getElementById('status-sub');
-      const resCount = document.getElementById('result-count');
-      const downloadLink = document.getElementById('download-link');
-      let pollTimer = null;
-      const POLL_MS = 5000;
+    <div class="space-y-4">
+      <div>
+        <label for="file_name" class="text-sm font-semibold text-white/90">File name</label>
+        <input type="text" id="file_name" name="file_name" placeholder="leave blank for timestamped export" maxlength="64" pattern="[A-Za-z0-9._\-]*" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white placeholder:text-white/30 focus:border-brand focus:ring-2 focus:ring-brand/40" />
+      </div>
+      <div class="rounded-xl border border-white/10 bg-slate-900/50 p-4">
+        <label class="flex items-center gap-3 text-sm font-semibold text-white/90">
+          <input type="checkbox" id="unmoderated_only" name="unmoderated_only" class="rounded border-white/20 bg-slate-900 text-brand focus:ring-brand/60" />
+          Only show unmoderated subreddits
+        </label>
+        <label class="mt-3 flex items-center gap-3 text-sm font-semibold text-white/90">
+          <input type="checkbox" id="exclude_nsfw" name="exclude_nsfw" class="rounded border-white/20 bg-slate-900 text-brand focus:ring-brand/60" />
+          Exclude NSFW subreddits
+        </label>
+      </div>
+      <div class="rounded-xl border border-white/10 bg-slate-900/50 p-4">
+        <label class="flex items-center gap-3 text-sm font-semibold text-white/90">
+          <input type="checkbox" id="activity_enabled" name="activity_enabled" class="rounded border-white/20 bg-slate-900 text-brand focus:ring-brand/60" />
+          Enable activity filter
+        </label>
+        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+          <div>
+            <label for="activity_mode" class="text-xs uppercase tracking-[0.2em] text-white/50">Mode</label>
+            <select id="activity_mode" name="activity_mode" disabled class="mt-1 w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white focus:border-brand focus:ring-brand/50">
+              <option value="any">Any activity</option>
+              <option value="active_after">Active since date</option>
+              <option value="inactive_before">Inactive since date</option>
+            </select>
+          </div>
+          <div>
+            <label for="activity_date" class="text-xs uppercase tracking-[0.2em] text-white/50">Date</label>
+            <input type="date" id="activity_date" name="activity_date" disabled class="mt-1 w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white focus:border-brand focus:ring-brand/50" />
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="lg:col-span-2">
+      <button type="submit" class="flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-brand to-brand-light px-6 py-4 text-lg font-semibold text-white shadow-brand transition hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-brand-light/60">Run Analyzer</button>
+      <p class="mt-2 text-center text-xs text-white/60">Need guidance? Update credentials in <a class="underline" href="{{ url_for('settings') }}">Settings</a>.</p>
+    </div>
+  </form>
 
-      // Persist form values for 1 hour since last run
-      const STORE_KEY = 'sub_an_form_v1';
-      const STORE_TTL_MS = 60 * 60 * 1000; // 1 hour
+  <div class="mt-6 space-y-3" id="flash-messages">
+    <div class="flash">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="rounded-2xl border px-4 py-3 text-sm {% if category == 'success' %}border-green-500/40 bg-green-500/10 text-green-100{% elif category == 'error' %}border-red-500/40 bg-red-500/10 text-red-100{% else %}border-sky-500/40 bg-sky-500/10 text-sky-100{% endif %}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    </div>
+  </div>
 
-      function saveFormState(){
-        const data = {
-          ts: Date.now(),
-          keyword: document.getElementById('keyword')?.value || '',
-          file_name: document.getElementById('file_name')?.value || '',
-          limit: (document.getElementById('limit')?.value || '').replace(/,/g,''),
-          min_subs: (document.getElementById('min_subs')?.value || '').replace(/,/g,''),
-          unmoderated_only: document.getElementById('unmoderated_only')?.checked || false,
-          exclude_nsfw: document.getElementById('exclude_nsfw')?.checked || false,
-          activity_enabled: document.getElementById('activity_enabled')?.checked || false,
-          activity_mode: document.getElementById('activity_mode')?.value || 'any',
-          activity_date: document.getElementById('activity_date')?.value || ''
-        };
-        try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch(e){}
-      }
+  <div id="run-state" class="mt-6 hidden rounded-2xl border border-white/5 bg-slate-900/70 p-6">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div class="flex items-center gap-4">
+        <div class="loader"></div>
+        <div>
+          <p class="text-lg font-semibold text-white">Scanning Reddit...</p>
+          <p id="status-sub" class="text-sm text-white/70">connected to Reddit API</p>
+        </div>
+      </div>
+      <button type="button" id="stopBtn" class="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-white/40 hover:text-white">Stop run</button>
+    </div>
+    <dl class="mt-6 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+        <dt class="text-xs uppercase tracking-[0.3em] text-white/50">Checked</dt>
+        <dd id="checked" class="text-2xl font-bold text-white">0</dd>
+      </div>
+      <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+        <dt class="text-xs uppercase tracking-[0.3em] text-white/50">Limit</dt>
+        <dd id="limit_count" class="text-2xl font-bold text-white">0</dd>
+      </div>
+      <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+        <dt class="text-xs uppercase tracking-[0.3em] text-white/50">Found</dt>
+        <dd id="found" class="text-2xl font-bold text-white">0</dd>
+      </div>
+    </dl>
+  </div>
 
-      function restoreFormState(){
-        let raw = null; try { raw = localStorage.getItem(STORE_KEY); } catch(e){}
-        if (!raw) return;
-        try {
-          const data = JSON.parse(raw);
-          if (!data || typeof data !== 'object') return;
-          if (Date.now() - (data.ts || 0) > STORE_TTL_MS) { localStorage.removeItem(STORE_KEY); return; }
-          const setVal = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined) el.value = v; };
-          const setChk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
-          setVal('keyword', data.keyword);
-          setVal('file_name', data.file_name);
-          setVal('limit', data.limit);
-          setVal('min_subs', data.min_subs);
-          setChk('unmoderated_only', data.unmoderated_only);
-          setChk('exclude_nsfw', data.exclude_nsfw);
-          setChk('activity_enabled', data.activity_enabled);
-          setVal('activity_mode', data.activity_mode);
-          setVal('activity_date', data.activity_date);
-          // Apply activity toggle after values are set
-          toggleActivity();
-        } catch(e){}
-      }
+  <div id="result" class="mt-6 hidden rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-6 text-white">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p id="result-label" class="text-lg font-semibold">Run complete • subreddits found</p>
+        <p class="text-sm text-white/80">Results available for download and synced to All The Subs.</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span id="result-count" class="text-3xl font-bold">0</span>
+        <a id="download-link" href="#" class="hidden rounded-full bg-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/30">Download CSV</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
 
-      function startPolling(id){
-        if (pollTimer) clearInterval(pollTimer);
-        runState.style.display = 'block';
-        resultBox.style.display = 'none';
-        pollTimer = setInterval(async () => {
-          try {
-            const res = await fetch(`/status/${id}`);
-            if (!res.ok) return;
-            const data = await res.json();
-            const checked = data.checked || 0;
-            const found = data.found || 0;
-            const limit = data.limit || 0;
-            checkedEl.textContent = checked;
-            foundEl.textContent = found;
-            limitEl.textContent = limit;
-            const pct = limit ? Math.min(100, Math.floor((checked/limit)*100)) : 0;
-            bar.style.width = pct + '%';
-            statusSub.textContent = data.unmoderated_only ? 'checking unmoderated subs' : 'collecting subreddits';
-            if (data.done){
-              clearInterval(pollTimer);
-              runState.style.display = 'none';
-              resultBox.style.display = 'grid';
-              resCount.textContent = found;
-              const label = document.getElementById('result-label');
-              if (data.stopped){ label.textContent = 'run stopped • subreddits found'; }
-              if (data.output_path){
-                downloadLink.style.display = 'inline-flex';
-                downloadLink.href = `{{ url_for('download') }}?job=` + encodeURIComponent(id);
-              } else { }
-            }
-          } catch (e) { /* ignore */ }
-        }, POLL_MS);
-      }
+{% block scripts %}
+<script>
+  const jobId = {{ job_id|tojson }};
+  const form = document.getElementById('run-form');
+  const runState = document.getElementById('run-state');
+  const resultBox = document.getElementById('result');
+  const checkedEl = document.getElementById('checked');
+  const foundEl = document.getElementById('found');
+  const limitEl = document.getElementById('limit_count');
+  const statusSub = document.getElementById('status-sub');
+  const resCount = document.getElementById('result-count');
+  const downloadLink = document.getElementById('download-link');
+  let pollTimer = null;
+  const POLL_MS = 5000;
 
-      async function checkAndMaybePoll(){
-        if (!jobId) return;
-        try {
-          const res = await fetch(`/status/${jobId}`);
-          if (!res.ok) return;
-          const data = await res.json();
-          if (data.done){
-            resultBox.style.display = 'grid';
-            const found = data.found || 0;
-            resCount.textContent = found;
-            const label = document.getElementById('result-label');
-            if (data.stopped){ label.textContent = 'run stopped • subreddits found'; }
-            if (data.output_path){
-              downloadLink.style.display = 'inline-flex';
-              downloadLink.href = `{{ url_for('download') }}?job=` + encodeURIComponent(jobId);
-            }
-          } else {
-            startPolling(jobId);
+  const STORE_KEY = 'sub_an_form_v1';
+  const STORE_TTL_MS = 60 * 60 * 1000;
+
+  function saveFormState(){
+    const data = {
+      ts: Date.now(),
+      keyword: document.getElementById('keyword')?.value || '',
+      file_name: document.getElementById('file_name')?.value || '',
+      limit: (document.getElementById('limit')?.value || '').replace(/,/g,''),
+      min_subs: (document.getElementById('min_subs')?.value || '').replace(/,/g,''),
+      unmoderated_only: document.getElementById('unmoderated_only')?.checked || false,
+      exclude_nsfw: document.getElementById('exclude_nsfw')?.checked || false,
+      activity_enabled: document.getElementById('activity_enabled')?.checked || false,
+      activity_mode: document.getElementById('activity_mode')?.value || 'any',
+      activity_date: document.getElementById('activity_date')?.value || ''
+    };
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch(e){}
+  }
+
+  function restoreFormState(){
+    let raw = null; try { raw = localStorage.getItem(STORE_KEY); } catch(e){}
+    if (!raw) return;
+    try {
+      const data = JSON.parse(raw);
+      if (!data || typeof data !== 'object') return;
+      if (Date.now() - (data.ts || 0) > STORE_TTL_MS) { localStorage.removeItem(STORE_KEY); return; }
+      const setVal = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined) el.value = v; };
+      const setChk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+      setVal('keyword', data.keyword);
+      setVal('file_name', data.file_name);
+      setVal('limit', data.limit);
+      setVal('min_subs', data.min_subs);
+      setChk('unmoderated_only', data.unmoderated_only);
+      setChk('exclude_nsfw', data.exclude_nsfw);
+      setChk('activity_enabled', data.activity_enabled);
+      setVal('activity_mode', data.activity_mode);
+      setVal('activity_date', data.activity_date);
+      toggleActivity();
+    } catch(e){}
+  }
+
+  function startPolling(id){
+    if (pollTimer) clearInterval(pollTimer);
+    runState.classList.remove('hidden');
+    resultBox.classList.add('hidden');
+    pollTimer = setInterval(async () => {
+      try {
+        const res = await fetch(`/status/${id}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data) return;
+        const limit = data.limit || 0;
+        const checked = data.checked || 0;
+        const found = data.found || 0;
+        limitEl.textContent = Number(limit).toLocaleString();
+        checkedEl.textContent = Number(checked).toLocaleString();
+        foundEl.textContent = Number(found).toLocaleString();
+        if (data.stopped){
+          statusSub.textContent = 'Stopping at your request...';
+        } else if (data.done){
+          statusSub.textContent = 'Export ready';
+        } else {
+          statusSub.textContent = 'Crunching live Reddit data...';
+        }
+        if (data.done){
+          clearInterval(pollTimer);
+          pollTimer = null;
+          runState.classList.add('hidden');
+          resultBox.classList.remove('hidden');
+          resCount.textContent = Number(found).toLocaleString();
+          if (data.stopped){
+            document.getElementById('result-label').textContent = 'Run stopped • subreddits found';
           }
-        } catch (e) { /* ignore */ }
-      }
-      checkAndMaybePoll();
-      // Restore saved form values on initial load (after potential job status check)
-      restoreFormState();
+          if (data.output_path){
+            downloadLink.classList.remove('hidden');
+            downloadLink.href = `{{ url_for('download') }}?job=` + encodeURIComponent(id);
+          } else {
+            downloadLink.classList.add('hidden');
+          }
+        }
+      } catch (e) { /* ignore */ }
+    }, POLL_MS);
+  }
 
-      // Save form values on submit to persist for next hour
-      form?.addEventListener('submit', () => { saveFormState(); });
+  async function checkAndMaybePoll(){
+    if (!jobId) return;
+    try {
+      const res = await fetch(`/status/${jobId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.done){
+        resultBox.classList.remove('hidden');
+        const found = data.found || 0;
+        resCount.textContent = Number(found).toLocaleString();
+        if (data.stopped){
+          document.getElementById('result-label').textContent = 'Run stopped • subreddits found';
+        }
+        if (data.output_path){
+          downloadLink.classList.remove('hidden');
+          downloadLink.href = `{{ url_for('download') }}?job=` + encodeURIComponent(jobId);
+        }
+      } else {
+        startPolling(jobId);
+      }
+    } catch (e) { /* ignore */ }
+  }
+  checkAndMaybePoll();
+  restoreFormState();
 
-      const stopBtn = document.getElementById('stopBtn');
-      stopBtn?.addEventListener('click', async () => {
-        if (!jobId) return;
-        stopBtn.disabled = true;
-        statusSub.textContent = 'stopping…';
-        try { await fetch(`/stop/${jobId}`, { method: 'POST' }); } catch (e) {}
-      });
-      // Activity enable toggle
-      const activityEnabled = document.getElementById('activity_enabled');
-      const activityMode = document.getElementById('activity_mode');
-      const activityDate = document.getElementById('activity_date');
-      function toggleActivity(){
-        if (!activityEnabled) return;
-        const on = activityEnabled.checked;
-        if (activityMode) activityMode.disabled = !on;
-        if (activityDate) activityDate.disabled = !on;
-        if (!on){ if (activityMode) activityMode.value = 'any'; if (activityDate) activityDate.value = ''; }
-      }
-      if (activityEnabled){
-        activityEnabled.addEventListener('change', toggleActivity);
-        toggleActivity();
-      }
+  form?.addEventListener('submit', () => { saveFormState(); });
 
-      // Format number inputs with commas on blur, strip on focus
-      function attachNumberFormat(id){
-        const el = document.getElementById(id);
-        if (!el) return;
-        const toNum = v => v ? v.replace(/,/g,'') : '';
-        el.addEventListener('focus', () => { el.value = toNum(el.value); });
-        el.addEventListener('blur', () => {
-          const raw = toNum(el.value);
-          if (!raw) return;
-          const n = parseInt(raw, 10);
-          if (!isNaN(n)) el.value = n.toLocaleString();
-        });
-      }
-      attachNumberFormat('limit');
-      attachNumberFormat('min_subs');
-      // Initial pretty formatting if default values exist
-      document.getElementById('limit') && (document.getElementById('limit').value = (document.getElementById('limit').value||'').replace(/\B(?=(\d{3})+(?!\d))/g,','));
-      document.getElementById('min_subs') && (document.getElementById('min_subs').value = (document.getElementById('min_subs').value||'').replace(/\B(?=(\d{3})+(?!\d))/g,','));
-    </script>
-  </body>
-  </html>
+  const stopBtn = document.getElementById('stopBtn');
+  stopBtn?.addEventListener('click', async () => {
+    if (!jobId) return;
+    stopBtn.disabled = true;
+    statusSub.textContent = 'Stopping…';
+    try { await fetch(`/stop/${jobId}`, { method: 'POST' }); } catch (e) {}
+  });
+
+  const activityEnabled = document.getElementById('activity_enabled');
+  const activityMode = document.getElementById('activity_mode');
+  const activityDate = document.getElementById('activity_date');
+  function toggleActivity(){
+    if (!activityEnabled) return;
+    const on = activityEnabled.checked;
+    if (activityMode) activityMode.disabled = !on;
+    if (activityDate) activityDate.disabled = !on;
+    if (!on){
+      if (activityMode) activityMode.value = 'any';
+      if (activityDate) activityDate.value = '';
+    }
+  }
+  if (activityEnabled){
+    activityEnabled.addEventListener('change', toggleActivity);
+    toggleActivity();
+  }
+
+  function attachNumberFormat(id){
+    const el = document.getElementById(id);
+    if (!el) return;
+    const toNum = v => v ? v.replace(/,/g,'') : '';
+    el.addEventListener('focus', () => { el.value = toNum(el.value); });
+    el.addEventListener('blur', () => {
+      const raw = toNum(el.value);
+      if (!raw) return;
+      const n = parseInt(raw, 10);
+      if (!isNaN(n)) el.value = n.toLocaleString();
+    });
+  }
+  attachNumberFormat('limit');
+  attachNumberFormat('min_subs');
+  document.getElementById('limit') && (document.getElementById('limit').value = (document.getElementById('limit').value||'').replace(/\B(?=(\d{3})+(?!\d))/g,','));
+  document.getElementById('min_subs') && (document.getElementById('min_subs').value = (document.getElementById('min_subs').value||'').replace(/\B(?=(\d{3})+(?!\d))/g,','));
+</script>
+{% endblock %}
