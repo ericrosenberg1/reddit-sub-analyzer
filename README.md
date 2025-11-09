@@ -173,22 +173,58 @@ If you prefer polling-based automation, point a cron entry at `/usr/local/bin/de
 
 ## Configuration
 
+Copy `.env.example`, fill in the blanks, and keep the file out of version control. Sub Search never exposes secrets in the UI.
+
+### Core runtime
+
 | Variable | Default | Description |
 | --- | --- | --- |
-| `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USERNAME`, `REDDIT_PASSWORD`, `REDDIT_USER_AGENT` | — | Reddit API credentials (script app recommended). |
-| `PORT` | `5055` | Server port. |
-| `FLASK_SECRET_KEY` | `dev-secret-key` | Override for production sessions. |
-| `SITE_URL` | `` | Canonical URL for meta tags and links. |
-| `REDDIT_TIMEOUT` | `10` | API timeout in seconds. |
-| `SUBSEARCH_DB_PATH` / `SUBSEARCH_DATA_DIR` | `./data/subsearch.db` | Customize SQLite location. |
-| `AUTO_INGEST_ENABLED` | `1` | Toggle background ingestion thread. |
-| `AUTO_INGEST_INTERVAL_MINUTES` | `180` (min 15) | Sleep interval between cycles. |
-| `AUTO_INGEST_LIMIT` | `1000` (100–5000) | Subreddits per cycle. |
-| `AUTO_INGEST_MIN_SUBS` | `0` | Minimum subscribers to store. |
-| `AUTO_INGEST_DELAY_SEC` | `0.25` | Delay between subreddit lookups to remain within API limits. |
-| `AUTO_INGEST_KEYWORDS` | `` | Optional comma-separated keywords to target segments in each cycle. |
+| `FLASK_SECRET_KEY` | `dev-secret-key` | Override before going to production. |
+| `SITE_URL` | `` | Used for canonical links + phone home metadata. |
+| `PORT` | `5055` | HTTP port for `subsearch-web`. |
+| `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` / `REDDIT_USERNAME` / `REDDIT_PASSWORD` / `REDDIT_USER_AGENT` | — | Script app credentials for Reddit’s API. |
+| `REDDIT_TIMEOUT` | `10` | Timeout (seconds) for API calls. |
 
-Configuration updates now flow exclusively through your `.env`. Edit it manually (or distribute secrets via your deployment tooling) so credentials never traverse a web UI.
+### Database & storage
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `DB_TYPE` | `sqlite` | `sqlite` (default) or `postgres`. |
+| `SUBSEARCH_BASE_DIR`, `SUBSEARCH_DATA_DIR`, `SUBSEARCH_DB_PATH` | `./data/subsearch.db` | Override where SQLite lives. |
+| `DB_POSTGRES_HOST`, `DB_POSTGRES_PORT`, `DB_POSTGRES_DB`, `DB_POSTGRES_USER`, `DB_POSTGRES_PASSWORD`, `DB_POSTGRES_SSLMODE` | — | Required when `DB_TYPE=postgres`. Missing values raise a startup error with clear instructions so admins can fix the install. |
+
+### Auto-ingest
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `AUTO_INGEST_ENABLED` | `1` | Toggle the scheduler. |
+| `AUTO_INGEST_INTERVAL_MINUTES` | `180` (min 15) | Sleep window between runs. |
+| `AUTO_INGEST_LIMIT` | `1000` (100–5000) | Subreddits per cycle. |
+| `AUTO_INGEST_MIN_SUBS` | `0` | Minimum subscriber count to persist. |
+| `AUTO_INGEST_DELAY_SEC` | `0.25` | Delay between API hits. |
+| `AUTO_INGEST_KEYWORDS` | `` | Optionally seed comma-separated keywords. |
+
+### Volunteer node email + pruning
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `NODE_EMAIL_SENDER`, `NODE_EMAIL_SENDER_NAME` | — | From-address for volunteer node links. |
+| `NODE_EMAIL_SMTP_HOST`, `NODE_EMAIL_SMTP_PORT`, `NODE_EMAIL_SMTP_USERNAME`, `NODE_EMAIL_SMTP_PASSWORD`, `NODE_EMAIL_USE_TLS` | — | SMTP connection info (required to email unique node links). |
+| `NODE_CLEANUP_INTERVAL_SECONDS` | `86400` | Background job cadence for pruning broken nodes. |
+| `NODE_BROKEN_RETENTION_DAYS` | `7` | Automatically delete nodes that stay broken this long. |
+
+### Phone-home federation
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `PHONE_HOME` | `false` | Enable opt-in sync to allthesubs.ericrosenberg.com. |
+| `PHONE_HOME_ENDPOINT` | hosted API URL | Override when testing a different collector. |
+| `PHONE_HOME_TOKEN` | `` | Optional bearer token for authenticated sync. |
+| `PHONE_HOME_TIMEOUT` | `10` | Seconds to wait before abandoning a sync POST. |
+| `PHONE_HOME_BATCH_MAX` | `500` | Max records to include per batch. |
+| `PHONE_HOME_SOURCE` | `self-hosted` | Label that upstream uses when storing your data. |
+
+Configuration updates stay in the `.env`; distribute secrets through your deployment tooling so credentials never touch the UI.
 
 ---
 
@@ -217,7 +253,9 @@ The helper reads, increments, and persists the correct sequence per month, so yo
   - `query_runs`: job metadata (manual + auto-ingest) with duration, status, and errors.
   - `subreddits`: deduplicated subreddit rows with moderation flags, NSFW state, subscriber counts, last activity, and provenance.
 - **TTL caches** back summary stats and All The Subs queries. Whenever subreddits are persisted or a run is recorded, caches invalidate to keep results consistent.
-- Low-traffic friendly: caching avoids hammering SQLite; if traffic spikes, swap in PostgreSQL by updating the DAO (pull requests welcome).
+- Swap databases without code changes: set `DB_TYPE=postgres` plus the Postgres env vars and Sub Search will connect via psycopg2 with the same UPSERT logic.
+- Every `persist_subreddits` call performs an upsert, updating titles/descriptions/mod activity timestamps without ever duplicating a subreddit row.
+- Low-traffic friendly caching avoids hammering SQLite; when you move to Postgres the same DAO and caches continue to work.
 
 ---
 
@@ -227,6 +265,13 @@ The helper reads, increments, and persists the correct sequence per month, so yo
   - `q`, `min_subs`, `max_subs`, `unmoderated`, `nsfw`, `sort`, `order`, `page`, `page_size`.
 - Frontend powered by Tailwind + CDN (no build step) with custom Reddit-like gradients and glassmorphism touches.
 - Sub Search form preserves inputs for an hour locally, provides live status updates, and prevents path traversal with strict server-side validation.
+
+## Phone-home Federation
+
+- Opt-in by setting `PHONE_HOME=true`. Each time `persist_subreddits` stores fresh data, a background thread streams a sanitized batch (names, moderation metadata, last activity timestamps) to `PHONE_HOME_ENDPOINT` (defaults to `https://allthesubs.ericrosenberg.com/api/ingest`).
+- Include `PHONE_HOME_TOKEN` if the hosted service assigns you a bearer token; otherwise the sync runs anonymously and still helps the canonical directory grow.
+- Batches are capped by `PHONE_HOME_BATCH_MAX` and respect `PHONE_HOME_TIMEOUT` so your local runs keep moving even if the hosted API is slow.
+- This collaboration pipeline lets self-hosted installs contribute to the “big sandwich” dataset without manual exports.
 
 ---
 
@@ -257,6 +302,12 @@ Open risks / future ideas:
 2. Saved filter presets for All The Subs.
 3. Export to Google Sheets / Airtable.
 4. Webhook or email notifications when auto-ingest discovers notable subs.
+
+---
+
+## Helpdocs
+
+Deployment, environment, and contributor docs live in the repository README and the `#helpdocs` anchor: <https://github.com/ericrosenberg1/reddit-sub-analyzer#helpdocs>. Link to that section from any UI surfaces (footer, settings pages, etc.) so admins always have a canonical reference.
 
 ---
 

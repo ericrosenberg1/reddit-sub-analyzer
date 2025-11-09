@@ -20,6 +20,7 @@ from .storage import (
     fetch_recent_runs,
     get_summary_stats,
     get_node_stats,
+    get_config_warnings,
     list_public_nodes,
     init_db,
     create_volunteer_node,
@@ -260,6 +261,7 @@ def inject_globals():
         "site_url": SITE_URL,
         "datetime": datetime,
         "build_number": get_current_build_number(),
+        "config_warnings": get_config_warnings(),
     }
 
 
@@ -740,8 +742,8 @@ def stop(job_id):
 
 @app.route('/helpdocs')
 def helpdocs():
-    # Masked redirect to external help (rick roll)
-    return redirect('https://www.youtube.com/watch?v=dQw4w9WgXcQ', code=302)
+    # Redirect to GitHub help docs section
+    return redirect('https://github.com/ericrosenberg1/reddit-sub-analyzer#helpdocs', code=302)
 
 
 @app.get("/api/subreddits")
