@@ -1,0 +1,22 @@
+[Unit]
+Description=Subsearch (Flask) via Gunicorn
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=subsearch
+Group=subsearch
+WorkingDirectory=/opt/subsearch
+EnvironmentFile=-/etc/subsearch.env
+ExecStart=/opt/subsearch/.venv/bin/python -m gunicorn --workers 2 --bind 127.0.0.1:${PORT:-8383} subsearch.web_app:app
+Restart=on-failure
+RestartSec=5
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+NoNewPrivileges=true
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

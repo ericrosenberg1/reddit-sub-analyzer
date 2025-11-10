@@ -119,7 +119,7 @@ Tips:
    REDDIT_USER_AGENT=unmoderated_subreddit_finder/1.0 by /u/yourname
    FLASK_SECRET_KEY=change_me
    SITE_URL=https://allthesubs.ericrosenberg.com
-   PORT=5055
+   PORT=8383
    AUTO_INGEST_INTERVAL_MINUTES=60
    AUTO_INGEST_LIMIT=2000
    AUTO_INGEST_DELAY_SEC=0.3
@@ -127,25 +127,34 @@ Tips:
 3. **systemd unit** (`/etc/systemd/system/subsearch.service`):
    ```ini
    [Unit]
-   Description=Subsearch Web UI
+   Description=Subsearch (Flask) via Gunicorn
    After=network.target
+   Wants=network-online.target
 
    [Service]
    Type=simple
-   EnvironmentFile=/etc/subsearch.env
-   ExecStart=/usr/bin/env subsearch
+   User=subsearch
+   Group=subsearch
+   WorkingDirectory=/opt/subsearch
+   EnvironmentFile=-/etc/subsearch.env
+   ExecStart=/opt/subsearch/.venv/bin/python -m gunicorn --workers 2 --bind 127.0.0.1:${PORT:-8383} subsearch.web_app:app
    Restart=on-failure
-   User=www-data
-   Group=www-data
-   WorkingDirectory=/var/lib/subsearch
+   RestartSec=5
+   PrivateTmp=true
+   ProtectSystem=full
+   ProtectHome=read-only
+   NoNewPrivileges=true
+   LimitNOFILE=4096
 
    [Install]
    WantedBy=multi-user.target
    ```
    ```bash
-   sudo mkdir -p /var/lib/subsearch
+   sudo cp ops/systemd/subsearch.service /etc/systemd/system/subsearch.service
    sudo systemctl daemon-reload
    sudo systemctl enable --now subsearch
+   sudo mkdir -p /opt/subsearch
+   sudo chown -R subsearch:subsearch /opt/subsearch
    ```
 4. **Reverse proxy (nginx)**:
    ```nginx
@@ -201,7 +210,7 @@ Copy `.env.example`, fill in the blanks, and keep the file out of version contro
 | --- | --- | --- |
 | `FLASK_SECRET_KEY` | `dev-secret-key` | Override before going to production. |
 | `SITE_URL` | `` | Used for canonical links + phone home metadata. |
-| `PORT` | `5055` | HTTP port for `subsearch-web`. |
+| `PORT` | `5055` | HTTP port for `subsearch-web`. The systemd service binds to `127.0.0.1:${PORT:-8383}`, so set `PORT` to `8383` in `/etc/subsearch.env` unless you have a reason to pick another port. |
 | `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` / `REDDIT_USERNAME` / `REDDIT_PASSWORD` / `REDDIT_USER_AGENT` | — | Script app credentials for Reddit’s API. |
 | `REDDIT_TIMEOUT` | `10` | Timeout (seconds) for API calls. |
 
