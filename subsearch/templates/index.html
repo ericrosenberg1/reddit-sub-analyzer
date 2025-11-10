@@ -73,7 +73,7 @@
       </div>
     </div>
     <div class="lg:col-span-2">
-      <button type="submit" class="flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-brand to-brand-light px-6 py-4 text-lg font-semibold text-slate-950 shadow-brand transition hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-brand-light/60">Run Sub Search</button>
+      <button type="submit" class="flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-brand to-brand-light px-6 py-4 text-lg font-semibold text-slate-950 shadow-brand transition hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-brand-light/60">Find Your Subs</button>
       <p class="mt-2 text-center text-xs text-white/60">Sub Search automatically stores every run with moderator counts, descriptions, and last mod activity.</p>
     </div>
   </form>
@@ -323,6 +323,8 @@
     resetResultsPanel();
     runState.classList.remove('hidden');
     setPhraseMode('queued');
+    queueOrdersEl.classList.add('hidden');
+    queueChip.classList.add('hidden');
     fetchStatus(id);
     if (pollTimer) clearInterval(pollTimer);
     pollTimer = setInterval(() => fetchStatus(id), POLL_MS);
@@ -374,6 +376,7 @@
     stopBtn.disabled = !!data.done;
 
     if (data.done && data.results_ready){
+      runState.classList.add('hidden');
       resultsPanel.classList.remove('hidden');
       currentResults = Array.isArray(data.results) ? data.results.slice() : [];
       const total = Number(data.result_count || currentResults.length || found);

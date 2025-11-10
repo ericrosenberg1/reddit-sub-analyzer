@@ -613,6 +613,8 @@ def search_subreddits(
     page: int = 1,
     page_size: int = 50,
     run_id: Optional[int] = None,
+    activity_mode: Optional[str] = None,
+    activity_threshold_utc: Optional[int] = None,
 ) -> Dict:
     page = max(page, 1)
     page_size = max(1, min(page_size, 200))
@@ -667,6 +669,23 @@ def search_subreddits(
     if run_id is not None:
         conditions.append("last_seen_run_id = :run_filter")
         params["run_filter"] = run_id
+    mode = (activity_mode or "").strip().lower()
+    threshold = None
+    if activity_threshold_utc is not None:
+        try:
+            threshold = int(activity_threshold_utc)
+        except (TypeError, ValueError):
+            threshold = None
+    if mode in {"active_after", "inactive_before"} and threshold is not None:
+        params["activity_threshold"] = threshold
+        if mode == "active_after":
+            conditions.append(
+                "(last_activity_utc IS NOT NULL AND last_activity_utc >= :activity_threshold)"
+            )
+        else:
+            conditions.append(
+                "(last_activity_utc IS NULL OR last_activity_utc < :activity_threshold)"
+            )
 
     where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
     offset = max(page - 1, 0) * page_size
@@ -718,6 +737,31 @@ def get_run_id_by_job(job_id: str) -> Optional[int]:
             {"job_id": job_id},
         ).fetchone()
     return row["id"] if row else None
+
+
+def get_job_filters(job_id: str) -> Dict:
+    if not job_id:
+        return {}
+    with db_conn() as conn:
+        row = conn.execute(
+            """
+            SELECT keyword, unmoderated_only, exclude_nsfw,
+                   min_subscribers, activity_mode, activity_threshold_utc
+            FROM query_runs
+            WHERE job_id = :job_id
+            """,
+            {"job_id": job_id},
+        ).fetchone()
+    if not row:
+        return {}
+    return {
+        "keyword": row["keyword"] or "",
+        "unmoderated_only": bool(row["unmoderated_only"]) if row["unmoderated_only"] is not None else False,
+        "exclude_nsfw": bool(row["exclude_nsfw"]) if row["exclude_nsfw"] is not None else False,
+        "min_subs": row["min_subscribers"] or 0,
+        "activity_mode": row["activity_mode"],
+        "activity_threshold_utc": row["activity_threshold_utc"],
+    }
 
 
 def fetch_subreddits_by_job(job_id: str) -> List[Dict]:

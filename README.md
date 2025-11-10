@@ -44,6 +44,14 @@ The UI now uses Tailwind CSS with a modern Reddit-adjacent palette, better acces
 
 ---
 
+## Help & Docs
+
+- Visit `/helpdocs` (production: [allthesubs.ericrosenberg.com/helpdocs](https://allthesubs.ericrosenberg.com/helpdocs)) for usage guides, FAQs, and links to GitHub issues whenever you need assistance.
+- `/docs/developers` ([allthesubs.ericrosenberg.com/docs/developers](https://allthesubs.ericrosenberg.com/docs/developers)) walks CLI-friendly contributors through cloning, deploying, and enabling `PHONE_HOME` so every evaluated subreddit can flow back to the shared database.
+- Prefer to contribute data from your own hardware? Set `PHONE_HOME=true`, include `PHONE_HOME_ENDPOINT` + `PHONE_HOME_TOKEN` if you have one, and Sub Search will sync every evaluated subreddit to the community corpus automatically.
+
+---
+
 ## Architecture at a Glance
 
 | Layer | Role | Tech |

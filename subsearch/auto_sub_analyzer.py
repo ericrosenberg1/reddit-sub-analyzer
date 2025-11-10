@@ -69,6 +69,7 @@ def find_unmoderated_subreddits(
     progress_callback=None,
     stop_callback=None,
     rate_limit_delay: float = 0.0,
+    include_all: bool = False,
 ):
     """
     Connect to Reddit API and find subreddits with no moderators.
@@ -142,7 +143,8 @@ def find_unmoderated_subreddits(
         mod_activity_cache[key] = last_ts
         return last_ts
 
-    unmoderated_subs = []
+    filtered_subs = []
+    evaluated_subs = []
     checked = 0
 
     if name_keyword:
@@ -169,14 +171,14 @@ def find_unmoderated_subreddits(
         if stop_callback:
             try:
                 if stop_callback():
-                    logger.info("Stop requested; ending early. Checked=%d, found=%d", checked, len(unmoderated_subs))
+                    logger.info("Stop requested; ending early. Checked=%d, found=%d", checked, len(filtered_subs))
                     break
             except Exception:
                 pass
         checked += 1
         if progress_callback:
             try:
-                progress_callback(checked=checked, found=len(unmoderated_subs))
+                progress_callback(checked=checked, found=len(filtered_subs))
             except Exception:
                 pass
         latest_post_utc = None
@@ -234,12 +236,6 @@ def find_unmoderated_subreddits(
                 real_mods = []
                 mod_count = None
 
-            if unmoderated_only:
-                if mod_count is None:
-                    continue
-                if mod_count != 0:
-                    continue
-
             last_mod_activity_utc = None
             if real_mods and MOD_ACTIVITY_SAMPLE_SIZE > 0:
                 def _mod_sort_key(mod_obj):
@@ -279,22 +275,30 @@ def find_unmoderated_subreddits(
                 'last_activity_utc': latest_post_utc,
                 'last_mod_activity_utc': last_mod_activity_utc,
             }
-            unmoderated_subs.append(sub_info)
-            if unmoderated_only:
-                logger.info("Found unmoderated: %s (%s subscribers)", sub_info['display_name_prefixed'], sub_info['subscribers'])
+            evaluated_subs.append(sub_info)
+            if not unmoderated_only or sub_info['is_unmoderated']:
+                filtered_subs.append(sub_info)
+                if unmoderated_only:
+                    logger.info("Found unmoderated: %s (%s subscribers)", sub_info['display_name_prefixed'], sub_info['subscribers'])
 
         except Exception:
             # Any unexpected error per-subreddit should not abort the run
             pass
         if checked % 20 == 0:
-            logger.debug("Progress: checked=%d found=%d", checked, len(unmoderated_subs))
+            logger.debug("Progress: checked=%d found=%d", checked, len(filtered_subs))
         if rate_limit_delay and rate_limit_delay > 0:
             time.sleep(rate_limit_delay)
 
     logger.info("Total checked: %d", checked)
     if unmoderated_only:
-        logger.info("Found %d unmoderated subreddits", len(unmoderated_subs))
+        logger.info("Found %d unmoderated subreddits", len(filtered_subs))
     else:
-        logger.info("Collected %d subreddits", len(unmoderated_subs))
+        logger.info("Collected %d subreddits", len(filtered_subs))
 
-    return unmoderated_subs
+    if include_all:
+        return {
+            "results": filtered_subs,
+            "evaluated": evaluated_subs,
+            "checked": checked,
+        }
+    return filtered_subs

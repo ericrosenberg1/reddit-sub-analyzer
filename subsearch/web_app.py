@@ -37,6 +37,7 @@ from .storage import (
     search_subreddits,
     fetch_subreddits_by_job,
     get_run_id_by_job,
+    get_job_filters,
 )
 
 import praw
@@ -420,7 +421,7 @@ def _run_auto_ingest_job(keyword=None):
     record_run_start(job_id, job_params, source="auto-ingest")
     subs = []
     try:
-        subs = find_unmoderated_subreddits(
+        result = find_unmoderated_subreddits(
             limit=AUTO_INGEST_LIMIT,
             name_keyword=keyword,
             unmoderated_only=False,
@@ -431,10 +432,19 @@ def _run_auto_ingest_job(keyword=None):
             progress_callback=None,
             stop_callback=None,
             rate_limit_delay=AUTO_INGEST_DELAY,
+            include_all=True,
         )
-        persist_subreddits(job_id, subs, keyword=keyword, source="auto-ingest")
-        record_run_complete(job_id, len(subs), error=None)
-        logger.info("Auto-ingest job %s (%s) stored %d subreddits", job_id, label, len(subs))
+        filtered = result.get("results", [])
+        evaluated = result.get("evaluated", filtered)
+        persist_subreddits(job_id, evaluated, keyword=keyword, source="auto-ingest")
+        record_run_complete(job_id, len(filtered), error=None)
+        logger.info(
+            "Auto-ingest job %s (%s) stored %d evaluated subs (%d matched filters)",
+            job_id,
+            label,
+            len(evaluated),
+            len(filtered),
+        )
     except Exception as exc:
         record_run_complete(job_id, len(subs), error=str(exc))
         logger.exception("Auto-ingest job %s (%s) failed: %s", job_id, label, exc)
@@ -566,6 +576,41 @@ def _job_should_stop(job_id: str) -> bool:
         return bool(job.get("stop")) if job else True
 
 
+def _apply_job_filters_to_rows(rows, job_config):
+    if not rows or not job_config:
+        return rows
+    filtered = rows
+    if job_config.get("unmoderated_only"):
+        filtered = [row for row in filtered if row.get("is_unmoderated")]
+    if job_config.get("exclude_nsfw"):
+        filtered = [row for row in filtered if not row.get("is_nsfw")]
+    min_subs = job_config.get("min_subs")
+    if min_subs:
+        filtered = [row for row in filtered if (row.get("subscribers") or 0) >= min_subs]
+    keyword = (job_config.get("keyword") or "").strip().lower()
+    if keyword:
+        filtered = [
+            row
+            for row in filtered
+            if keyword in (row.get("name", "").lower())
+            or keyword in (row.get("display_name_prefixed", "").lower())
+        ]
+    mode = job_config.get("activity_mode")
+    threshold = job_config.get("activity_threshold_utc")
+    if mode in {"active_after", "inactive_before"} and threshold:
+        if mode == "active_after":
+            filtered = [
+                row for row in filtered if row.get("last_activity_utc") and row["last_activity_utc"] >= threshold
+            ]
+        elif mode == "inactive_before":
+            filtered = [
+                row
+                for row in filtered
+                if not row.get("last_activity_utc") or row["last_activity_utc"] < threshold
+            ]
+    return filtered
+
+
 def _run_job_thread(job_id: str) -> None:
     job_config = {}
     with jobs_lock:
@@ -594,8 +639,9 @@ def _run_job_thread(job_id: str) -> None:
     )
 
     subs = []
+    evaluated = []
     try:
-        subs = find_unmoderated_subreddits(
+        payload = find_unmoderated_subreddits(
             limit=limit,
             name_keyword=keyword,
             unmoderated_only=unmoderated_only,
@@ -606,9 +652,12 @@ def _run_job_thread(job_id: str) -> None:
             progress_callback=lambda checked, found: _update_job_progress(job_id, checked, found),
             stop_callback=lambda: _job_should_stop(job_id),
             rate_limit_delay=RATE_LIMIT_DELAY,
+            include_all=True,
         )
+        subs = payload.get("results", [])
+        evaluated = payload.get("evaluated", subs)
         try:
-            persist_subreddits(job_id, subs, keyword=keyword, source="analyzer")
+            persist_subreddits(job_id, evaluated, keyword=keyword, source="analyzer")
         except Exception:
             logger.exception("Failed to persist subreddits for job %s", job_id)
 
@@ -625,6 +674,7 @@ def _run_job_thread(job_id: str) -> None:
                 job["result_count"] = len(subs)
                 job["queue_position"] = None
                 job["orders_ahead"] = None
+                job["queue_size"] = len(job_queue)
         record_run_complete(job_id, len(subs), error=None)
         logger.info("Job %s finished (found=%d)", job_id, len(subs))
     except Exception as e:
@@ -637,6 +687,7 @@ def _run_job_thread(job_id: str) -> None:
                 job["state"] = "error"
                 job["queue_position"] = None
                 job["orders_ahead"] = None
+                job["queue_size"] = len(job_queue)
         record_run_complete(job_id, len(subs), error=str(e))
     finally:
         with jobs_lock:
@@ -784,6 +835,17 @@ def all_subs():
         "order": request.args.get("order", "desc").strip() or "desc",
         "job_id": request.args.get("job_id", "").strip(),
     }
+    if initial_filters["job_id"]:
+        job_filter_defaults = get_job_filters(initial_filters["job_id"])
+        if job_filter_defaults:
+            if not initial_filters["q"] and job_filter_defaults.get("keyword"):
+                initial_filters["q"] = job_filter_defaults["keyword"]
+            if not initial_filters["min_subs"] and job_filter_defaults.get("min_subs"):
+                initial_filters["min_subs"] = str(job_filter_defaults["min_subs"])
+            if not initial_filters["unmoderated"] and job_filter_defaults.get("unmoderated_only"):
+                initial_filters["unmoderated"] = "true"
+            if not initial_filters["nsfw"] and job_filter_defaults.get("exclude_nsfw"):
+                initial_filters["nsfw"] = "false"
     return render_template(
         "all_subs.html",
         initial_filters=initial_filters,
@@ -826,7 +888,21 @@ def status(job_id):
 
 @app.route("/job/<job_id>/download.csv")
 def job_download_csv(job_id):
-    rows = fetch_subreddits_by_job(job_id)
+    rows = None
+    job_config = {}
+    job_snapshot = None
+    with jobs_lock:
+        job_snapshot = jobs.get(job_id)
+        if job_snapshot and job_snapshot.get("results_ready"):
+            rows = list(job_snapshot.get("results") or [])
+            job_config = dict(job_snapshot.get("job_config") or {})
+    if rows is None:
+        rows = fetch_subreddits_by_job(job_id)
+        if job_snapshot and not job_config:
+            job_config = dict(job_snapshot.get("job_config") or {})
+    if not job_config:
+        job_config = get_job_filters(job_id)
+    rows = _apply_job_filters_to_rows(rows, job_config)
     if not rows:
         resp = make_response("No data available for this job yet.")
         resp.status_code = 404
@@ -892,16 +968,28 @@ def stop(job_id):
 
 @app.route('/helpdocs')
 def helpdocs():
-    # Redirect to GitHub help docs section
-    return redirect('https://github.com/ericrosenberg1/reddit-sub-analyzer#helpdocs', code=302)
+    return render_template("help.html", nav_active=None)
+
+
+@app.route('/docs/developers')
+def developer_docs():
+    return render_template("developer_docs.html", nav_active=None)
 
 
 @app.get("/api/subreddits")
 def api_subreddits():
-    q = request.args.get("q", "").strip()
-    is_unmoderated = _parse_bool_flag(request.args.get("unmoderated"))
-    nsfw = _parse_bool_flag(request.args.get("nsfw"))
-    min_subs = _safe_int(request.args.get("min_subs"))
+    raw_q = request.args.get("q", "")
+    q = raw_q.strip()
+    q_supplied = raw_q is not None and raw_q.strip() != ""
+    raw_unmoderated = request.args.get("unmoderated")
+    is_unmoderated = _parse_bool_flag(raw_unmoderated)
+    unmoderated_supplied = raw_unmoderated is not None and raw_unmoderated != ""
+    raw_nsfw = request.args.get("nsfw")
+    nsfw = _parse_bool_flag(raw_nsfw)
+    nsfw_supplied = raw_nsfw is not None and raw_nsfw != ""
+    raw_min_subs = request.args.get("min_subs")
+    min_subs = _safe_int(raw_min_subs)
+    min_subs_supplied = raw_min_subs is not None and str(raw_min_subs).strip() != ""
     max_subs = _safe_int(request.args.get("max_subs"))
     page = _safe_int(request.args.get("page"), 1) or 1
     page_size = _safe_int(request.args.get("page_size"), 50) or 50
@@ -910,10 +998,27 @@ def api_subreddits():
 
     job_id_filter = request.args.get("job_id", "").strip()
     run_id_filter = None
+    activity_mode = None
+    activity_threshold = None
     if job_id_filter:
         run_id_filter = get_run_id_by_job(job_id_filter)
         if run_id_filter is None:
             return jsonify({"total": 0, "page": page, "page_size": page_size, "rows": []})
+        job_defaults = get_job_filters(job_id_filter)
+        if job_defaults:
+            if not q_supplied and job_defaults.get("keyword"):
+                q = job_defaults["keyword"]
+            if not unmoderated_supplied and job_defaults.get("unmoderated_only"):
+                is_unmoderated = True
+            if not nsfw_supplied and job_defaults.get("exclude_nsfw"):
+                nsfw = False
+            if not min_subs_supplied and job_defaults.get("min_subs"):
+                min_subs = job_defaults["min_subs"]
+            if job_defaults.get("activity_mode") in {"active_after", "inactive_before"}:
+                threshold = job_defaults.get("activity_threshold_utc")
+                if threshold is not None:
+                    activity_mode = job_defaults["activity_mode"]
+                    activity_threshold = threshold
 
     data = search_subreddits(
         q=q or None,
@@ -926,6 +1031,8 @@ def api_subreddits():
         page=page,
         page_size=page_size,
         run_id=run_id_filter,
+        activity_mode=activity_mode,
+        activity_threshold_utc=activity_threshold,
     )
     return jsonify(data)
 

@@ -9,7 +9,10 @@
       <h1 class="font-display text-3xl text-white sm:text-4xl">The continuously growing subreddit directory</h1>
       <p class="mt-2 max-w-3xl text-sm text-white/80">Every Sub Search run & background auto-ingest job lands here with full names, titles, descriptions, moderator counts, and last mod activity.</p>
       {% if initial_filters.job_id %}
-      <p class="mt-2 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-1 text-xs uppercase tracking-[0.2em] text-white/80">Showing job {{ initial_filters.job_id }}</p>
+      <p class="mt-2 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-1 text-xs uppercase tracking-[0.2em] text-white/80">
+        Showing job {{ initial_filters.job_id }}
+        <a href="{{ url_for('all_subs') }}" class="text-brand hover:text-white">Clear</a>
+      </p>
       {% endif %}
     </div>
     <a href="{{ url_for('analyzer') }}" class="nav-link active text-sm">Run a new query</a>
