@@ -21,12 +21,12 @@ cleanup_editable() {
   local pattern='__editable__.subsearch-*'
 
   if [[ -d "$APP_DIR" ]]; then
-    run_as_app_user bash -c "cd \"$APP_DIR\" && find . -name '$pattern' -delete"
+    # Delete leftover editable hooks regardless of ownership so pip can reinstall cleanly.
+    find "$APP_DIR" -name "$pattern" -delete >/dev/null 2>&1 || true
   fi
 
   if [[ -d "$VENV_PATH" ]]; then
-    # Remove stale editable metadata from the virtualenv so the service user can reinstall cleanly.
-    find "$VENV_PATH" -name "$pattern" -delete || true
+    find "$VENV_PATH" -name "$pattern" -delete >/dev/null 2>&1 || true
   fi
 }
 
