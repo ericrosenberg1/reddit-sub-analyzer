@@ -17,6 +17,10 @@ log() {
   printf '[%s] %s\n' "$(date --iso-8601=seconds)" "$*"
 }
 
+cleanup_editable() {
+  run_as_app_user bash -c "cd \"$APP_DIR\" && find . -name '__editable__.subsearch-*' -delete"
+}
+
 run_as_app_user() {
   if id "$APP_USER" >/dev/null 2>&1; then
     if [[ "$(id -u)" -eq "$(id -u "$APP_USER")" ]]; then
@@ -54,9 +58,10 @@ ensure_venv() {
 }
 
 refresh_dependencies() {
+  cleanup_editable
   log "Installing Python dependencies"
-  run_as_app_user "$VENV_PATH/bin/python" -m pip install --upgrade pip setuptools wheel
-  run_as_app_user "$VENV_PATH/bin/python" -m pip install -e "$APP_DIR" $PIP_FLAGS
+  run_as_app_user HOME=/var/www PIP_NO_CACHE_DIR=1 "$VENV_PATH/bin/python" -m pip install --upgrade pip setuptools wheel
+  run_as_app_user HOME=/var/www PIP_NO_CACHE_DIR=1 "$VENV_PATH/bin/python" -m pip install -e "$APP_DIR" $PIP_FLAGS
 }
 
 update_build_version() {
