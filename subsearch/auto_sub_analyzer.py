@@ -1,9 +1,4 @@
-"""
-Reddit Unmoderated Subreddit Finder
-Downloads a list of subreddits with no moderators to a CSV file.
-"""
-
-import csv
+import logging
 import os
 import time
 from datetime import datetime
@@ -11,7 +6,6 @@ from typing import Dict, Optional
 
 import praw
 import prawcore
-import logging
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -304,77 +298,3 @@ def find_unmoderated_subreddits(
         logger.info("Collected %d subreddits", len(unmoderated_subs))
 
     return unmoderated_subs
-
-
-def save_to_csv(subreddits, filename=None):
-    """
-    Save subreddit data to CSV file.
-
-    Args:
-        subreddits: List of subreddit dictionaries
-        filename: Output filename (optional)
-    """
-    if not filename:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"unmoderated_subreddits_{timestamp}.csv"
-
-    # Ensure output directory exists if user provided a path
-    out_dir = os.path.dirname(os.path.abspath(filename)) or "."
-    os.makedirs(out_dir, exist_ok=True)
-
-    with open(filename, 'w', newline='', encoding='utf-8') as f:
-        if subreddits:
-            writer = csv.DictWriter(f, fieldnames=['name', 'subscribers', 'url'])
-            writer.writeheader()
-            writer.writerows(subreddits)
-            logger.info("Data saved to: %s", filename)
-        else:
-            logger.info("No subreddit data to save.")
-
-
-def main():
-    """Main execution function."""
-    print("=" * 60)
-    print("Reddit Unmoderated Subreddit Finder")
-    print("=" * 60)
-    print()
-
-    # Check if credentials are set
-    if REDDIT_CLIENT_ID == "your_client_id_here" or REDDIT_USERNAME == "your_username_here":
-        print("ERROR: Please set your Reddit API credentials!")
-        print("\nTo get credentials:")
-        print("1. Go to https://www.reddit.com/prefs/apps")
-        print("2. Click 'create another app...' at the bottom")
-        print("3. Select 'script' as the app type")
-        print("4. Fill in the name and redirect URI (use http://localhost:8080)")
-        print("5. Copy the client ID (under the app name)")
-        print("6. Copy the client secret")
-        print("7. Update your .env file with:")
-        print("   - REDDIT_CLIENT_ID")
-        print("   - REDDIT_CLIENT_SECRET")
-        print("   - REDDIT_USERNAME (your Reddit username)")
-        print("   - REDDIT_PASSWORD (your Reddit password)")
-        return
-
-    try:
-        # Find unmoderated subreddits
-        # You can increase the limit to check more subreddits
-        subreddits = find_unmoderated_subreddits(limit=100)
-
-        # Save to CSV
-        save_to_csv(subreddits)
-
-        print("\nDone!")
-
-    except praw.exceptions.PRAWException as e:
-        print(f"\nReddit API Error: {e}")
-        print("\nMake sure:")
-        print("- You have installed PRAW: pip install praw")
-        print("- Your Reddit API credentials are correct")
-        print("- You have internet connection")
-    except Exception as e:
-        print(f"\nUnexpected Error: {e}")
-
-
-if __name__ == "__main__":
-    main()

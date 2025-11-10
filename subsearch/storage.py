@@ -401,9 +401,10 @@ def record_run_complete(job_id: str, result_count: int, error: Optional[str] = N
             "SELECT started_at FROM query_runs WHERE job_id = :job_id",
             {"job_id": job_id},
         ).fetchone()
-        if row and row.get("started_at"):
+        started_value = row["started_at"] if row else None
+        if started_value:
             try:
-                started = datetime.fromisoformat(row["started_at"])
+                started = datetime.fromisoformat(started_value)
                 duration_ms = int((datetime.utcnow() - started).total_seconds() * 1000)
             except Exception:
                 duration_ms = None
@@ -611,6 +612,7 @@ def search_subreddits(
     order: str = "desc",
     page: int = 1,
     page_size: int = 50,
+    run_id: Optional[int] = None,
 ) -> Dict:
     page = max(page, 1)
     page_size = max(1, min(page_size, 200))
@@ -638,6 +640,7 @@ def search_subreddits(
         order_dir,
         page,
         page_size,
+        run_id,
     )
     cached = search_cache.get(cache_key)
     if cached is not None:
@@ -661,6 +664,9 @@ def search_subreddits(
     if max_subs is not None:
         conditions.append("subscribers <= :max_subs")
         params["max_subs"] = max_subs
+    if run_id is not None:
+        conditions.append("last_seen_run_id = :run_filter")
+        params["run_filter"] = run_id
 
     where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
     offset = max(page - 1, 0) * page_size
@@ -701,6 +707,37 @@ def get_database_path() -> str:
     if IS_POSTGRES:
         return f"postgresql://{DB_POSTGRES_USER}@{DB_POSTGRES_HOST}:{DB_POSTGRES_PORT}/{DB_POSTGRES_DB}"
     return DB_PATH
+
+
+def get_run_id_by_job(job_id: str) -> Optional[int]:
+    if not job_id:
+        return None
+    with db_conn() as conn:
+        row = conn.execute(
+            "SELECT id FROM query_runs WHERE job_id = :job_id",
+            {"job_id": job_id},
+        ).fetchone()
+    return row["id"] if row else None
+
+
+def fetch_subreddits_by_job(job_id: str) -> List[Dict]:
+    run_id = get_run_id_by_job(job_id)
+    if not run_id:
+        return []
+    with db_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT name, display_name_prefixed, title, public_description,
+                   url, subscribers, is_unmoderated, is_nsfw,
+                   last_activity_utc, last_mod_activity_utc,
+                   mod_count, source, first_seen_at, updated_at
+            FROM subreddits
+            WHERE last_seen_run_id = :run_id
+            ORDER BY subscribers DESC
+            """,
+            {"run_id": run_id},
+        ).fetchall()
+    return [dict(row) for row in rows]
 
 
 def create_volunteer_node(

@@ -7,7 +7,7 @@
     <div class="max-w-2xl space-y-4">
       <p class="text-sm font-semibold uppercase tracking-[0.3em] text-white/60">Tool · Sub Search</p>
       <h1 class="font-display text-3xl text-white sm:text-4xl">Stack the precise subreddit list you need.</h1>
-      <p class="text-base text-white/80">Pull full subreddit names, display titles, descriptions, moderator counts, and the freshest human moderator activity. Every query feeds All The Subs and ships with a CSV export.</p>
+      <p class="text-base text-white/80">Pull full subreddit names, display titles, descriptions, moderator counts, and the freshest human moderator activity. Every query feeds All The Subs and unlocks a sortable report with on-demand CSV export.</p>
       <div class="flex flex-wrap gap-3 text-xs uppercase tracking-[0.3em] text-white/70">
         <span class="data-chip">Moderator intel</span>
         <span class="data-chip">Fresh activity</span>
@@ -41,10 +41,6 @@
       </div>
     </div>
     <div class="space-y-4">
-      <div>
-        <label for="file_name" class="text-sm font-semibold text-white/90">File name</label>
-        <input type="text" id="file_name" name="file_name" placeholder="leave blank for timestamped export" maxlength="64" pattern="[A-Za-z0-9._\-]*" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white placeholder:text-white/30 focus:border-brand focus:ring-2 focus:ring-brand/40" />
-      </div>
       <div class="rounded-xl border border-white/10 bg-slate-900/50 p-4">
         <label class="flex items-center gap-3 text-sm font-semibold text-white/90">
           <input type="checkbox" id="unmoderated_only" name="unmoderated_only" class="rounded border-white/20 bg-slate-900 text-brand focus:ring-brand/60" />
@@ -96,14 +92,18 @@
 
   <div id="run-state" class="mt-6 hidden rounded-2xl border border-white/5 bg-slate-900/70 p-6">
     <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-      <div class="flex items-center gap-4">
-        <div class="loader"></div>
-        <div>
-          <p class="text-lg font-semibold text-white">Scanning Reddit...</p>
-          <p id="status-sub" class="text-sm text-white/70">connected to Reddit API</p>
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center gap-4">
+          <div class="loader" id="status-loader"></div>
+          <div>
+            <p id="status-title" class="text-lg font-semibold text-white">Waiting for the sandwich counter...</p>
+            <p id="status-sub" class="text-sm text-white/70">—</p>
+          </div>
         </div>
+        <p id="queue-orders" class="hidden text-sm text-white/60">Orders ahead: 0</p>
+        <span id="queue-chip" class="hidden w-fit rounded-full border border-white/20 px-3 py-1 text-xs uppercase tracking-[0.3em] text-white/70"></span>
       </div>
-      <button type="button" id="stopBtn" class="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-white/40 hover:text-white">Stop run</button>
+      <button type="button" id="stopBtn" class="h-fit rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-white/40 hover:text-white">Stop run</button>
     </div>
     <dl class="mt-6 grid gap-4 sm:grid-cols-3">
       <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
@@ -121,15 +121,35 @@
     </dl>
   </div>
 
-  <div id="result" class="mt-6 hidden rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-6 text-white">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+  <div id="results-panel" class="mt-6 hidden rounded-2xl border border-white/5 bg-slate-900/70 p-6">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
       <div>
-        <p id="result-label" class="text-lg font-semibold">Run complete • subreddits found</p>
-        <p class="text-sm text-white/80">Results available for download and synced to All The Subs.</p>
+        <p id="results-title" class="text-lg font-semibold text-white">Results ready</p>
+        <p id="results-subtitle" class="text-sm text-white/80">Subreddits synced to All The Subs.</p>
       </div>
-      <div class="flex items-center gap-3">
-        <span id="result-count" class="text-3xl font-bold">0</span>
-        <a id="download-link" href="#" class="hidden rounded-full bg-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/30">Download CSV</a>
+      <div class="flex flex-wrap gap-3">
+        <a id="download-btn" href="#" class="pointer-events-none rounded-full border border-white/30 px-4 py-2 text-sm font-semibold text-white/40 opacity-40 transition hover:border-white/60 hover:text-white" target="_blank" rel="noopener">Download results as .csv</a>
+        <a id="view-all-btn" href="{{ url_for('all_subs') }}" class="pointer-events-none rounded-full bg-brand/40 px-4 py-2 text-sm font-semibold text-slate-900/60 transition">View results with All The Subs</a>
+      </div>
+    </div>
+    <div class="mt-6 overflow-hidden rounded-2xl border border-white/10">
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[720px] text-sm text-white/80" id="results-table">
+          <thead class="bg-white/5 text-left text-xs uppercase tracking-[0.3em] text-white/40">
+            <tr>
+              <th class="cursor-pointer px-4 py-3" data-sort="display_name_prefixed">Subreddit</th>
+              <th class="cursor-pointer px-4 py-3" data-sort="title">Title & description</th>
+              <th class="cursor-pointer px-4 py-3" data-sort="subscribers">Subscribers</th>
+              <th class="cursor-pointer px-4 py-3" data-sort="mod_count">Moderators</th>
+              <th class="cursor-pointer px-4 py-3" data-sort="is_nsfw">NSFW</th>
+              <th class="cursor-pointer px-4 py-3" data-sort="last_mod_activity_utc">Last mod activity</th>
+              <th class="cursor-pointer px-4 py-3" data-sort="updated_at">Indexed</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/5">
+            <tr><td colspan="7" class="px-4 py-6 text-center text-white/60">No results yet.</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -138,27 +158,54 @@
 
 {% block scripts %}
 <script>
-  const jobId = {{ job_id|tojson }};
+  const jobIdFromServer = {{ job_id|tojson }};
+  const allSubsBase = {{ url_for('all_subs')|tojson }};
+  const queuePhrases = [
+    'Proofing patience like a sourdough starter.',
+    'Counting pickle slices so you don’t end up in a jar.',
+    'Dad joke alert: this line is sub-stantial.',
+    'Sharpening the bread knife for your spot.',
+    'Restocking banana peppers for your order.',
+  ];
+  const runPhrases = [
+    'Reticulating splines of ciabatta goodness.',
+    'Slicing the cheese with extreme precision.',
+    'Toasting the bread just shy of crunchy.',
+    'Layering lettuce like an architecture nerd.',
+    'Brining olives and optimism simultaneously.',
+  ];
+  const POLL_MS = 3000;
+  const STORE_KEY = 'sub_search_form_v2';
+  const STORE_TTL_MS = 60 * 60 * 1000;
+
+  let pollTimer = null;
+  let phraseTimer = null;
+  let phraseMode = null;
+  let activeJobId = jobIdFromServer;
+  let currentResults = [];
+  let currentSort = { key: 'subscribers', dir: 'desc' };
+
   const form = document.getElementById('run-form');
   const runState = document.getElementById('run-state');
-  const resultBox = document.getElementById('result');
+  const resultsPanel = document.getElementById('results-panel');
+  const statusTitle = document.getElementById('status-title');
+  const statusSub = document.getElementById('status-sub');
+  const queueOrdersEl = document.getElementById('queue-orders');
+  const queueChip = document.getElementById('queue-chip');
   const checkedEl = document.getElementById('checked');
   const foundEl = document.getElementById('found');
   const limitEl = document.getElementById('limit_count');
-  const statusSub = document.getElementById('status-sub');
-  const resCount = document.getElementById('result-count');
-  const downloadLink = document.getElementById('download-link');
-  let pollTimer = null;
-  const POLL_MS = 5000;
-
-  const STORE_KEY = 'sub_search_form_v1';
-  const STORE_TTL_MS = 60 * 60 * 1000;
+  const stopBtn = document.getElementById('stopBtn');
+  const downloadBtn = document.getElementById('download-btn');
+  const viewAllBtn = document.getElementById('view-all-btn');
+  const resultsTitle = document.getElementById('results-title');
+  const resultsSubtitle = document.getElementById('results-subtitle');
+  const tableBody = document.querySelector('#results-table tbody');
 
   function saveFormState(){
     const data = {
       ts: Date.now(),
       keyword: document.getElementById('keyword')?.value || '',
-      file_name: document.getElementById('file_name')?.value || '',
       limit: (document.getElementById('limit')?.value || '').replace(/,/g,''),
       min_subs: (document.getElementById('min_subs')?.value || '').replace(/,/g,''),
       unmoderated_only: document.getElementById('unmoderated_only')?.checked || false,
@@ -180,7 +227,6 @@
       const setVal = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined) el.value = v; };
       const setChk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
       setVal('keyword', data.keyword);
-      setVal('file_name', data.file_name);
       setVal('limit', data.limit);
       setVal('min_subs', data.min_subs);
       setChk('unmoderated_only', data.unmoderated_only);
@@ -188,92 +234,13 @@
       setChk('activity_enabled', data.activity_enabled);
       setVal('activity_mode', data.activity_mode);
       setVal('activity_date', data.activity_date);
-      toggleActivity();
     } catch(e){}
   }
 
-  function startPolling(id){
-    if (pollTimer) clearInterval(pollTimer);
-    runState.classList.remove('hidden');
-    resultBox.classList.add('hidden');
-    pollTimer = setInterval(async () => {
-      try {
-        const res = await fetch(`/status/${id}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!data) return;
-        const limit = data.limit || 0;
-        const checked = data.checked || 0;
-        const found = data.found || 0;
-        limitEl.textContent = Number(limit).toLocaleString();
-        checkedEl.textContent = Number(checked).toLocaleString();
-        foundEl.textContent = Number(found).toLocaleString();
-        if (data.stopped){
-          statusSub.textContent = 'Stopping at your request...';
-        } else if (data.done){
-          statusSub.textContent = 'Export ready';
-        } else {
-          statusSub.textContent = 'Crunching live Reddit data...';
-        }
-        if (data.done){
-          clearInterval(pollTimer);
-          pollTimer = null;
-          runState.classList.add('hidden');
-          resultBox.classList.remove('hidden');
-          resCount.textContent = Number(found).toLocaleString();
-          if (data.stopped){
-            document.getElementById('result-label').textContent = 'Run stopped • subreddits found';
-          }
-          if (data.output_path){
-            downloadLink.classList.remove('hidden');
-            downloadLink.href = `{{ url_for('download') }}?job=` + encodeURIComponent(id);
-          } else {
-            downloadLink.classList.add('hidden');
-          }
-        }
-      } catch (e) { /* ignore */ }
-    }, POLL_MS);
-  }
-
-  async function checkAndMaybePoll(){
-    if (!jobId) return;
-    try {
-      const res = await fetch(`/status/${jobId}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data.done){
-        resultBox.classList.remove('hidden');
-        const found = data.found || 0;
-        resCount.textContent = Number(found).toLocaleString();
-        if (data.stopped){
-          document.getElementById('result-label').textContent = 'Run stopped • subreddits found';
-        }
-        if (data.output_path){
-          downloadLink.classList.remove('hidden');
-          downloadLink.href = `{{ url_for('download') }}?job=` + encodeURIComponent(jobId);
-        }
-      } else {
-        startPolling(jobId);
-      }
-    } catch (e) { /* ignore */ }
-  }
-  checkAndMaybePoll();
-  restoreFormState();
-
-  form?.addEventListener('submit', () => { saveFormState(); });
-
-  const stopBtn = document.getElementById('stopBtn');
-  stopBtn?.addEventListener('click', async () => {
-    if (!jobId) return;
-    stopBtn.disabled = true;
-    statusSub.textContent = 'Stopping…';
-    try { await fetch(`/stop/${jobId}`, { method: 'POST' }); } catch (e) {}
-  });
-
-  const activityEnabled = document.getElementById('activity_enabled');
-  const activityMode = document.getElementById('activity_mode');
-  const activityDate = document.getElementById('activity_date');
   function toggleActivity(){
+    const activityEnabled = document.getElementById('activity_enabled');
+    const activityMode = document.getElementById('activity_mode');
+    const activityDate = document.getElementById('activity_date');
     if (!activityEnabled) return;
     const on = activityEnabled.checked;
     if (activityMode) activityMode.disabled = !on;
@@ -281,28 +248,274 @@
     if (!on){
       if (activityMode) activityMode.value = 'any';
       if (activityDate) activityDate.value = '';
+      activityDate?.removeAttribute('required');
+    } else {
+      activityDate?.setAttribute('required','required');
     }
   }
-  if (activityEnabled){
-    activityEnabled.addEventListener('change', toggleActivity);
-    toggleActivity();
+
+  function setPhraseMode(mode){
+    if (phraseMode === mode) return;
+    phraseMode = mode;
+    if (phraseTimer) clearInterval(phraseTimer);
+    const list = mode === 'running' ? runPhrases : queuePhrases;
+    let idx = 0;
+    statusSub.textContent = list[idx];
+    phraseTimer = setInterval(() => {
+      idx = (idx + 1) % list.length;
+      statusSub.textContent = list[idx];
+    }, 3500);
   }
+
+  function stopPhraseRotation(){
+    if (phraseTimer){
+      clearInterval(phraseTimer);
+      phraseTimer = null;
+    }
+  }
+
+  function resetResultsPanel(){
+    resultsPanel.classList.add('hidden');
+    currentResults = [];
+    disableButton(downloadBtn);
+    disableButton(viewAllBtn);
+    tableBody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-white/60">No results yet.</td></tr>';
+  }
+
+  function enableButton(btn, href){
+    if (!btn) return;
+    btn.href = href;
+    btn.classList.remove('pointer-events-none','opacity-40','text-white/40','bg-brand/40','text-slate-900/60');
+    if (btn === viewAllBtn){
+      btn.classList.add('bg-brand','text-slate-950','shadow-brand','hover:scale-[1.01]');
+    }
+  }
+
+  function disableButton(btn){
+    if (!btn) return;
+    btn.href = '#';
+    btn.classList.add('pointer-events-none','opacity-40');
+    if (btn === viewAllBtn){
+      btn.classList.remove('bg-brand','text-slate-950','shadow-brand','hover:scale-[1.01]');
+      btn.classList.add('bg-brand/40','text-slate-900/60');
+    }
+  }
+
+  async function fetchStatus(id){
+    try {
+      const res = await fetch(`/status/${id}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data) return;
+      updateStatusUi(data);
+      if (data.done && pollTimer){
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function startPolling(id){
+    if (!id) return;
+    activeJobId = id;
+    resetResultsPanel();
+    runState.classList.remove('hidden');
+    setPhraseMode('queued');
+    fetchStatus(id);
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(() => fetchStatus(id), POLL_MS);
+  }
+
+  function updateStatusUi(data){
+    const limit = Number(data.limit || data.job_config?.limit || 0);
+    const checked = Number(data.checked || 0);
+    const found = Number(data.found || 0);
+    limitEl.textContent = limit.toLocaleString();
+    checkedEl.textContent = checked.toLocaleString();
+    foundEl.textContent = found.toLocaleString();
+
+    const state = data.state || (data.done ? 'complete' : 'running');
+    const queuePosition = data.queue_position ?? null;
+    const ordersAhead = data.orders_ahead ?? null;
+
+    if (state === 'queued'){
+      statusTitle.textContent = 'Queued at the sandwich counter';
+      setPhraseMode('queued');
+      if (queuePosition !== null){
+        queueOrdersEl.classList.remove('hidden');
+        queueChip.classList.remove('hidden');
+        queueChip.textContent = queuePosition === 1 ? 'On deck' : `Order #${queuePosition}`;
+        queueOrdersEl.textContent = ordersAhead && ordersAhead > 0 ? `${ordersAhead} order(s) ahead of you` : 'You are next in line';
+      } else {
+        queueOrdersEl.classList.add('hidden');
+        queueChip.classList.add('hidden');
+      }
+    } else if (state === 'running'){
+      statusTitle.textContent = 'Assembling your sandwich of subs';
+      setPhraseMode('running');
+      queueOrdersEl.classList.add('hidden');
+      queueChip.classList.add('hidden');
+    } else if (state === 'error'){
+      stopPhraseRotation();
+      statusTitle.textContent = 'The kitchen slipped on a tomato';
+      statusSub.textContent = data.error || 'Unknown error';
+      queueOrdersEl.classList.add('hidden');
+      queueChip.classList.add('hidden');
+    } else {
+      stopPhraseRotation();
+      statusTitle.textContent = state === 'stopped' ? 'Run stopped' : 'Run complete';
+      statusSub.textContent = data.error ? data.error : 'Results synced below.';
+      queueOrdersEl.classList.add('hidden');
+      queueChip.classList.add('hidden');
+    }
+
+    stopBtn.disabled = !!data.done;
+
+    if (data.done && data.results_ready){
+      resultsPanel.classList.remove('hidden');
+      currentResults = Array.isArray(data.results) ? data.results.slice() : [];
+      const total = Number(data.result_count || currentResults.length || found);
+      resultsTitle.textContent = `${total.toLocaleString()} subreddits plated`;
+      resultsSubtitle.textContent = 'Use the buttons above to export or browse in All The Subs.';
+      enableButton(downloadBtn, `/job/${activeJobId}/download.csv`);
+      enableButton(viewAllBtn, `${allSubsBase}?job_id=${encodeURIComponent(activeJobId)}`);
+      renderResultsTable();
+    }
+  }
+
+  function formatNumber(value){
+    if (value === null || value === undefined || value === '') return '—';
+    return Number(value).toLocaleString();
+  }
+
+  function formatEpoch(value){
+    if (!value) return '—';
+    const num = Number(value);
+    if (!Number.isFinite(num) || num <= 0) return '—';
+    return new Date(num * 1000).toISOString().replace('T', ' ').replace('Z', ' UTC');
+  }
+
+  function formatIso(value){
+    if (!value) return '—';
+    try {
+      return new Date(value).toISOString().replace('T', ' ').replace('Z', ' UTC');
+    } catch (e) {
+      return value;
+    }
+  }
+
+  function escapeHtml(str){
+    if (!str) return '';
+    return String(str).replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function compareRows(a, b, key, dir){
+    const multiplier = dir === 'asc' ? 1 : -1;
+    const va = a[key];
+    const vb = b[key];
+    if (va === vb) return 0;
+    if (va === undefined || va === null) return 1 * multiplier;
+    if (vb === undefined || vb === null) return -1 * multiplier;
+    if (typeof va === 'number' && typeof vb === 'number'){
+      return (va - vb) * multiplier;
+    }
+    const sa = String(va).toLowerCase();
+    const sb = String(vb).toLowerCase();
+    if (sa < sb) return -1 * multiplier;
+    if (sa > sb) return 1 * multiplier;
+    return 0;
+  }
+
+  function renderResultsTable(){
+    if (!currentResults.length){
+      tableBody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-white/60">No results yet.</td></tr>';
+      return;
+    }
+    const sorted = [...currentResults].sort((a, b) => compareRows(a, b, currentSort.key, currentSort.dir));
+    tableBody.innerHTML = sorted.map((row) => {
+      const name = row.display_name_prefixed || row.name || 'r/unknown';
+      const title = row.title || name;
+      const description = row.public_description || 'No description provided.';
+      const subscribers = formatNumber(row.subscribers);
+      const modCount = formatNumber(row.mod_count);
+      const nsfw = row.is_nsfw ? 'Yes' : 'No';
+      const modActivity = formatEpoch(row.last_mod_activity_utc);
+      const indexed = formatIso(row.updated_at);
+      const url = row.url || `https://www.reddit.com/${name}`;
+      return `
+        <tr>
+          <td class="px-4 py-3 align-top">
+            <div class="flex flex-col">
+              <a href="${url}" target="_blank" rel="noopener" class="font-semibold text-white hover:underline">${escapeHtml(name)}</a>
+              <span class="text-xs text-white/50">${escapeHtml(row.url || '')}</span>
+            </div>
+          </td>
+          <td class="px-4 py-3 align-top">
+            <p class="font-semibold text-white/90">${escapeHtml(title)}</p>
+            <p class="clamp-2 text-sm text-white/60">${escapeHtml(description)}</p>
+          </td>
+          <td class="px-4 py-3 align-top font-semibold">${subscribers}</td>
+          <td class="px-4 py-3 align-top">${modCount}</td>
+          <td class="px-4 py-3 align-top">${nsfw}</td>
+          <td class="px-4 py-3 align-top">${modActivity}</td>
+          <td class="px-4 py-3 align-top">${indexed}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  document.querySelectorAll('#results-table th[data-sort]').forEach((th) => {
+    th.addEventListener('click', () => {
+      const key = th.getAttribute('data-sort');
+      if (currentSort.key === key){
+        currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        currentSort.key = key;
+        currentSort.dir = key === 'display_name_prefixed' ? 'asc' : 'desc';
+      }
+      renderResultsTable();
+    });
+  });
+
+  stopBtn?.addEventListener('click', async () => {
+    if (!activeJobId) return;
+    stopBtn.disabled = true;
+    statusSub.textContent = 'Stop requested… wrapping things up.';
+    try {
+      await fetch(`/stop/${activeJobId}`, { method: 'POST' });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      stopBtn.disabled = false;
+    }
+  });
+
+  form?.addEventListener('submit', saveFormState);
+  restoreFormState();
+
+  const activityEnabled = document.getElementById('activity_enabled');
+  activityEnabled?.addEventListener('change', toggleActivity);
+  toggleActivity();
 
   function attachNumberFormat(id){
     const el = document.getElementById(id);
     if (!el) return;
-    const toNum = v => v ? v.replace(/,/g,'') : '';
-    el.addEventListener('focus', () => { el.value = toNum(el.value); });
+    const toNumber = (v) => v ? v.replace(/,/g,'') : '';
+    el.addEventListener('focus', () => { el.value = toNumber(el.value); });
     el.addEventListener('blur', () => {
-      const raw = toNum(el.value);
+      const raw = toNumber(el.value);
       if (!raw) return;
       const n = parseInt(raw, 10);
-      if (!isNaN(n)) el.value = n.toLocaleString();
+      if (!Number.isNaN(n)) el.value = n.toLocaleString();
     });
   }
   attachNumberFormat('limit');
   attachNumberFormat('min_subs');
-  document.getElementById('limit') && (document.getElementById('limit').value = (document.getElementById('limit').value||'').replace(/\B(?=(\d{3})+(?!\d))/g,','));
-  document.getElementById('min_subs') && (document.getElementById('min_subs').value = (document.getElementById('min_subs').value||'').replace(/\B(?=(\d{3})+(?!\d))/g,','));
+
+  if (jobIdFromServer){
+    startPolling(jobIdFromServer);
+  }
 </script>
 {% endblock %}

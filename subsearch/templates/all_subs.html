@@ -8,6 +8,9 @@
       <p class="text-xs uppercase tracking-[0.3em] text-white/60">Tool · All The Subs</p>
       <h1 class="font-display text-3xl text-white sm:text-4xl">The continuously growing subreddit directory</h1>
       <p class="mt-2 max-w-3xl text-sm text-white/80">Every Sub Search run & background auto-ingest job lands here with full names, titles, descriptions, moderator counts, and last mod activity.</p>
+      {% if initial_filters.job_id %}
+      <p class="mt-2 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-1 text-xs uppercase tracking-[0.2em] text-white/80">Showing job {{ initial_filters.job_id }}</p>
+      {% endif %}
     </div>
     <a href="{{ url_for('analyzer') }}" class="nav-link active text-sm">Run a new query</a>
   </div>
@@ -83,6 +86,7 @@
     page: 1,
     total: 0,
     pageSize: 50,
+    job_id: initialFilters.job_id || '',
   };
 
   const qInput = document.getElementById('filter-q');
@@ -196,6 +200,7 @@
     params.set('order', state.order);
     params.set('page', String(state.page));
     params.set('page_size', String(state.pageSize));
+    if (state.job_id) params.set('job_id', state.job_id);
 
     try {
       const res = await fetch(`/api/subreddits?${params.toString()}`);

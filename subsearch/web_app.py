@@ -2,19 +2,21 @@ import os
 import json
 import logging
 import threading
-import tempfile
 import time
 import re
 import smtplib
 import ssl
+import csv
+import io
+from collections import deque
 from datetime import datetime, timezone, timedelta
 from email.message import EmailMessage
 
-from flask import Flask, render_template, request, send_file, flash, redirect, url_for, session, make_response, jsonify
+from flask import Flask, render_template, request, flash, redirect, url_for, session, make_response, jsonify, Response
 from dotenv import load_dotenv
 
 # Reuse core analyzer functions
-from .auto_sub_analyzer import find_unmoderated_subreddits, save_to_csv
+from .auto_sub_analyzer import find_unmoderated_subreddits
 from .build_info import get_current_build_number
 from .storage import (
     fetch_recent_runs,
@@ -33,6 +35,8 @@ from .storage import (
     record_run_complete,
     record_run_start,
     search_subreddits,
+    fetch_subreddits_by_job,
+    get_run_id_by_job,
 )
 
 import praw
@@ -52,6 +56,9 @@ logger = logging.getLogger("web_app")
 # Job store for background runs
 jobs = {}
 jobs_lock = threading.Lock()
+job_queue = deque()
+queue_lock = threading.Lock()
+running_jobs = set()
 auto_ingest_thread = None
 auto_ingest_lock = threading.Lock()
 node_cleanup_thread = None
@@ -265,11 +272,6 @@ def inject_globals():
     }
 
 
-def default_output_filename():
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return f"unmoderated_subreddits_{timestamp}.csv"
-
-
 def _safe_int(value, default=None):
     if value is None:
         return default
@@ -282,6 +284,14 @@ def _safe_int(value, default=None):
         return int(cleaned)
     except (TypeError, ValueError):
         return default
+
+
+MAX_CONCURRENT_JOBS = max(1, _safe_int(os.getenv("SUBSEARCH_MAX_CONCURRENT_JOBS"), 1) or 1)
+try:
+    RATE_LIMIT_DELAY = float(os.getenv("SUBSEARCH_RATE_LIMIT_DELAY", "0.2") or 0.2)
+except (TypeError, ValueError):
+    RATE_LIMIT_DELAY = 0.2
+RATE_LIMIT_DELAY = max(0.1, RATE_LIMIT_DELAY)
 
 
 def _parse_bool_flag(value):
@@ -406,7 +416,6 @@ def _run_auto_ingest_job(keyword=None):
         'min_subs': AUTO_INGEST_MIN_SUBS,
         'activity_mode': "any",
         'activity_threshold_utc': None,
-        'file_name': f"auto_ingest_{label}_{datetime.now().strftime('%Y%m%d')}.csv",
     }
     record_run_start(job_id, job_params, source="auto-ingest")
     subs = []
@@ -485,6 +494,173 @@ def _start_node_cleanup_thread_if_needed():
         node_cleanup_thread.start()
 
 
+def _update_queue_positions_locked():
+    queue_len = len(job_queue)
+    return [(job_id, idx, queue_len) for idx, job_id in enumerate(list(job_queue))]
+
+
+def _apply_queue_positions(updates):
+    if not updates:
+        return
+    with jobs_lock:
+        for job_id, idx, queue_len in updates:
+            job = jobs.get(job_id)
+            if not job:
+                continue
+            job["queue_position"] = idx + 1
+            job["orders_ahead"] = idx
+            job["queue_size"] = queue_len
+
+
+def _enqueue_job(job_id: str) -> None:
+    with queue_lock:
+        job_queue.append(job_id)
+        updates = _update_queue_positions_locked()
+    _apply_queue_positions(updates)
+    with jobs_lock:
+        job = jobs.get(job_id)
+        if job:
+            job["state"] = "queued"
+            job["results_ready"] = False
+    _start_jobs_if_possible()
+
+
+def _start_jobs_if_possible():
+    to_start = []
+    with queue_lock:
+        while len(running_jobs) < MAX_CONCURRENT_JOBS and job_queue:
+            job_id = job_queue.popleft()
+            running_jobs.add(job_id)
+            to_start.append(job_id)
+        updates = _update_queue_positions_locked()
+    _apply_queue_positions(updates)
+    for job_id in to_start:
+        with jobs_lock:
+            job = jobs.get(job_id)
+            if not job:
+                with queue_lock:
+                    running_jobs.discard(job_id)
+                continue
+            job["state"] = "running"
+            job["queue_position"] = None
+            job["orders_ahead"] = None
+            job["queue_size"] = len(job_queue)
+            job["started_at"] = datetime.now(timezone.utc).isoformat()
+        thread = threading.Thread(target=_run_job_thread, args=(job_id,), daemon=True)
+        with jobs_lock:
+            jobs[job_id]["thread"] = thread
+        thread.start()
+
+
+def _update_job_progress(job_id: str, checked: int, found: int) -> None:
+    with jobs_lock:
+        job = jobs.get(job_id)
+        if job:
+            job["checked"] = checked
+            job["found"] = found
+
+
+def _job_should_stop(job_id: str) -> bool:
+    with jobs_lock:
+        job = jobs.get(job_id)
+        return bool(job.get("stop")) if job else True
+
+
+def _run_job_thread(job_id: str) -> None:
+    job_config = {}
+    with jobs_lock:
+        job = jobs.get(job_id)
+        if job:
+            job_config = dict(job.get("job_config") or {})
+    if not job_config:
+        with queue_lock:
+            running_jobs.discard(job_id)
+        return
+
+    keyword = job_config.get('keyword')
+    limit = job_config.get('limit', 1000)
+    unmoderated_only = job_config.get('unmoderated_only', True)
+    exclude_nsfw = job_config.get('exclude_nsfw', False)
+    min_subs = job_config.get('min_subs', 0)
+    activity_mode = job_config.get('activity_mode', "any")
+    activity_threshold_utc = job_config.get('activity_threshold_utc')
+
+    logger.info(
+        "Job %s started: keyword=%r limit=%d unmoderated_only=%s",
+        job_id,
+        keyword,
+        limit,
+        unmoderated_only,
+    )
+
+    subs = []
+    try:
+        subs = find_unmoderated_subreddits(
+            limit=limit,
+            name_keyword=keyword,
+            unmoderated_only=unmoderated_only,
+            exclude_nsfw=exclude_nsfw,
+            min_subscribers=min_subs,
+            activity_mode=activity_mode,
+            activity_threshold_utc=activity_threshold_utc,
+            progress_callback=lambda checked, found: _update_job_progress(job_id, checked, found),
+            stop_callback=lambda: _job_should_stop(job_id),
+            rate_limit_delay=RATE_LIMIT_DELAY,
+        )
+        try:
+            persist_subreddits(job_id, subs, keyword=keyword, source="analyzer")
+        except Exception:
+            logger.exception("Failed to persist subreddits for job %s", job_id)
+
+        with jobs_lock:
+            job = jobs.get(job_id)
+            if job:
+                job["done"] = True
+                job["state"] = "stopped" if job.get("stop") else "complete"
+                job["stopped"] = bool(job.get("stop"))
+                job["stop"] = False
+                job["results_ready"] = True
+                job["results"] = subs
+                job["found"] = len(subs)
+                job["result_count"] = len(subs)
+                job["queue_position"] = None
+                job["orders_ahead"] = None
+        record_run_complete(job_id, len(subs), error=None)
+        logger.info("Job %s finished (found=%d)", job_id, len(subs))
+    except Exception as e:
+        logger.exception("Job %s errored", job_id)
+        with jobs_lock:
+            job = jobs.get(job_id)
+            if job:
+                job["error"] = str(e)
+                job["done"] = True
+                job["state"] = "error"
+                job["queue_position"] = None
+                job["orders_ahead"] = None
+        record_run_complete(job_id, len(subs), error=str(e))
+    finally:
+        with jobs_lock:
+            job = jobs.get(job_id)
+            if job:
+                job.pop("thread", None)
+        with queue_lock:
+            running_jobs.discard(job_id)
+        _start_jobs_if_possible()
+
+
+def _remove_from_queue(job_id: str) -> bool:
+    removed = False
+    with queue_lock:
+        try:
+            job_queue.remove(job_id)
+            removed = True
+        except ValueError:
+            removed = False
+        updates = _update_queue_positions_locked()
+    _apply_queue_positions(updates)
+    return removed
+
+
 # Prepare storage and background ingestion
 init_db()
 _start_auto_ingest_thread_if_needed()
@@ -500,7 +676,6 @@ def analyzer():
         # Read raw inputs
         keyword_raw = request.form.get("keyword", "").strip()
         limit_raw = request.form.get("limit", "1000").strip()
-        file_name_raw = request.form.get("file_name", "").strip()
         unmoderated_only = request.form.get("unmoderated_only") == "on"
         exclude_nsfw = request.form.get("exclude_nsfw") == "on"
         min_subs_raw = request.form.get("min_subs", "100").strip()
@@ -513,15 +688,6 @@ def analyzer():
             s = s[:64]
             return re.sub(r"[^A-Za-z0-9 _\-]", "", s)
 
-        def sanitize_filename(name: str) -> str:
-            name = name.strip()[:64]
-            # Disallow path separators and parent traversals
-            if "/" in name or "\\" in name or name in (".", ".."):
-                return ""
-            # Whitelist chars
-            name = re.sub(r"[^A-Za-z0-9._\-]", "", name)
-            return name
-
         # Accept commas in numeric fields
         limit_raw_clean = limit_raw.replace(",", "").replace("_", "").replace(" ", "")
         try:
@@ -533,13 +699,6 @@ def analyzer():
             return render_template("index.html", result=None, job_id=None, site_url=SITE_URL, nav_active="analyzer")
 
         keyword = sanitize_keyword(keyword_raw) or None
-
-        file_name = sanitize_filename(file_name_raw)
-        if not file_name:
-            file_name = default_output_filename()
-        # Ensure csv extension
-        if not file_name.lower().endswith(".csv"):
-            file_name += ".csv"
 
         # Minimum subscribers
         min_subs_raw_clean = min_subs_raw.replace(",", "").replace("_", "").replace(" ", "")
@@ -568,12 +727,6 @@ def analyzer():
             activity_mode = "any"
             activity_date_raw = ""
 
-        def progress(checked, found):
-            with jobs_lock:
-                if job_id in jobs:
-                    jobs[job_id]['checked'] = checked
-                    jobs[job_id]['found'] = found
-
         # Create job record
         import uuid
         job_params = {
@@ -584,11 +737,11 @@ def analyzer():
             'min_subs': min_subs,
             'activity_mode': activity_mode,
             'activity_threshold_utc': activity_threshold_utc,
-            'file_name': file_name,
         }
         job_id = uuid.uuid4().hex
         with jobs_lock:
             jobs[job_id] = {
+                'job_id': job_id,
                 'keyword': keyword,
                 'limit': limit,
                 'unmoderated_only': unmoderated_only,
@@ -600,57 +753,21 @@ def analyzer():
                 'found': 0,
                 'done': False,
                 'error': None,
-                'output_path': None,
-                'file_name': file_name,
-                'started_at': datetime.now(timezone.utc).isoformat(),
+                'started_at': None,
                 'stopped': False,
                 'stop': False,
                 'source': 'analyzer',
+                'state': 'queued',
+                'queue_position': None,
+                'orders_ahead': None,
+                'queue_size': 0,
+                'results_ready': False,
+                'results': [],
+                'result_count': 0,
+                'job_config': job_params,
             }
         record_run_start(job_id, job_params, source="analyzer")
-
-        def run_job():
-            logger.info(f"Job {job_id} started: keyword=%r limit=%d unmoderated_only=%s output_dir=%r file_name=%r",
-                        keyword, limit, unmoderated_only, None, file_name)
-            subs = []
-            try:
-                subs = find_unmoderated_subreddits(
-                    limit=limit,
-                    name_keyword=keyword,
-                    unmoderated_only=unmoderated_only,
-                    exclude_nsfw=exclude_nsfw,
-                    min_subscribers=min_subs,
-                    activity_mode=activity_mode,
-                    activity_threshold_utc=activity_threshold_utc,
-                    progress_callback=progress,
-                    stop_callback=lambda: jobs.get(job_id, {}).get('stop', False),
-                )
-                # Always save to a temp dir for download only.
-                tmp_dir = tempfile.mkdtemp(prefix="sub_an_")
-                output_path = os.path.join(tmp_dir, file_name)
-                save_to_csv(subs, filename=output_path)
-                try:
-                    persist_subreddits(job_id, subs, keyword=keyword, source="analyzer")
-                except Exception:
-                    logger.exception("Failed to persist subreddits for job %s", job_id)
-                with jobs_lock:
-                    jobs[job_id]['done'] = True
-                    jobs[job_id]['output_path'] = os.path.abspath(output_path)
-                    jobs[job_id]['found'] = len(subs)
-                    if jobs[job_id].get('stop'):
-                        jobs[job_id]['stopped'] = True
-                record_run_complete(job_id, len(subs), error=None)
-                logger.info(f"Job {job_id} finished: saved to %s (found=%d)", output_path, len(subs))
-            except Exception as e:
-                logger.exception("Job %s errored", job_id)
-                with jobs_lock:
-                    jobs[job_id]['error'] = str(e)
-                    jobs[job_id]['done'] = True
-                record_run_complete(job_id, len(subs), error=str(e))
-
-        t = threading.Thread(target=run_job, daemon=True)
-        t.start()
-        # Redirect to page with job param so client can poll
+        _enqueue_job(job_id)
         return redirect(url_for('analyzer', job=job_id))
 
     return render_template("index.html", result=result, job_id=job_id, site_url=SITE_URL, nav_active="analyzer")
@@ -665,40 +782,13 @@ def all_subs():
         "nsfw": request.args.get("nsfw", "").strip(),
         "sort": request.args.get("sort", "subscribers").strip() or "subscribers",
         "order": request.args.get("order", "desc").strip() or "desc",
+        "job_id": request.args.get("job_id", "").strip(),
     }
     return render_template(
         "all_subs.html",
         initial_filters=initial_filters,
         nav_active="allsubs",
     )
-
-
-@app.route("/download")
-def download():
-    # Safer download: require a known job id or session path
-    job_id = request.args.get("job")
-    path = None
-    if job_id:
-        with jobs_lock:
-            job = jobs.get(job_id)
-            if job and job.get('done'):
-                path = job.get('output_path')
-    if not path:
-        # Fallback to provided path only if it matches any known job output
-        qpath = request.args.get("path")
-        if qpath:
-            with jobs_lock:
-                for j in jobs.values():
-                    if j.get('output_path') == qpath:
-                        path = qpath
-                        break
-    if not path:
-        flash("No authorized file available for download.", "error")
-        return redirect(url_for("analyzer"))
-    if not os.path.exists(path):
-        flash("File not found for download.", "error")
-        return redirect(url_for("analyzer"))
-    return send_file(path, as_attachment=True, conditional=True)
 
 
 @app.route('/favicon.ico')
@@ -722,9 +812,56 @@ def status(job_id):
         data = jobs.get(job_id)
         if not data:
             return jsonify({"error": "unknown job"}), 404
-        # Do not leak full server paths unless job done
-        safe = dict(data)
-        return jsonify(safe)
+    safe = dict(data)
+    safe.pop('job_config', None)
+    safe.pop('thread', None)
+    if not safe.get("results_ready"):
+        safe.pop("results", None)
+    with queue_lock:
+        safe["queue_backlog"] = len(job_queue)
+    safe["max_concurrent"] = MAX_CONCURRENT_JOBS
+    safe["rate_limit_delay"] = RATE_LIMIT_DELAY
+    return jsonify(safe)
+
+
+@app.route("/job/<job_id>/download.csv")
+def job_download_csv(job_id):
+    rows = fetch_subreddits_by_job(job_id)
+    if not rows:
+        resp = make_response("No data available for this job yet.")
+        resp.status_code = 404
+        return resp
+    fieldnames = [
+        "display_name_prefixed",
+        "title",
+        "public_description",
+        "subscribers",
+        "mod_count",
+        "is_unmoderated",
+        "is_nsfw",
+        "last_activity_utc",
+        "last_mod_activity_utc",
+        "updated_at",
+        "url",
+        "source",
+    ]
+
+    def generate():
+        buffer = io.StringIO()
+        writer = csv.DictWriter(buffer, fieldnames=fieldnames)
+        writer.writeheader()
+        yield buffer.getvalue()
+        buffer.seek(0)
+        buffer.truncate(0)
+        for row in rows:
+            writer.writerow({field: row.get(field) for field in fieldnames})
+            yield buffer.getvalue()
+            buffer.seek(0)
+            buffer.truncate(0)
+
+    response = Response(generate(), mimetype="text/csv")
+    response.headers["Content-Disposition"] = f"attachment; filename=subsearch_{job_id}.csv"
+    return response
 
 
 @app.post('/stop/<job_id>')
@@ -735,9 +872,22 @@ def stop(job_id):
             return jsonify({"ok": False, "error": "unknown job"}), 404
         if job.get('done'):
             return jsonify({"ok": False, "error": "already done"}), 400
+        current_state = job.get("state")
         job['stop'] = True
+    if current_state == "queued":
+        removed = _remove_from_queue(job_id)
+        with jobs_lock:
+            job = jobs.get(job_id)
+            if job and removed:
+                job['done'] = True
+                job['stopped'] = True
+                job['state'] = 'stopped'
+                job['results_ready'] = False
+        if removed:
+            record_run_complete(job_id, 0, error="stopped before start")
+        return jsonify({"ok": True, "message": "Removed from queue"})
     logger.info("Stop requested for job %s", job_id)
-    return jsonify({"ok": True})
+    return jsonify({"ok": True, "message": "Stopping current run"})
 
 
 @app.route('/helpdocs')
@@ -758,6 +908,13 @@ def api_subreddits():
     sort = request.args.get("sort", "subscribers")
     order = request.args.get("order", "desc")
 
+    job_id_filter = request.args.get("job_id", "").strip()
+    run_id_filter = None
+    if job_id_filter:
+        run_id_filter = get_run_id_by_job(job_id_filter)
+        if run_id_filter is None:
+            return jsonify({"total": 0, "page": page, "page_size": page_size, "rows": []})
+
     data = search_subreddits(
         q=q or None,
         is_unmoderated=is_unmoderated,
@@ -768,6 +925,7 @@ def api_subreddits():
         order=order or "desc",
         page=page,
         page_size=page_size,
+        run_id=run_id_filter,
     )
     return jsonify(data)
 

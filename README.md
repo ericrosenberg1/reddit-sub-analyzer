@@ -193,6 +193,13 @@ Copy `.env.example`, fill in the blanks, and keep the file out of version contro
 | `SUBSEARCH_BASE_DIR`, `SUBSEARCH_DATA_DIR`, `SUBSEARCH_DB_PATH` | `./data/subsearch.db` | Override where SQLite lives. |
 | `DB_POSTGRES_HOST`, `DB_POSTGRES_PORT`, `DB_POSTGRES_DB`, `DB_POSTGRES_USER`, `DB_POSTGRES_PASSWORD`, `DB_POSTGRES_SSLMODE` | — | Required when `DB_TYPE=postgres`. Missing values raise a startup error with clear instructions so admins can fix the install. |
 
+### Search runtime controls
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `SUBSEARCH_MAX_CONCURRENT_JOBS` | `1` | How many manual Sub Search jobs can run at once; additional requests wait in a visible queue. |
+| `SUBSEARCH_RATE_LIMIT_DELAY` | `0.2` | Seconds to pause between subreddit lookups. Lower it for faster runs, raise it if you want extra buffer against Reddit API limits. |
+
 ### Auto-ingest
 
 | Variable | Default | Description |
