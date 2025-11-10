@@ -66,6 +66,19 @@ ensure_venv() {
   fi
 }
 
+ensure_owner() {
+  if [[ "$(id -u)" -ne 0 ]]; then
+    return
+  fi
+
+  for path in "$APP_DIR" "$VENV_PATH"; do
+    if [[ -d "$path" ]]; then
+      log "Ensuring $APP_USER owns $path"
+      chown -R "$APP_USER":"$APP_USER" "$path"
+    fi
+  done
+}
+
 refresh_dependencies() {
   cleanup_editable
   log "Installing Python dependencies"
@@ -91,6 +104,7 @@ main() {
   ensure_repo
   update_code
   ensure_venv
+  ensure_owner
   refresh_dependencies
   update_build_version
   restart_service
