@@ -60,6 +60,36 @@
   </div>
 </section>
 
+<section class="panel-surface mt-10 p-6 shadow-xl">
+  <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div>
+      <p class="text-xs uppercase tracking-[0.3em] text-white/60">Random refresh</p>
+      <h2 class="text-2xl font-semibold text-white">Latest automated dictionary search</h2>
+      {% if random_run %}
+      <p class="mt-2 text-sm text-white/80">
+        Keyword <span class="font-semibold text-white">{{ random_run.keyword or "—" }}</span> • Limit {{ random_run.limit_value or random_run.limit or "2000" }}
+        • {{ random_run.started_display or "—" }} UTC • <span class="local-time" data-ts="{{ random_run.started_at }}"></span>
+      </p>
+      <p class="mt-1 text-xs text-white/60">{{ random_run.result_count or 0 }} total subs collected</p>
+      {% if random_run.error %}
+      <p class="text-xs text-red-300">Error: {{ random_run.error }}</p>
+      {% endif %}
+      {% if random_run.job_id %}
+      <div class="mt-3 flex flex-wrap gap-3 text-xs">
+        <a class="nav-link text-xs" href="{{ url_for('all_subs') }}?job_id={{ random_run.job_id }}">View in All The Subs</a>
+      </div>
+      {% endif %}
+      {% else %}
+      <p class="mt-2 text-sm text-white/80">Waiting for the next random dictionary search to complete.</p>
+      {% endif %}
+    </div>
+    <div class="text-xs uppercase tracking-[0.3em] text-white/60">
+      Powered by a free dictionary API <br />
+      Refreshes every {{ random_search_interval }} minutes
+    </div>
+  </div>
+</section>
+
 <section class="mt-10 grid gap-8 lg:grid-cols-2">
   <div class="panel-surface p-6 shadow-xl">
     <div class="flex items-center justify-between">
@@ -69,14 +99,17 @@
       </div>
       <a href="{{ url_for('analyzer') }}" class="nav-link text-sm">Find Your Subs →</a>
     </div>
-    {% if recent_runs %}
+    {% if recent_user_runs %}
     <ul class="mt-6 space-y-4">
-      {% for run in recent_runs %}
+      {% for run in recent_user_runs %}
       <li class="rounded-2xl border border-white/10 bg-slate-900/50 p-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex flex-col">
             <span class="text-base font-semibold text-white">{{ run.keyword or "All subreddits" }}</span>
-            <span class="text-xs text-white/60">Limit {{ run.limit_value or "n/a" }} • {{ run.started_display or "—" }}</span>
+            <span class="text-xs text-white/60">
+              Limit {{ run.limit_value or "n/a" }} • {{ run.started_display or "—" }} UTC
+              • <span class="local-time" data-ts="{{ run.started_at }}"></span>
+            </span>
           </div>
           <span class="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] {% if run.status == 'complete' %}bg-emerald-500/15 text-emerald-200{% elif run.status == 'error' %}bg-red-500/15 text-red-200{% else %}bg-sky-500/15 text-sky-200{% endif %}">{{ run.status }}</span>
         </div>
@@ -181,4 +214,32 @@
     </div>
   </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function formatLocalTime(ts) {
+    if (!ts) {
+      return '—';
+    }
+    const date = new Date(ts);
+    if (Number.isNaN(date.getTime())) {
+      return '—';
+    }
+    return date.toLocaleString(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZoneName: 'short',
+    });
+  }
+
+  function refreshLocalTimeElements() {
+    document.querySelectorAll('.local-time').forEach((el) => {
+      const ts = el.getAttribute('data-ts');
+      el.textContent = formatLocalTime(ts);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', refreshLocalTimeElements);
+</script>
 {% endblock %}

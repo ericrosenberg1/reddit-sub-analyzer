@@ -11,6 +11,12 @@ import io
 from collections import deque
 from datetime import datetime, timezone, timedelta
 from email.message import EmailMessage
+from queue import Queue
+from typing import Dict, List, Optional
+
+import random
+import requests
+from typing import Dict, List, Optional
 
 from flask import Flask, render_template, request, flash, redirect, url_for, session, make_response, jsonify, Response
 from dotenv import load_dotenv
@@ -19,6 +25,7 @@ from dotenv import load_dotenv
 from .auto_sub_analyzer import find_unmoderated_subreddits
 from .build_info import get_current_build_number
 from .storage import (
+    fetch_latest_random_run,
     fetch_recent_runs,
     get_summary_stats,
     get_node_stats,
@@ -95,9 +102,12 @@ def home():
     stats_display = dict(stats)
     stats_display["last_indexed_display"] = _format_human_ts(stats.get("last_indexed"))
     stats_display["last_run_display"] = _format_human_ts(stats.get("last_run_started"))
-    recent_runs = fetch_recent_runs(limit=5)
-    for run in recent_runs:
+    recent_user_runs = fetch_recent_runs(limit=5, source_filter="analyzer")
+    for run in recent_user_runs:
         run["started_display"] = _format_human_ts(run.get("started_at"))
+    latest_random_run = fetch_latest_random_run()
+    if latest_random_run:
+        latest_random_run["started_display"] = _format_human_ts(latest_random_run.get("started_at"))
         if run.get("error"):
             run["status"] = "error"
         elif run.get("completed_at"):
@@ -113,11 +123,20 @@ def home():
     return render_template(
         "home.html",
         stats=stats_display,
-        recent_runs=recent_runs,
+        recent_user_runs=recent_user_runs,
+        random_run=latest_random_run,
         node_stats=node_stats,
         volunteer_nodes=volunteer_nodes,
         nav_active="home",
     )
+
+
+@app.route("/logs")
+def logs():
+    entries = fetch_recent_runs(limit=30)
+    for entry in entries:
+        entry["started_display"] = _format_human_ts(entry.get("started_at"))
+    return render_template("logs.html", entries=entries, nav_active=None)
 
 
 @app.route("/nodes")
@@ -270,6 +289,7 @@ def inject_globals():
         "datetime": datetime,
         "build_number": get_current_build_number(),
         "config_warnings": get_config_warnings(),
+        "random_search_interval": RANDOM_SEARCH_INTERVAL_MINUTES,
     }
 
 
@@ -293,6 +313,36 @@ try:
 except (TypeError, ValueError):
     RATE_LIMIT_DELAY = 0.2
 RATE_LIMIT_DELAY = max(0.1, RATE_LIMIT_DELAY)
+PUBLIC_API_LIMIT_CAP = max(200, min(5000, _safe_int(os.getenv("SUBSEARCH_PUBLIC_API_LIMIT"), 2000) or 2000))
+JOB_TIMEOUT_SECONDS = max(60, _safe_int(os.getenv("SUBSEARCH_JOB_TIMEOUT_SECONDS"), 3600) or 3600)
+PERSIST_BATCH_SIZE = max(5, min(256, _safe_int(os.getenv("SUBSEARCH_PERSIST_BATCH_SIZE"), 32) or 32))
+
+RANDOM_SEARCH_ENABLED = str(os.getenv("RANDOM_SEARCH_ENABLED", "1")).strip().lower() not in {
+    "0",
+    "false",
+    "off",
+    "no",
+}
+RANDOM_SEARCH_INTERVAL_MINUTES = max(
+    15, _safe_int(os.getenv("RANDOM_SEARCH_INTERVAL_MINUTES"), 360) or 360
+)
+RANDOM_SEARCH_LIMIT = min(
+    2000, max(50, _safe_int(os.getenv("RANDOM_SEARCH_LIMIT"), 2000) or 2000)
+)
+RANDOM_WORD_API = os.getenv("RANDOM_WORD_API", "https://random-word-api.vercel.app/api?words=1")
+DEFAULT_RANDOM_WORDS = [
+    "atlas",
+    "harbor",
+    "mosaic",
+    "cocoa",
+    "summit",
+    "glow",
+    "orbit",
+    "quartz",
+    "tango",
+    "whistle",
+]
+random_search_thread = None
 
 
 def _parse_bool_flag(value):
@@ -419,7 +469,7 @@ def _run_auto_ingest_job(keyword=None):
         'activity_threshold_utc': None,
     }
     record_run_start(job_id, job_params, source="auto-ingest")
-    subs = []
+    persist_queue, persist_thread = _start_persist_worker(job_id, keyword, "auto-ingest")
     try:
         result = find_unmoderated_subreddits(
             limit=AUTO_INGEST_LIMIT,
@@ -433,10 +483,10 @@ def _run_auto_ingest_job(keyword=None):
             stop_callback=None,
             rate_limit_delay=AUTO_INGEST_DELAY,
             include_all=True,
+            result_callback=persist_queue.put,
         )
         filtered = result.get("results", [])
         evaluated = result.get("evaluated", filtered)
-        persist_subreddits(job_id, evaluated, keyword=keyword, source="auto-ingest")
         record_run_complete(job_id, len(filtered), error=None)
         logger.info(
             "Auto-ingest job %s (%s) stored %d evaluated subs (%d matched filters)",
@@ -446,8 +496,89 @@ def _run_auto_ingest_job(keyword=None):
             len(filtered),
         )
     except Exception as exc:
-        record_run_complete(job_id, len(subs), error=str(exc))
+        record_run_complete(job_id, 0, error=str(exc))
         logger.exception("Auto-ingest job %s (%s) failed: %s", job_id, label, exc)
+    finally:
+        persist_queue.put(None)
+        persist_thread.join(timeout=5)
+
+
+def _fetch_random_keyword() -> str:
+    try:
+        response = requests.get(RANDOM_WORD_API, timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        if isinstance(data, list) and data:
+            return re.sub(r'[^A-Za-z ]', '', data[0]).strip().lower()
+        if isinstance(data, str):
+            return re.sub(r'[^A-Za-z ]', '', data).strip().lower()
+    except Exception:
+        logger.debug("Random word fetch failed", exc_info=True)
+    return random.choice(DEFAULT_RANDOM_WORDS)
+
+
+def _schedule_random_job(keyword: str):
+    import uuid
+
+    job_id = uuid.uuid4().hex
+    clean_keyword = (keyword or "").strip()
+    limit = min(RANDOM_SEARCH_LIMIT, PUBLIC_API_LIMIT_CAP)
+    job_params = {
+        "keyword": clean_keyword or None,
+        "limit": limit,
+        "unmoderated_only": False,
+        "exclude_nsfw": False,
+        "min_subs": 0,
+        "activity_mode": "any",
+        "activity_threshold_utc": None,
+    }
+    with jobs_lock:
+        jobs[job_id] = {
+            "job_id": job_id,
+            "keyword": clean_keyword or None,
+            "limit": limit,
+            "unmoderated_only": False,
+            "exclude_nsfw": False,
+            "min_subs": 0,
+            "activity_mode": "any",
+            "activity_date": "",
+            "checked": 0,
+            "found": 0,
+            "done": False,
+            "error": None,
+            "started_at": None,
+            "stopped": False,
+            "stop": False,
+            "source": "auto-random",
+            "state": "queued",
+            "queue_position": None,
+            "orders_ahead": None,
+            "queue_size": 0,
+            "results_ready": False,
+            "results": [],
+            "result_count": 0,
+            "job_config": job_params,
+        }
+    record_run_start(job_id, job_params, source="auto-random")
+    _enqueue_job(job_id)
+
+
+def _random_search_loop():
+    while RANDOM_SEARCH_ENABLED:
+        keyword = _fetch_random_keyword()
+        if keyword:
+            _schedule_random_job(keyword)
+        time.sleep(RANDOM_SEARCH_INTERVAL_MINUTES * 60)
+
+
+def _start_random_search_thread_if_needed():
+    global random_search_thread
+    if not RANDOM_SEARCH_ENABLED:
+        return
+    if random_search_thread and random_search_thread.is_alive():
+        return
+    random_search_thread = threading.Thread(target=_random_search_loop, daemon=True)
+    random_search_thread.start()
 
 
 def _auto_ingest_loop():
@@ -573,7 +704,49 @@ def _update_job_progress(job_id: str, checked: int, found: int) -> None:
 def _job_should_stop(job_id: str) -> bool:
     with jobs_lock:
         job = jobs.get(job_id)
-        return bool(job.get("stop")) if job else True
+        if not job:
+            return True
+        if job.get("stop"):
+            return True
+        timeout_at = job.get("timeout_at")
+    if timeout_at and time.monotonic() >= timeout_at:
+        with jobs_lock:
+            job = jobs.get(job_id)
+            if job:
+                job["timeout"] = True
+                job["stop"] = True
+        return True
+    return False
+
+
+def _flush_persist_batch(job_id: str, keyword: Optional[str], source: str, rows: List[Dict]) -> None:
+    if not rows:
+        return
+    try:
+        persist_subreddits(job_id, rows, keyword=keyword, source=source)
+    except Exception:
+        logger.exception("Background persist failed for job %s", job_id)
+
+
+def _persist_worker(queue: Queue, job_id: str, keyword: Optional[str], source: str) -> None:
+    buffer: List[Dict] = []
+    while True:
+        item = queue.get()
+        if item is None:
+            break
+        buffer.append(item)
+        if len(buffer) >= PERSIST_BATCH_SIZE:
+            _flush_persist_batch(job_id, keyword, source, buffer)
+            buffer.clear()
+    if buffer:
+        _flush_persist_batch(job_id, keyword, source, buffer)
+
+
+def _start_persist_worker(job_id: str, keyword: Optional[str], source: str) -> tuple[Queue, threading.Thread]:
+    q = Queue()
+    thread = threading.Thread(target=_persist_worker, args=(q, job_id, keyword, source), daemon=True)
+    thread.start()
+    return q, thread
 
 
 def _apply_job_filters_to_rows(rows, job_config):
@@ -613,10 +786,13 @@ def _apply_job_filters_to_rows(rows, job_config):
 
 def _run_job_thread(job_id: str) -> None:
     job_config = {}
+    job_source = "analyzer"
     with jobs_lock:
         job = jobs.get(job_id)
         if job:
             job_config = dict(job.get("job_config") or {})
+            job_source = job.get("source") or job_config.get("source") or "analyzer"
+            job["timeout_at"] = time.monotonic() + JOB_TIMEOUT_SECONDS
     if not job_config:
         with queue_lock:
             running_jobs.discard(job_id)
@@ -629,6 +805,8 @@ def _run_job_thread(job_id: str) -> None:
     min_subs = job_config.get('min_subs', 0)
     activity_mode = job_config.get('activity_mode', "any")
     activity_threshold_utc = job_config.get('activity_threshold_utc')
+    if job_source == "analyzer":
+        limit = min(limit, PUBLIC_API_LIMIT_CAP)
 
     logger.info(
         "Job %s started: keyword=%r limit=%d unmoderated_only=%s",
@@ -640,6 +818,48 @@ def _run_job_thread(job_id: str) -> None:
 
     subs = []
     evaluated = []
+    existing_matches = []
+    try:
+        nsfw_filter = False if exclude_nsfw else None
+        activity_mode_filter = activity_mode if activity_mode in {"active_after", "inactive_before"} else None
+        activity_threshold_filter = activity_threshold_utc if activity_mode_filter else None
+        db_target = min(max(limit, PUBLIC_API_LIMIT_CAP, 2000), 5000)
+        db_page = 1
+        while len(existing_matches) < db_target:
+            page_size = min(200, db_target - len(existing_matches))
+            chunk = search_subreddits(
+                q=keyword or None,
+                is_unmoderated=unmoderated_only,
+                nsfw=nsfw_filter,
+                min_subs=min_subs,
+                sort="subscribers",
+                order="desc",
+                page=db_page,
+                page_size=page_size,
+                activity_mode=activity_mode_filter,
+                activity_threshold_utc=activity_threshold_filter,
+            )
+            rows = chunk.get("rows") or []
+            if not rows:
+                break
+            existing_matches.extend(rows)
+            if len(rows) < page_size:
+                break
+            db_page += 1
+    except Exception:
+        logger.exception("Unable to preload database matches for job %s", job_id)
+
+    existing_names = set()
+    for row in existing_matches:
+        name_raw = (row.get("name") or "").strip().lower()
+        prefixed_raw = (row.get("display_name_prefixed") or "").strip().lower()
+        if name_raw:
+            existing_names.add(name_raw)
+        if prefixed_raw:
+            existing_names.add(prefixed_raw)
+    subs = list(existing_matches)
+
+    persist_queue, persist_thread = _start_persist_worker(job_id, keyword, job_source)
     try:
         payload = find_unmoderated_subreddits(
             limit=limit,
@@ -653,14 +873,23 @@ def _run_job_thread(job_id: str) -> None:
             stop_callback=lambda: _job_should_stop(job_id),
             rate_limit_delay=RATE_LIMIT_DELAY,
             include_all=True,
+            exclude_names=existing_names,
+            result_callback=persist_queue.put,
         )
-        subs = payload.get("results", [])
-        evaluated = payload.get("evaluated", subs)
-        try:
-            persist_subreddits(job_id, evaluated, keyword=keyword, source="analyzer")
-        except Exception:
-            logger.exception("Failed to persist subreddits for job %s", job_id)
-
+        api_results = payload.get("results", []) or []
+        evaluated = payload.get("evaluated", api_results)
+        seen = { (row.get("name") or "").strip().lower() for row in subs if row.get("name") }
+        additionals = []
+        for row in api_results:
+            normalized = (row.get("name") or "").strip().lower()
+            if normalized and normalized not in seen:
+                seen.add(normalized)
+                additionals.append(row)
+        subs.extend(additionals)
+        with jobs_lock:
+            job_timeout = bool(job and job.get("timeout"))
+        if job_timeout:
+            raise TimeoutError("Job timed out")
         with jobs_lock:
             job = jobs.get(job_id)
             if job:
@@ -688,8 +917,14 @@ def _run_job_thread(job_id: str) -> None:
                 job["queue_position"] = None
                 job["orders_ahead"] = None
                 job["queue_size"] = len(job_queue)
+                job["results_ready"] = True
+                job["results"] = subs
+                job["found"] = len(subs)
+                job["result_count"] = len(subs)
         record_run_complete(job_id, len(subs), error=str(e))
     finally:
+        persist_queue.put(None)
+        persist_thread.join(timeout=5)
         with jobs_lock:
             job = jobs.get(job_id)
             if job:
@@ -715,6 +950,7 @@ def _remove_from_queue(job_id: str) -> bool:
 # Prepare storage and background ingestion
 init_db()
 _start_auto_ingest_thread_if_needed()
+_start_random_search_thread_if_needed()
 _start_node_cleanup_thread_if_needed()
 
 
@@ -742,9 +978,16 @@ def analyzer():
         # Accept commas in numeric fields
         limit_raw_clean = limit_raw.replace(",", "").replace("_", "").replace(" ", "")
         try:
-            limit = int(limit_raw_clean)
-            if limit <= 0 or limit > 100000:
-                raise ValueError
+        limit = int(limit_raw_clean)
+        if limit <= 0 or limit > 100000:
+            raise ValueError
+        requested_limit = limit
+        limit = min(limit, PUBLIC_API_LIMIT_CAP)
+        if requested_limit > limit:
+            flash(
+                f"API checks are limited to {PUBLIC_API_LIMIT_CAP} subreddits per run to protect Reddit rate limits. Existing data in All The Subs still appears in your report.",
+                "info",
+            )
         except ValueError:
             flash("Limit must be an integer between 1 and 100,000.", "error")
             return render_template("index.html", result=None, job_id=None, site_url=SITE_URL, nav_active="analyzer")
@@ -783,11 +1026,13 @@ def analyzer():
         job_params = {
             'keyword': keyword,
             'limit': limit,
+            'requested_limit': requested_limit,
             'unmoderated_only': unmoderated_only,
             'exclude_nsfw': exclude_nsfw,
             'min_subs': min_subs,
             'activity_mode': activity_mode,
             'activity_threshold_utc': activity_threshold_utc,
+            'source': 'analyzer',
         }
         job_id = uuid.uuid4().hex
         with jobs_lock:
@@ -795,6 +1040,7 @@ def analyzer():
                 'job_id': job_id,
                 'keyword': keyword,
                 'limit': limit,
+                'requested_limit': requested_limit,
                 'unmoderated_only': unmoderated_only,
                 'exclude_nsfw': exclude_nsfw,
                 'min_subs': min_subs,

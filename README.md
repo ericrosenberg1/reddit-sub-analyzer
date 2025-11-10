@@ -38,17 +38,27 @@ The UI now uses Tailwind CSS with a modern Reddit-adjacent palette, better acces
 
 - **Full-stack coverage**: Homepage → Sub Search → All The Subs, all sharing a cohesive Tailwind design.
 - **Live data capture**: Every Sub Search run and auto-ingest cycle writes to SQLite (`data/subsearch.db` by default).
-- **Optimized caching**: In-memory TTL caches keep summary stats and All The Subs queries snappy while respecting low-traffic constraints.
+- **Smart caching & resilient persistence**: TTL caches keep summary stats, job queues, and node lists snappy while every analyzer run streams results into the database through a background worker so partial jobs survive errors.
 - **Safe exports**: CSVs are generated in sandboxed temp directories with sanitized filenames.
 - **Open-source invites**: Clear calls to action for GitHub issues/PRs plus README badges inspired by the Immich project.
 
 ---
+
+## Efficiency & caching
+
+- Sub Search checks the local All The Subs database first (caching search results and homepage stats) and then hits Reddit for at most `SUBSEARCH_PUBLIC_API_LIMIT` subreddits per manual run while the persistence worker writes every evaluated subreddit concurrently.
+- Summary stats, recent runs, and volunteer node queries live behind TTL caches (`summary_cache`, `recent_runs_cache`, `node_stats_cache`, `nodes_cache`, and `search_cache`) that automatically invalidate whenever new data is written.
+- `SUBSEARCH_JOB_TIMEOUT_SECONDS` keeps long-running jobs in check; once the timeout is reached the run stops, records the error, and still surfaces whatever data was captured so the queue keeps moving.
+- An automated random dictionary search (powered by `RANDOM_WORD_API`) runs on a timer, grabs a fresh keyword, and feeds up to `RANDOM_SEARCH_LIMIT` subreddits into All The Subs while the homepage highlights the latest random job plus the five most recent manual queries.
+- Auto-ingest/CLI/manual runs share the same queue, rate-limit delay (`SUBSEARCH_RATE_LIMIT_DELAY`), and multi-threaded persistence so the work you do helps everyone without re-poking the Reddit API unnecessarily.
+
 
 ## Help & Docs
 
 - Visit `/helpdocs` (production: [allthesubs.ericrosenberg.com/helpdocs](https://allthesubs.ericrosenberg.com/helpdocs)) for usage guides, FAQs, and links to GitHub issues whenever you need assistance.
 - `/docs/developers` ([allthesubs.ericrosenberg.com/docs/developers](https://allthesubs.ericrosenberg.com/docs/developers)) walks CLI-friendly contributors through cloning, deploying, and enabling `PHONE_HOME` so every evaluated subreddit can flow back to the shared database.
 - Prefer to contribute data from your own hardware? Set `PHONE_HOME=true`, include `PHONE_HOME_ENDPOINT` + `PHONE_HOME_TOKEN` if you have one, and Sub Search will sync every evaluated subreddit to the community corpus automatically.
+- Need proof the queue is healthy? Visit `/logs` to see recent manual runs, auto-ingest activity, and the number of subreddits each job added (only the safe summary data is shown).
 
 ---
 
@@ -175,6 +185,8 @@ After the first manual install you can let GitHub push events redeploy the app a
 
 3. **Wire up GitHub.** In your repo settings add a webhook pointing to `https://allthesubs.ericrosenberg.com/hooks/subsearch-deploy`, choose `application/json`, limit it to push events, and paste the same secret. The `webhook` daemon validates the `X-Hub-Signature-256` header before executing `/usr/local/bin/deploy_subsearch.sh`, so every push to `main` automatically fetches, reinstalls, and restarts the `subsearch` service.
 
+`deploy_subsearch.sh` now also runs `scripts/update_version.py` after installing dependencies, so each deployment bumps `data/BUILD_NUMBER` and logs a timestamped `yyyy.mm.sequence` entry in `data/VERSION_HISTORY.txt` for historical reference.
+
 If you prefer polling-based automation, point a cron entry at `/usr/local/bin/deploy_subsearch.sh` instead of using the webhook listener.
 
 ---
@@ -201,12 +213,57 @@ Copy `.env.example`, fill in the blanks, and keep the file out of version contro
 | `SUBSEARCH_BASE_DIR`, `SUBSEARCH_DATA_DIR`, `SUBSEARCH_DB_PATH` | `./data/subsearch.db` | Override where SQLite lives. |
 | `DB_POSTGRES_HOST`, `DB_POSTGRES_PORT`, `DB_POSTGRES_DB`, `DB_POSTGRES_USER`, `DB_POSTGRES_PASSWORD`, `DB_POSTGRES_SSLMODE` | — | Required when `DB_TYPE=postgres`. Missing values raise a startup error with clear instructions so admins can fix the install. |
 
+### PostgreSQL setup
+
+1. Create a dedicated user/database:
+
+   ```bash
+   sudo -u postgres createuser --pwprompt allthesubs
+   sudo -u postgres createdb --owner=allthesubs allthesubs
+   ```
+
+2. Update `.env` to enable Postgres:
+
+   ```env
+   DB_TYPE=postgres
+   DB_POSTGRES_HOST=localhost
+   DB_POSTGRES_PORT=5432
+   DB_POSTGRES_DB=allthesubs
+   DB_POSTGRES_USER=allthesubs
+   DB_POSTGRES_PASSWORD=<your-strong-password>
+   DB_POSTGRES_SSLMODE=prefer
+   ```
+
+3. Restart the service so the new credentials load (`sudo systemctl restart subsearch`).
+
+Sub Search uses the same DAO layer for SQLite and Postgres, so once the connection succeeds you get the same caching, job history, and `/api/subreddits` behavior.
+
 ### Search runtime controls
 
 | Variable | Default | Description |
 | --- | --- | --- |
 | `SUBSEARCH_MAX_CONCURRENT_JOBS` | `1` | How many manual Sub Search jobs can run at once; additional requests wait in a visible queue. |
 | `SUBSEARCH_RATE_LIMIT_DELAY` | `0.2` | Seconds to pause between subreddit lookups. Lower it for faster runs, raise it if you want extra buffer against Reddit API limits. |
+| `SUBSEARCH_PUBLIC_API_LIMIT` | `2000` | Max Reddit API lookups per manual Sub Search run; cached All The Subs matches remain unlimited. |
+| `SUBSEARCH_PERSIST_BATCH_SIZE` | `32` | Rows per batch that the background persistence worker flushes to the database while the Reddit request is still in flight. |
+| `SUBSEARCH_JOB_TIMEOUT_SECONDS` | `3600` | How long a job can run before being stopped and surfaced as timed out. |
+
+### Random automation
+
+Random dictionary searches keep All The Subs fresh even when nobody is running a manual query. The daemon:
+
+1. Calls `RANDOM_WORD_API` (default `https://random-word-api.vercel.app/api?words=1`) to grab a keyword.
+2. Queues a job that inspects up to `RANDOM_SEARCH_LIMIT` subreddits (never more than 2,000) while leveraging the same caching/persistence path as manual runs.
+3. Updates the homepage with the latest random keyword, UTC + local timestamps, and the resulting count so visitors can inspect the auto-generated data.
+
+Configure the behavior through these `.env` settings:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `RANDOM_SEARCH_ENABLED` | `1` | Toggle the random keyword scheduler. |
+| `RANDOM_SEARCH_INTERVAL_MINUTES` | `360` | Minutes between dictionary refreshes. |
+| `RANDOM_SEARCH_LIMIT` | `2000` | Subreddits to evaluate per random search cycle. |
+| `RANDOM_WORD_API` | `https://random-word-api.vercel.app/api?words=1` | Public JSON endpoint that returns the keyword. |
 
 ### Auto-ingest
 
@@ -243,21 +300,19 @@ Configuration updates stay in the `.env`; distribute secrets through your deploy
 
 ---
 
-## Build Numbers
+## Version tracking
 
-Every deployment advertises a playful build number in the site footer. The number lives in `subsearch/BUILD_NUMBER` and follows `YYYY.MM.sequence`:
+The build number now lives under `data/BUILD_NUMBER` (with a fallback location defined by `SUBSEARCH_BUILD_FILE`) and follows the `YYYY.MM.sequence` format. Deployments also append a timestamped entry to `data/VERSION_HISTORY.txt` so you can trace when each release landed on a server.
 
-- First Sub Search deploy in November 2025 → `2025.11.1`
-- Second deploy that same month → `2025.11.2`
+`scripts/update_version.py` is invoked by `deploy_subsearch.sh`; it calls `python -m subsearch.build_info` to bump the version and then writes a line like `2025-11-10T01:19:02 2025.11.3` into the history log automatically.
 
-Bump the build number whenever you cut a release:
+To bump manually (e.g., during local testing):
 
 ```bash
-python3 -m subsearch.build_info
-git add subsearch/BUILD_NUMBER
+python -m subsearch.build_info
 ```
 
-The helper reads, increments, and persists the correct sequence per month, so you never have to edit the file by hand.
+The CLI printout shows the new version, and the footer continues to display `{{ build_number }}` for visitors. Since both files live inside `data/` (gitignored), GitHub pulls and resets never wipe away the recorded version history.
 
 ---
 

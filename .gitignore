@@ -3,3 +3,9 @@ venv/
 __pycache__/
 *.csv
 .ds_store
+data/
+*.log
+logs/
+*.db
+*.sqlite3
+.cache/

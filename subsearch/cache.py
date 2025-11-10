@@ -54,8 +54,14 @@ class TTLCache:
 
 summary_cache = TTLCache(default_ttl=180, maxsize=16)
 search_cache = TTLCache(default_ttl=300, maxsize=512)
+recent_runs_cache = TTLCache(default_ttl=45, maxsize=32)
+node_stats_cache = TTLCache(default_ttl=60, maxsize=16)
+nodes_cache = TTLCache(default_ttl=90, maxsize=32)
 
 
 def invalidate_all_caches() -> None:
     summary_cache.invalidate()
     search_cache.invalidate()
+    recent_runs_cache.invalidate()
+    node_stats_cache.invalidate()
+    nodes_cache.invalidate()

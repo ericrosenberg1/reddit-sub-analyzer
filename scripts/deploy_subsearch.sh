@@ -59,6 +59,11 @@ refresh_dependencies() {
   run_as_app_user "$VENV_PATH/bin/python" -m pip install -e "$APP_DIR" $PIP_FLAGS
 }
 
+update_build_version() {
+  log "Updating build metadata"
+  run_as_app_user "$VENV_PATH/bin/python" "$APP_DIR/scripts/update_version.py"
+}
+
 restart_service() {
   if systemctl list-unit-files --type=service | grep -q "^$SERVICE_NAME.service"; then
     log "Restarting $SERVICE_NAME"
@@ -73,6 +78,7 @@ main() {
   update_code
   ensure_venv
   refresh_dependencies
+  update_build_version
   restart_service
   log "Deployment complete"
 }

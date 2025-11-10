@@ -6,7 +6,14 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from typing import Dict, Iterable, List, Optional, Sequence
 
-from .cache import search_cache, summary_cache
+from .cache import (
+    nodes_cache,
+    node_stats_cache,
+    recent_runs_cache,
+    search_cache,
+    summary_cache,
+    invalidate_all_caches,
+)
 from .phone_home import queue_phone_home
 
 try:
@@ -390,7 +397,7 @@ def record_run_start(job_id: str, params: Dict, source: str = "manual") -> None:
             """,
             data,
         )
-    summary_cache.invalidate()
+    invalidate_all_caches()
 
 
 def record_run_complete(job_id: str, result_count: int, error: Optional[str] = None) -> None:
@@ -425,7 +432,7 @@ def record_run_complete(job_id: str, result_count: int, error: Optional[str] = N
                 "job_id": job_id,
             },
         )
-    summary_cache.invalidate()
+    invalidate_all_caches()
 
 
 def _get_run_id(conn, job_id: str) -> Optional[int]:
@@ -558,8 +565,7 @@ def persist_subreddits(
             payload,
         )
         saved = getattr(conn, "total_changes", len(payload))
-    summary_cache.invalidate()
-    search_cache.invalidate()
+    invalidate_all_caches()
     if saved:
         queue_phone_home(public_payload)
     return saved
@@ -586,19 +592,36 @@ def get_summary_stats() -> Dict:
     return result
 
 
-def fetch_recent_runs(limit: int = 5) -> List[Dict]:
+def fetch_recent_runs(limit: int = 5, source_filter: Optional[str] = None) -> List[Dict]:
+    cache_key = ("recent_runs", limit, source_filter)
+    cached = recent_runs_cache.get(cache_key)
+    if cached is not None:
+        return cached
+    where_clause = ""
+    params: Dict[str, object] = {"limit": limit}
+    if source_filter:
+        where_clause = "WHERE source = :source"
+        params["source"] = source_filter
     with db_conn() as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT job_id, source, started_at, completed_at, keyword,
                    result_count, error, limit_value
             FROM query_runs
+            {where_clause}
             ORDER BY started_at DESC
             LIMIT :limit
             """,
-            {"limit": limit},
+            params,
         ).fetchall()
-    return [dict(row) for row in rows]
+    result = [dict(row) for row in rows]
+    recent_runs_cache.set(cache_key, result)
+    return result
+
+
+def fetch_latest_random_run() -> Optional[Dict]:
+    runs = fetch_recent_runs(limit=1, source_filter="auto-random")
+    return runs[0] if runs else None
 
 
 def search_subreddits(
@@ -823,10 +846,15 @@ def create_volunteer_node(
                 "updated_at": now,
             },
         )
+    invalidate_all_caches()
     return token
 
 
 def list_public_nodes(limit: int = 12) -> List[Dict]:
+    cache_key = ("public_nodes", limit)
+    cached = nodes_cache.get(cache_key)
+    if cached is not None:
+        return cached
     with db_conn() as conn:
         rows = conn.execute(
             """
@@ -840,10 +868,16 @@ def list_public_nodes(limit: int = 12) -> List[Dict]:
             """,
             {"limit": limit},
         ).fetchall()
-    return [dict(row) for row in rows]
+    result = [dict(row) for row in rows]
+    nodes_cache.set(cache_key, result)
+    return result
 
 
 def get_node_stats() -> Dict:
+    cache_key = "node_stats"
+    cached = node_stats_cache.get(cache_key)
+    if cached is not None:
+        return cached
     with db_conn() as conn:
         row = conn.execute(
             """
@@ -857,13 +891,16 @@ def get_node_stats() -> Dict:
             """
         ).fetchone()
     if not row:
-        return {"total": 0, "active": 0, "pending": 0, "broken": 0}
-    return {
-        "total": row["total"] or 0,
-        "active": row["active"] or 0,
-        "pending": row["pending"] or 0,
-        "broken": row["broken"] or 0,
-    }
+        result = {"total": 0, "active": 0, "pending": 0, "broken": 0}
+    else:
+        result = {
+            "total": row["total"] or 0,
+            "active": row["active"] or 0,
+            "pending": row["pending"] or 0,
+            "broken": row["broken"] or 0,
+        }
+    node_stats_cache.set(cache_key, result)
+    return result
 
 
 def get_node_by_token(token: str) -> Optional[Dict]:
@@ -935,7 +972,10 @@ def update_volunteer_node(
             """,
             params,
         )
-        return cur.rowcount > 0 if hasattr(cur, "rowcount") else True
+        success = cur.rowcount > 0 if hasattr(cur, "rowcount") else True
+    if success:
+        invalidate_all_caches()
+    return success
 
 
 def delete_volunteer_node(token: str) -> bool:
@@ -953,7 +993,10 @@ def delete_volunteer_node(token: str) -> bool:
             """,
             {"deleted_at": now, "updated_at": now, "token": token},
         )
-        return cur.rowcount > 0 if hasattr(cur, "rowcount") else True
+        success = cur.rowcount > 0 if hasattr(cur, "rowcount") else True
+    if success:
+        invalidate_all_caches()
+    return success
 
 
 def mark_manage_link_sent(token: str) -> None:
@@ -969,6 +1012,7 @@ def mark_manage_link_sent(token: str) -> None:
             """,
             {"sent_at": now, "token": token},
         )
+    invalidate_all_caches()
 
 
 def prune_broken_nodes(max_age_days: int = 7) -> int:
@@ -986,5 +1030,8 @@ def prune_broken_nodes(max_age_days: int = 7) -> int:
             {"cutoff": cutoff_iso},
         )
         if hasattr(cur, "rowcount") and cur.rowcount is not None:
-            return cur.rowcount
+            count = cur.rowcount
+            invalidate_all_caches()
+            return count
+    invalidate_all_caches()
     return 0

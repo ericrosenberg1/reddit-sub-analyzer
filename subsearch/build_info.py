@@ -10,7 +10,7 @@ from typing import Optional, Tuple
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 DEFAULT_BUILD_FILE = Path(
-    os.getenv("SUBSEARCH_BUILD_FILE") or PACKAGE_ROOT / "BUILD_NUMBER"
+    os.getenv("SUBSEARCH_BUILD_FILE") or PACKAGE_ROOT.parent / "data" / "BUILD_NUMBER"
 )
 
 

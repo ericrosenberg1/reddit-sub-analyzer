@@ -2,7 +2,7 @@ import logging
 import os
 import time
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Callable, Dict, Optional, Set
 
 import praw
 import prawcore
@@ -70,6 +70,8 @@ def find_unmoderated_subreddits(
     stop_callback=None,
     rate_limit_delay: float = 0.0,
     include_all: bool = False,
+    exclude_names: Optional[Set[str]] = None,
+    result_callback: Optional[Callable[[Dict], None]] = None,
 ):
     """
     Connect to Reddit API and find subreddits with no moderators.
@@ -108,6 +110,7 @@ def find_unmoderated_subreddits(
 
     mod_activity_cache: Dict[str, Optional[int]] = {}
     mod_activity_fetches = 0
+    normalized_excludes = {name.strip().lower() for name in (exclude_names or set()) if name and name.strip()}
 
     def _fetch_mod_activity(mod_name: str) -> Optional[int]:
         """Return most recent known activity UTC for the given moderator."""
@@ -275,11 +278,19 @@ def find_unmoderated_subreddits(
                 'last_activity_utc': latest_post_utc,
                 'last_mod_activity_utc': last_mod_activity_utc,
             }
+            name_key = (display_name or "").strip().lower()
+            if normalized_excludes and name_key in normalized_excludes:
+                continue
             evaluated_subs.append(sub_info)
             if not unmoderated_only or sub_info['is_unmoderated']:
                 filtered_subs.append(sub_info)
                 if unmoderated_only:
                     logger.info("Found unmoderated: %s (%s subscribers)", sub_info['display_name_prefixed'], sub_info['subscribers'])
+            if result_callback:
+                try:
+                    result_callback(dict(sub_info))
+                except Exception:
+                    logger.debug("Result callback failed for %s", sub_info.get("name"), exc_info=True)
 
         except Exception:
             # Any unexpected error per-subreddit should not abort the run
