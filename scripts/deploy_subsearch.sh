@@ -18,7 +18,16 @@ log() {
 }
 
 cleanup_editable() {
-  run_as_app_user bash -c "cd \"$APP_DIR\" && find . -name '__editable__.subsearch-*' -delete"
+  local pattern='__editable__.subsearch-*'
+
+  if [[ -d "$APP_DIR" ]]; then
+    run_as_app_user bash -c "cd \"$APP_DIR\" && find . -name '$pattern' -delete"
+  fi
+
+  if [[ -d "$VENV_PATH" ]]; then
+    # Remove stale editable metadata from the virtualenv so the service user can reinstall cleanly.
+    find "$VENV_PATH" -name "$pattern" -delete || true
+  fi
 }
 
 run_as_app_user() {
