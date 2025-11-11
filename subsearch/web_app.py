@@ -16,7 +16,6 @@ from typing import Dict, List, Optional
 
 import random
 import requests
-from typing import Dict, List, Optional
 
 from flask import Flask, render_template, request, flash, redirect, url_for, session, make_response, jsonify, Response
 from dotenv import load_dotenv
@@ -102,24 +101,28 @@ def home():
     stats_display = dict(stats)
     stats_display["last_indexed_display"] = _format_human_ts(stats.get("last_indexed"))
     stats_display["last_run_display"] = _format_human_ts(stats.get("last_run_started"))
+
     recent_user_runs = fetch_recent_runs(limit=5, source_filter="analyzer")
     for run in recent_user_runs:
         run["started_display"] = _format_human_ts(run.get("started_at"))
+
     latest_random_run = fetch_latest_random_run()
     if latest_random_run:
         latest_random_run["started_display"] = _format_human_ts(latest_random_run.get("started_at"))
-        if run.get("error"):
-            run["status"] = "error"
-        elif run.get("completed_at"):
-            run["status"] = "complete"
+        if latest_random_run.get("error"):
+            latest_random_run["status"] = "error"
+        elif latest_random_run.get("completed_at"):
+            latest_random_run["status"] = "complete"
         else:
-            run["status"] = "running"
+            latest_random_run["status"] = "running"
+
     node_stats = get_node_stats() or {"total": 0, "active": 0, "pending": 0, "broken": 0}
     volunteer_nodes = []
     for entry in list_public_nodes(limit=6):
         item = dict(entry)
         item["last_check_display"] = _format_human_ts(entry.get("last_check_in_at") or entry.get("updated_at"))
         volunteer_nodes.append(item)
+
     return render_template(
         "home.html",
         stats=stats_display,
@@ -878,7 +881,7 @@ def _run_job_thread(job_id: str) -> None:
         )
         api_results = payload.get("results", []) or []
         evaluated = payload.get("evaluated", api_results)
-        seen = { (row.get("name") or "").strip().lower() for row in subs if row.get("name") }
+        seen = {(row.get("name") or "").strip().lower() for row in subs if row.get("name")}
         additionals = []
         for row in api_results:
             normalized = (row.get("name") or "").strip().lower()
@@ -978,16 +981,16 @@ def analyzer():
         # Accept commas in numeric fields
         limit_raw_clean = limit_raw.replace(",", "").replace("_", "").replace(" ", "")
         try:
-        limit = int(limit_raw_clean)
-        if limit <= 0 or limit > 100000:
-            raise ValueError
-        requested_limit = limit
-        limit = min(limit, PUBLIC_API_LIMIT_CAP)
-        if requested_limit > limit:
-            flash(
-                f"API checks are limited to {PUBLIC_API_LIMIT_CAP} subreddits per run to protect Reddit rate limits. Existing data in All The Subs still appears in your report.",
-                "info",
-            )
+            limit = int(limit_raw_clean)
+            if limit <= 0 or limit > 100000:
+                raise ValueError
+            requested_limit = limit
+            limit = min(limit, PUBLIC_API_LIMIT_CAP)
+            if requested_limit > limit:
+                flash(
+                    f"API checks are limited to {PUBLIC_API_LIMIT_CAP} subreddits per run to protect Reddit rate limits. Existing data in All The Subs still appears in your report.",
+                    "info",
+                )
         except ValueError:
             flash("Limit must be an integer between 1 and 100,000.", "error")
             return render_template("index.html", result=None, job_id=None, site_url=SITE_URL, nav_active="analyzer")
