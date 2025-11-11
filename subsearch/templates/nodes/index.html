@@ -7,11 +7,9 @@
     <div class="space-y-4">
       <p class="text-xs uppercase tracking-[0.3em] text-white/60">Distributed ingestion</p>
       <h1 class="font-display text-3xl text-white sm:text-4xl">Help grow the Sub Search dataset</h1>
-      <p class="text-sm text-white/80">Every manual search, scheduled bot run, and volunteer node keeps the directory fresh. Bring your own computer + Reddit account, get a unique management link via email (no logins), and you can update or delete the node anytime.</p>
-      <p class="text-sm text-white/70">Nodes that report a broken status for 7+ days are automatically removed each night so the network only shows machines that are ready to work.</p>
+      <p class="text-sm text-white/80">Every manual search, scheduled bot run, and volunteer node keeps the directory fresh. Bring your own computer + Reddit account. Cloud and homelab friendly!</p>
       <div class="flex flex-wrap gap-3">
         <a href="{{ url_for('node_join') }}" class="rounded-2xl bg-gradient-to-r from-brand to-brand-light px-6 py-3 text-base font-semibold text-slate-950 shadow-brand transition hover:scale-[1.01]">Add your node</a>
-        <a href="{{ url_for('analyzer') }}" class="nav-link text-sm">Run a manual query</a>
       </div>
     </div>
     <div class="grid w-full gap-4 sm:grid-cols-2">
@@ -20,28 +18,8 @@
         <p class="mt-2 text-3xl font-semibold text-white">{{ node_stats.total or 0 }}</p>
         <p class="mt-1 text-xs text-white/50">Active: {{ node_stats.active or 0 }} • Pending: {{ node_stats.pending or 0 }}</p>
       </div>
-      <div class="rounded-2xl border border-white/10 bg-slate-900/50 p-4 text-sm text-white/70">
-        <p class="text-xs uppercase tracking-[0.3em] text-white/50">Auto cleanup</p>
-        <p class="mt-2 text-3xl font-semibold text-white">7 days</p>
-        <p class="mt-1 text-xs text-white/50">Broken nodes are pruned nightly after {{ node_stats.broken or 0 }} flagged entries.</p>
-      </div>
     </div>
   </div>
-</section>
-
-<section class="mt-10 grid gap-4 lg:grid-cols-3">
-  <article class="rounded-3xl border border-white/10 bg-slate-900/40 p-5 shadow-lg">
-    <p class="text-xs uppercase tracking-[0.3em] text-white/60">1. The Always Growing Sub Database</p>
-    <p class="mt-2 text-sm text-white/80">Every accepted node and manual search writes structured subreddit details (names, bios, moderator counts, activity clocks) into the shared dataset that powers All The Subs.</p>
-  </article>
-  <article class="rounded-3xl border border-white/10 bg-slate-900/40 p-5 shadow-lg">
-    <p class="text-xs uppercase tracking-[0.3em] text-white/60">2. Fueled by Your Queries and Nodes</p>
-    <p class="mt-2 text-sm text-white/80">Manual runs let you chase niche keywords while the auto-ingest bot and volunteer nodes quietly sweep broad queries so gaps close fast.</p>
-  </article>
-  <article class="rounded-3xl border border-white/10 bg-slate-900/40 p-5 shadow-lg">
-    <p class="text-xs uppercase tracking-[0.3em] text-white/60">3. Search and Export Custom Sub Lists</p>
-    <p class="mt-2 text-sm text-white/80">Everything lands in Sub Search so you can filter, audit moderation, and export CSVs whenever you need fresh leads.</p>
-  </article>
 </section>
 
 <section class="panel-surface mt-10 p-6 shadow-xl">
@@ -49,7 +27,7 @@
     <div>
       <p class="text-xs uppercase tracking-[0.3em] text-white/60">Volunteer spotlight</p>
       <h2 class="text-2xl font-semibold text-white">Recently active nodes</h2>
-      <p class="mt-2 text-sm text-white/70">Handles listed here opted in for public credit. Want to be featured? Just toggle “active” on your node form after your first run.</p>
+      <p class="mt-2 text-sm text-white/70">Toggle “active” on the form after your first manual search to join the public list.</p>
     </div>
     <a href="{{ url_for('node_join') }}" class="nav-link text-sm">Join the pool →</a>
   </div>

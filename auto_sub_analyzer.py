@@ -1,9 +1,9 @@
 """
 Legacy CLI helper for Sub Search.
 
-This thin wrapper exists for folks who want to run the analyzer from a shell
+This thin wrapper exists for folks who want to run the sub search from a shell
 and dump the filtered results to disk without touching the Flask UI. It simply
-invokes :func:`subsearch.auto_sub_analyzer.find_unmoderated_subreddits` and
+invokes :func:`subsearch.auto_sub_search.find_unmoderated_subreddits` and
 writes the resulting list to a CSV file for quick inspection.
 """
 
@@ -19,7 +19,7 @@ import praw
 import prawcore
 from dotenv import load_dotenv
 
-from subsearch.auto_sub_analyzer import find_unmoderated_subreddits, logger
+from subsearch.auto_sub_search import find_unmoderated_subreddits, logger
 
 
 CSV_FIELDS: Sequence[str] = (
@@ -51,7 +51,7 @@ def _float_env(key: str, default: float) -> float:
 
 
 def save_to_csv(rows: Iterable[dict], filename: str | None = None) -> Path:
-    """Write analyzer rows to CSV and return the file path."""
+    """Write sub search rows to CSV and return the file path."""
     items = list(rows)
     if not filename:
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
@@ -68,7 +68,7 @@ def save_to_csv(rows: Iterable[dict], filename: str | None = None) -> Path:
 
 
 def main() -> None:
-    """Run the analyzer once using environment-driven settings."""
+    """Run the sub search once using environment-driven settings."""
     load_dotenv(override=True)
     keyword = os.getenv("SUBSEARCH_CLI_KEYWORD") or None
     limit = _int_env("SUBSEARCH_CLI_LIMIT", 1000)

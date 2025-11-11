@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "subsearch"
 version = "0.1.0"
-description = "Private Reddit subreddit analyzer with a simple Flask web UI"
+description = "Reddit subreddit search tool with a simple web UI"
 readme = "README.md"
 requires-python = ">=3.9"
 authors = [

@@ -1,18 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Sub Search • Eric Rosenberg Sub Search{% endblock %}
+{% block title %}Sub Search • Feed Your Subreddit Need{% endblock %}
 
 {% block content %}
 <section class="panel-surface relative overflow-hidden p-6 shadow-2xl lg:p-10">
   <div class="relative z-10 grid gap-6 lg:grid-cols-[1.1fr,0.9fr] lg:items-center">
     <div class="max-w-2xl space-y-4">
-      <p class="text-sm font-semibold uppercase tracking-[0.3em] text-white/60">Tool · Sub Search</p>
-      <h1 class="font-display text-3xl text-white sm:text-4xl">Stack the precise subreddit list you need.</h1>
-      <p class="text-base text-white/80">Pull full subreddit names, display titles, descriptions, moderator counts, and the freshest human moderator activity. Every query feeds All The Subs and unlocks a sortable report with on-demand CSV export.</p>
-      <div class="flex flex-wrap gap-3 text-xs uppercase tracking-[0.3em] text-white/70">
-        <span class="data-chip">Moderator intel</span>
-        <span class="data-chip">Fresh activity</span>
-        <span class="data-chip">Download ready</span>
-      </div>
+      <p class="text-sm font-semibold uppercase tracking-[0.3em] text-white/60">Sub Search</p>
+      <h1 class="font-display text-3xl text-white sm:text-4xl">The most delicious Subreddit search tool and database ever crafted.</h1>
+      <p class="text-base text-white/80">Sub Search is a free, community-driven database and subreddit search tool. It's open source (contribute on Github) and the database grows automatically with every search.</p>
+      <p class="text-base text-white/80">The database grows automatically with a background task, it saves the result of every search, and others can self-host their own instance that sends the database results back here.</p>
       <div class="flex flex-wrap gap-2 text-sm text-white/70">
         <a class="nav-link active text-sm" href="{{ url_for('all_subs') }}">View All The Subs</a>
         <a class="nav-link text-sm" href="{{ url_for('home') }}">About this project</a>
@@ -20,10 +16,9 @@
     </div>
     <div class="flex flex-col items-center gap-3">
       <img src="{{ url_for('static', filename='img/sub-sando-hero.svg') }}" alt="Sub Search hero art" class="hero-art w-full max-w-sm">
-      <p class="text-center text-xs uppercase tracking-[0.3em] text-white/60">Fresh data daily · human moderators only</p>
+      <p class="text-center text-xs uppercase tracking-[0.3em] text-white/60">Baked fresh daily</p>
     </div>
   </div>
-
   <form method="post" id="run-form" class="relative z-10 mt-8 grid gap-6 rounded-2xl border border-white/5 bg-slate-900/60 p-6 shadow-xl backdrop-blur lg:grid-cols-2">
     <div class="space-y-4">
       <div>
@@ -33,7 +28,6 @@
       <div>
         <label for="limit" class="text-sm font-semibold text-white/90">Max subreddits to check</label>
         <input type="text" id="limit" name="limit" inputmode="numeric" pattern="[0-9,]*" value="1,000" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white placeholder:text-white/30 focus:border-brand focus:ring-2 focus:ring-brand/40" />
-        <p class="mt-1 text-xs text-white/50">Up to 100,000 subreddits per run (Reddit API safe).</p>
       </div>
       <div>
         <label for="min_subs" class="text-sm font-semibold text-white/90">Minimum subscribers</label>
@@ -74,7 +68,7 @@
     </div>
     <div class="lg:col-span-2">
       <button type="submit" class="flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-brand to-brand-light px-6 py-4 text-lg font-semibold text-slate-950 shadow-brand transition hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-brand-light/60">Find Your Subs</button>
-      <p class="mt-2 text-center text-xs text-white/60">Sub Search automatically stores every run with moderator counts, descriptions, and last mod activity.</p>
+      <p class="mt-2 text-center text-xs text-white/60">Sub Search automatically stores every search in our public All The Subs database.</p>
     </div>
   </form>
 

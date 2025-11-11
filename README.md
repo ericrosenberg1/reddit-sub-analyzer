@@ -36,11 +36,9 @@ The UI now uses Tailwind CSS with a modern Reddit-adjacent palette, better acces
 
 ## Highlights
 
-- **Full-stack coverage**: Homepage → Sub Search → All The Subs, all sharing a cohesive Tailwind design.
 - **Live data capture**: Every Sub Search run and auto-ingest cycle writes to SQLite (`data/subsearch.db` by default).
-- **Smart caching & resilient persistence**: TTL caches keep summary stats, job queues, and node lists snappy while every analyzer run streams results into the database through a background worker so partial jobs survive errors.
+- **Run privately or as a public node**: Run on your homelab or host it in the cloud. Optionally turn on private or public node status to feed the main database.
 - **Safe exports**: CSVs are generated in sandboxed temp directories with sanitized filenames.
-- **Open-source invites**: Clear calls to action for GitHub issues/PRs plus README badges inspired by the Immich project.
 
 ---
 

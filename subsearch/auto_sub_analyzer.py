@@ -21,7 +21,7 @@ REDDIT_PASSWORD = os.getenv("REDDIT_PASSWORD", "your_password_here")
 REDDIT_USER_AGENT = os.getenv("REDDIT_USER_AGENT", "unmoderated_subreddit_finder/1.0")
 REDDIT_TIMEOUT = int(os.getenv("REDDIT_TIMEOUT", "10") or 10)
 
-logger = logging.getLogger("analyzer")
+logger = logging.getLogger("sub_search")
 
 
 def _int_from_env(key: str, default: int) -> int:

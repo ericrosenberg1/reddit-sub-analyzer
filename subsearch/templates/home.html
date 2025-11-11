@@ -7,13 +7,12 @@
     <div class="max-w-3xl space-y-4">
       <p class="text-sm font-semibold uppercase tracking-[0.4em] text-white/60">An <a href="https://ericrosenberg.com">Eric Rosenberg</a> project</p>
       <h1 class="font-display text-4xl text-white sm:text-5xl">Sub Search</h1>
-      <p class="text-lg text-white/80">Sub Search keeps a living index of subreddit names, descriptions, moderator counts, and last human moderator activity so you can audit communities and export targeted lists.</p>
+      <p class="text-lg text-white/80">Sub Search keeps a living index of subreddit names, descriptions, moderator counts, and last human moderator activity so you can analyze communities and export targeted lists. With more than 3 million subs, this is a community-driven effort to maintain an updated database.</p>
       <div class="mt-6 flex flex-wrap gap-3">
-        <a href="{{ url_for('analyzer') }}" class="rounded-2xl bg-gradient-to-r from-brand to-brand-light px-6 py-3 text-base font-semibold text-slate-950 shadow-brand transition hover:scale-[1.01]">Launch Sub Search</a>
+        <a href="{{ url_for('sub_search') }}" class="rounded-2xl bg-gradient-to-r from-brand to-brand-light px-6 py-3 text-base font-semibold text-slate-950 shadow-brand transition hover:scale-[1.01]">Launch Sub Search</a>
         <a href="{{ url_for('all_subs') }}" class="nav-link text-sm">Browse All The Subs</a>
         <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" rel="noopener" class="nav-link text-sm">View on GitHub</a>
       </div>
-      <p class="text-xs uppercase tracking-[0.3em] text-white/60">Runs locally or at allthesubs.ericrosenberg.com</p>
     </div>
     <div class="flex flex-col gap-4 lg:max-w-sm">
       <img src="{{ url_for('static', filename='img/sub-sando-hero.svg') }}" alt="Sub Search hero illustration" class="hero-art w-full rounded-3xl border border-white/10 bg-slate-900/40 p-3">
@@ -45,17 +44,17 @@
     <article class="rounded-3xl border border-white/10 bg-slate-900/40 p-5 shadow-lg">
       <p class="text-xs uppercase tracking-[0.3em] text-white/60">1. The Always Growing Sub Database</p>
       <h3 class="mt-2 text-xl font-semibold text-white">Explain & Invite</h3>
-      <p class="mt-2 text-sm text-white/80">Document why this project exists, keep the roadmap public, and direct contributors to <a class="underline decoration-dotted" href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" rel="noopener">GitHub</a> for issues and feature pitches.</p>
+      <p class="mt-2 text-sm text-white/80">Every search is saved in the public database, and random subreddits are added automatically.</p>
     </article>
     <article class="rounded-3xl border border-white/10 bg-slate-900/40 p-5 shadow-lg">
-      <p class="text-xs uppercase tracking-[0.3em] text-white/60">2. Fueled by Your Queries and Nodes</p>
-      <h3 class="mt-2 text-xl font-semibold text-white">Dual ingestion</h3>
-      <p class="mt-2 text-sm text-white/80">Manual searches, the built-in auto-ingest bot, and opt-in community nodes all write to the same dataset so gaps get filled fast.</p>
+      <p class="text-xs uppercase tracking-[0.3em] text-white/60">2. The Secret Sauce</p>
+      <h3 class="mt-2 text-xl font-semibold text-white">The node network</h3>
+      <p class="mt-2 text-sm text-white/80">Anyone can run a node that feeds the main database, fueling faster growth and fresher results.</p>
     </article>
     <article class="rounded-3xl border border-white/10 bg-slate-900/40 p-5 shadow-lg">
       <p class="text-xs uppercase tracking-[0.3em] text-white/60">3. Search and Export Custom Sub Lists</p>
       <h3 class="mt-2 text-xl font-semibold text-white">Search & Export</h3>
-      <p class="mt-2 text-sm text-white/80">Collect keyword-matched subs, filter by moderation style, exclude NSFW, and download CSVs with moderator counts plus last mod activity timestamps.</p>
+      <p class="mt-2 text-sm text-white/80">Search for subs directly (slower, fresher data) or with the All The Subs database (faster, day old bread).</p>
     </article>
   </div>
 </section>
@@ -63,8 +62,8 @@
 <section class="panel-surface mt-10 p-6 shadow-xl">
   <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
     <div>
-      <p class="text-xs uppercase tracking-[0.3em] text-white/60">Random refresh</p>
-      <h2 class="text-2xl font-semibold text-white">Latest automated dictionary search</h2>
+      <p class="text-xs uppercase tracking-[0.3em] text-white/60">Always Preparing Fresh Ingredients</p>
+      <h2 class="text-2xl font-semibold text-white">The Sub Builder Bot</h2>
       {% if random_run %}
       <p class="mt-2 text-sm text-white/80">
         Keyword <span class="font-semibold text-white">{{ random_run.keyword or "—" }}</span> • Limit {{ random_run.limit_value or random_run.limit or "2000" }}
@@ -80,12 +79,12 @@
       </div>
       {% endif %}
       {% else %}
-      <p class="mt-2 text-sm text-white/80">Waiting for the next random dictionary search to complete.</p>
+      <p class="mt-2 text-sm text-white/80">Searching for subs...</p>
       {% endif %}
     </div>
     <div class="text-xs uppercase tracking-[0.3em] text-white/60">
-      Powered by a free dictionary API <br />
-      Refreshes every {{ random_search_interval }} minutes
+      This bot is hungry. <br />
+      New Sub Search every {{ random_search_interval }} minutes
     </div>
   </div>
 </section>
@@ -97,7 +96,7 @@
         <p class="text-xs uppercase tracking-[0.3em] text-white/60">Activity</p>
         <h2 class="text-2xl font-semibold text-white">Recent Sub Searches</h2>
       </div>
-      <a href="{{ url_for('analyzer') }}" class="nav-link text-sm">Find Your Subs →</a>
+      <a href="{{ url_for('sub_search') }}" class="nav-link text-sm">Find Your Subs →</a>
     </div>
     {% if recent_user_runs %}
     <ul class="mt-6 space-y-4">
@@ -107,7 +106,7 @@
           <div class="flex flex-col">
             <span class="text-base font-semibold text-white">{{ run.keyword or "All subreddits" }}</span>
             <span class="text-xs text-white/60">
-              Limit {{ run.limit_value or "n/a" }} • {{ run.started_display or "—" }} UTC
+              Order Time • {{ run.started_display or "—" }} UTC
               • <span class="local-time" data-ts="{{ run.started_at }}"></span>
             </span>
           </div>

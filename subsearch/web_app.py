@@ -20,8 +20,8 @@ import requests
 from flask import Flask, render_template, request, flash, redirect, url_for, session, make_response, jsonify, Response
 from dotenv import load_dotenv
 
-# Reuse core analyzer functions
-from .auto_sub_analyzer import find_unmoderated_subreddits
+# Reuse core sub_search functions
+from .auto_sub_search import find_unmoderated_subreddits
 from .build_info import get_current_build_number
 from .storage import (
     fetch_latest_random_run,
@@ -102,7 +102,7 @@ def home():
     stats_display["last_indexed_display"] = _format_human_ts(stats.get("last_indexed"))
     stats_display["last_run_display"] = _format_human_ts(stats.get("last_run_started"))
 
-    recent_user_runs = fetch_recent_runs(limit=5, source_filter="analyzer")
+    recent_user_runs = fetch_recent_runs(limit=5, source_filter="sub_search")
     for run in recent_user_runs:
         run["started_display"] = _format_human_ts(run.get("started_at"))
 
@@ -789,12 +789,12 @@ def _apply_job_filters_to_rows(rows, job_config):
 
 def _run_job_thread(job_id: str) -> None:
     job_config = {}
-    job_source = "analyzer"
+    job_source = "sub_search"
     with jobs_lock:
         job = jobs.get(job_id)
         if job:
             job_config = dict(job.get("job_config") or {})
-            job_source = job.get("source") or job_config.get("source") or "analyzer"
+            job_source = job.get("source") or job_config.get("source") or "sub_search"
             job["timeout_at"] = time.monotonic() + JOB_TIMEOUT_SECONDS
     if not job_config:
         with queue_lock:
@@ -808,7 +808,7 @@ def _run_job_thread(job_id: str) -> None:
     min_subs = job_config.get('min_subs', 0)
     activity_mode = job_config.get('activity_mode', "any")
     activity_threshold_utc = job_config.get('activity_threshold_utc')
-    if job_source == "analyzer":
+    if job_source == "sub_search":
         limit = min(limit, PUBLIC_API_LIMIT_CAP)
 
     logger.info(
@@ -957,8 +957,8 @@ _start_random_search_thread_if_needed()
 _start_node_cleanup_thread_if_needed()
 
 
-@app.route("/analyzer", methods=["GET", "POST"])
-def analyzer():
+@app.route("/sub_search", methods=["GET", "POST"])
+def sub_search():
     result = None
     job_id = request.args.get("job")
 
@@ -993,7 +993,7 @@ def analyzer():
                 )
         except ValueError:
             flash("Limit must be an integer between 1 and 100,000.", "error")
-            return render_template("index.html", result=None, job_id=None, site_url=SITE_URL, nav_active="analyzer")
+            return render_template("index.html", result=None, job_id=None, site_url=SITE_URL, nav_active="sub_search")
 
         keyword = sanitize_keyword(keyword_raw) or None
 
@@ -1005,7 +1005,7 @@ def analyzer():
                 raise ValueError
         except ValueError:
             flash("Minimum subscribers must be a non-negative integer.", "error")
-            return render_template("index.html", result=None, job_id=None, site_url=SITE_URL, nav_active="analyzer")
+            return render_template("index.html", result=None, job_id=None, site_url=SITE_URL, nav_active="sub_search")
 
         # Activity date filter
         activity_threshold_utc = None
@@ -1013,13 +1013,13 @@ def analyzer():
             # Expect YYYY-MM-DD
             if not re.match(r"^\d{4}-\d{2}-\d{2}$", activity_date_raw):
                 flash("Invalid date format. Use YYYY-MM-DD.", "error")
-                return render_template("index.html", result=None, job_id=None, site_url=SITE_URL, nav_active="analyzer")
+                return render_template("index.html", result=None, job_id=None, site_url=SITE_URL, nav_active="sub_search")
             try:
                 dt = datetime.strptime(activity_date_raw, "%Y-%m-%d")
                 activity_threshold_utc = int(dt.timestamp())
             except Exception:
                 flash("Invalid date provided.", "error")
-                return render_template("index.html", result=None, job_id=None, site_url=SITE_URL, nav_active="analyzer")
+                return render_template("index.html", result=None, job_id=None, site_url=SITE_URL, nav_active="sub_search")
         elif not activity_enabled:
             activity_mode = "any"
             activity_date_raw = ""
@@ -1035,7 +1035,7 @@ def analyzer():
             'min_subs': min_subs,
             'activity_mode': activity_mode,
             'activity_threshold_utc': activity_threshold_utc,
-            'source': 'analyzer',
+            'source': 'sub_search',
         }
         job_id = uuid.uuid4().hex
         with jobs_lock:
@@ -1056,7 +1056,7 @@ def analyzer():
                 'started_at': None,
                 'stopped': False,
                 'stop': False,
-                'source': 'analyzer',
+                'source': 'sub_search',
                 'state': 'queued',
                 'queue_position': None,
                 'orders_ahead': None,
@@ -1066,11 +1066,11 @@ def analyzer():
                 'result_count': 0,
                 'job_config': job_params,
             }
-        record_run_start(job_id, job_params, source="analyzer")
+        record_run_start(job_id, job_params, source="sub_search")
         _enqueue_job(job_id)
-        return redirect(url_for('analyzer', job=job_id))
+        return redirect(url_for('sub_search', job=job_id))
 
-    return render_template("index.html", result=result, job_id=job_id, site_url=SITE_URL, nav_active="analyzer")
+    return render_template("index.html", result=result, job_id=job_id, site_url=SITE_URL, nav_active="sub_search")
 
 
 @app.route("/all-the-subs")
@@ -1291,7 +1291,7 @@ def run():
     port = int(os.getenv("PORT", "5055"))
     # Elevate logging when running in debug mode
     logger.setLevel(logging.DEBUG)
-    logging.getLogger("analyzer").setLevel(logging.DEBUG)
+    logging.getLogger("sub_search").setLevel(logging.DEBUG)
     app.run(host="0.0.0.0", port=port, debug=False)
 
 

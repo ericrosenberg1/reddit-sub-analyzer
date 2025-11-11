@@ -1,1 +1,1 @@
-__all__ = ["web_app", "auto_sub_analyzer", "build_info"]
+__all__ = ["web_app", "search", "build_info"]
