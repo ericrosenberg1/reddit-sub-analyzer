@@ -3,10 +3,9 @@
 venv/
 ENV/
 
-# Python noise
+# Python build / cache
 __pycache__/
 *.py[cod]
-*.so
 *.egg-info/
 *.dist-info/
 .build/
@@ -18,10 +17,12 @@ dist/
 
 # Editors & OS
 .vscode/
-.idea/
 .DS_Store
 
-# Logs & data outputs
+# Local runtime/output
 *.log
 *.csv
-subsearch_run_*.csv
+*.bak.*
+*.tmp
+.env
+.env.*
