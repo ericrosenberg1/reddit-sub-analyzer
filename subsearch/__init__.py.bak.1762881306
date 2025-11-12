@@ -1,2 +1,0 @@
-__all__ = ["web_app", "search", "build_info"]
-from .auto_sub_search import find_unmoderated_subreddits  # re-export
