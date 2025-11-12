@@ -1,0 +1,49 @@
+from flask import Flask
+app = Flask(__name__)
+
+
+def _apply_csv_guard():
+    try:
+        _enable_csv_guard()
+    except Exception:
+        pass
+app.before_request(_apply_csv_guard)
+import os
+from .broadened_search import broadened_subreddit_search
+import json
+import logging
+import threading
+import time
+import re
+import smtplib
+import ssl
+import csv
+import io
+from collections import deque
+from datetime import datetime, timezone, timedelta
+from email.message import EmailMessage
+from queue import Queue
+from typing import Dict, List, Optional
+
+import random
+import requests
+
+from flask import Flask, render_template, request, flash, redirect, url_for, session, make_response, jsonify, Response
+
+def _env_bool(key: str, default: bool=False) -> bool:
+    import os
+    v = os.getenv(key, '')
+    if v is None or v.strip() == '':
+        return default
+    return v.strip().lower() in ('1','true','yes','on')
+
+def _export_requested():
+    try:
+        from flask import request
+        v = (request.args.get('export') or '').strip().lower()
+        return v in ('1','true','yes','on','csv')
+    except Exception:
+        return False
+
+def _enable_csv_guard():
+    return
