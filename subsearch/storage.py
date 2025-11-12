@@ -373,8 +373,7 @@ def _migrate_db() -> None:
                 has_column = any(col["name"] == "last_mod_activity_utc" for col in columns)
                 if has_column:
                     # SQLite doesn't support DROP COLUMN directly before version 3.35.0
-                    # We need to recreate the table
-                    conn.execute("BEGIN TRANSACTION")
+                    # We need to recreate the table (transaction handled by context manager)
                     conn.execute("""
                         CREATE TABLE subreddits_new (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -410,11 +409,13 @@ def _migrate_db() -> None:
                     conn.execute("CREATE INDEX IF NOT EXISTS idx_subreddits_subscribers ON subreddits(subscribers DESC)")
                     conn.execute("CREATE INDEX IF NOT EXISTS idx_subreddits_updated_at ON subreddits(updated_at DESC)")
                     conn.execute("CREATE INDEX IF NOT EXISTS idx_subreddits_unmod ON subreddits(is_unmoderated, subscribers DESC)")
-                    conn.execute("COMMIT")
     except Exception as e:
         # Log but don't fail on migration errors
         import logging
-        logging.getLogger(__name__).warning("Database migration warning: %s", e)
+        import traceback
+        logger = logging.getLogger(__name__)
+        logger.warning("Database migration warning: %s", e)
+        logger.debug("Migration traceback: %s", traceback.format_exc())
 
 
 def record_run_start(job_id: str, params: Dict, source: str = "manual") -> None:
