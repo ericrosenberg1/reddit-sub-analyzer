@@ -1,41 +1,27 @@
-# Python bytecode / build
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-build/
-dist/
-*.egg-info/
-
-# Virtualenvs
+# Virtual envs
 .venv/
 venv/
+ENV/
 
-# Caches & tooling
-.cache/
-.mypy_cache/
-pytest_cache/
+# Python noise
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+*.dist-info/
+.build/
+build/
+dist/
 .coverage
-htmlcov/
+.pytest_cache/
+.mypy_cache/
 
-# OS/editor
-.DS_Store
-Thumbs.db
+# Editors & OS
 .vscode/
 .idea/
+.DS_Store
 
-# Local config/secrets
-.env
-.env.*
-*.local
-
-# App data / logs / backups
-data/*.db
-*.sqlite3
+# Logs & data outputs
 *.log
-*.bak.*
-*.bak
-*.tmp
-
-# Node (if any UI bits appear later)
-node_modules/
+*.csv
+subsearch_run_*.csv
