@@ -1,11 +1,30 @@
-.env
-venv/
+# Python
 __pycache__/
-*.csv
-.ds_store
-data/
-*.log
-logs/
-*.db
-*.sqlite3
+*.pyc
+*.pyo
+
+# Builds / metadata
+build/
+dist/
+*.egg-info/
+
+# Virtualenvs
+venv/
+.venv/
+
+# Caches & local artifacts
 .cache/
+*.csv
+
+# Local data / DBs
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+
+# Temp/backups
+*.bak.*
+*.bak
+*.swp
+
+# OS/editor
+.DS_Store
