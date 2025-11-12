@@ -98,8 +98,6 @@ docker run -d \
 
 - **[User Guide](docs/HELP.md)** - How to use Sub Search (no coding required)
 - **[Developer Guide](docs/DEVELOPERS.md)** - Technical documentation for contributors
-- **[API Documentation](docs/API.md)** - REST API reference
-- **[Changelog](docs/CHANGELOG.md)** - Version history and release notes
 
 ---
 
@@ -163,20 +161,6 @@ See [.env.example](.env.example) for complete configuration options.
 
 ## 🌐 Cloud Deployment
 
-### Deploy to Fly.io
-
-```bash
-# Install Fly CLI
-curl -L https://fly.io/install.sh | sh
-
-# Login
-fly auth login
-
-# Deploy
-fly launch
-fly deploy
-```
-
 ### Deploy to Railway
 
 1. Fork this repository
@@ -184,7 +168,7 @@ fly deploy
 3. Add environment variables
 4. Deploy
 
-### Deploy to Heroku
+### Deploy to Heroku or similar
 
 ```bash
 # Install Heroku CLI
@@ -227,7 +211,7 @@ python -m subsearch.web_app
 
 ### Register Your Node
 
-Visit the [Nodes page](https://allthesubs.ericrosenberg.com/nodes/join) to register your volunteer node and get a management link.
+Visit the [Nodes page](https://allthesubs.ericrosenberg.com/nodes/join) to register your volunteer node and get a unique node management link.
 
 ---
 
@@ -248,43 +232,13 @@ source .venv/bin/activate
 pip install -r requirements.txt
 pip install -r requirements-dev.txt  # If exists
 
-# Run in debug mode
-export FLASK_DEBUG=1
+# Run
 python -m subsearch.web_app
-```
-
-### Running Tests
-
-```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=subsearch --cov-report=html
-
-# Run specific test file
-pytest tests/test_search.py
-```
-
-### Code Quality
-
-```bash
-# Format code
-black subsearch/
-
-# Lint
-flake8 subsearch/
-pylint subsearch/
-
-# Type checking
-mypy subsearch/
 ```
 
 ---
 
 ## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
 ### Ways to Contribute
 
@@ -313,8 +267,6 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 - **API Efficiency**: Intelligent rate limiting with 0.15s delays
 - **Real-Time Updates**: Status polling every 1 second
 
-See [PERFORMANCE_OPTIMIZATIONS.md](PERFORMANCE_OPTIMIZATIONS.md) for details.
-
 ---
 
 ## 🔐 Security
@@ -324,7 +276,7 @@ See [PERFORMANCE_OPTIMIZATIONS.md](PERFORMANCE_OPTIMIZATIONS.md) for details.
 - **Input Sanitization** - All user input is validated
 - **CSRF Protection** - Flask CSRF tokens enabled
 
-Found a security issue? Please email security@ericrosenberg.com instead of opening a public issue.
+Found a security issue? Please email me through the contact for at ericrosenberg.com instead of opening a public issue.
 
 ---
 
@@ -340,7 +292,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Flask** - Web framework
 - **Tailwind CSS** - Styling
 - **Reddit** - API and data source
-- **Contributors** - Everyone who has helped improve Sub Search
 
 ---
 
@@ -349,34 +300,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Documentation**: [User Guide](docs/HELP.md) | [Developer Docs](docs/DEVELOPERS.md)
 - **Issues**: [GitHub Issues](https://github.com/ericrosenberg1/reddit-sub-analyzer/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/ericrosenberg1/reddit-sub-analyzer/discussions)
-- **Email**: contact@ericrosenberg.com
-
----
-
-## 🗺️ Roadmap
-
-### v2025.12 (December 2025)
-- [ ] WebSocket support for real-time updates
-- [ ] Advanced analytics dashboard
-- [ ] Subreddit comparison tools
-- [ ] API rate limit dashboard
-
-### v2026.01 (January 2026)
-- [ ] Machine learning for subreddit recommendations
-- [ ] Trend analysis and visualization
-- [ ] Export to additional formats (JSON, Excel)
-- [ ] Mobile app
-
-See [ROADMAP.md](ROADMAP.md) for the complete roadmap.
-
----
-
-## 📈 Stats
-
-- **3+ Million** subreddits indexed
-- **500+ searches** per day
-- **20+ volunteer nodes** contributing
-- **99.9%** uptime
 
 ---
 
