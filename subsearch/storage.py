@@ -200,6 +200,7 @@ def init_db() -> None:
         _init_postgres()
     else:
         _init_sqlite()
+    _migrate_db()
 
 
 def _init_sqlite():
@@ -236,7 +237,6 @@ def _init_sqlite():
             is_unmoderated INTEGER NOT NULL DEFAULT 0,
             is_nsfw INTEGER NOT NULL DEFAULT 0,
             last_activity_utc INTEGER,
-            last_mod_activity_utc INTEGER,
             mod_count INTEGER,
             last_seen_run_id INTEGER,
             last_keyword TEXT,
@@ -312,7 +312,6 @@ def _init_postgres():
             is_unmoderated INTEGER NOT NULL DEFAULT 0,
             is_nsfw INTEGER NOT NULL DEFAULT 0,
             last_activity_utc BIGINT,
-            last_mod_activity_utc BIGINT,
             mod_count INTEGER,
             last_seen_run_id INTEGER REFERENCES query_runs(id) ON DELETE SET NULL,
             last_keyword TEXT,
@@ -350,6 +349,72 @@ def _init_postgres():
     with db_conn() as conn:
         for stmt in statements:
             conn.execute(stmt)
+
+
+def _migrate_db() -> None:
+    """Run database migrations to update schema."""
+    try:
+        with db_conn() as conn:
+            # Check if last_mod_activity_utc column exists and remove it
+            if IS_POSTGRES:
+                # For PostgreSQL, check information_schema
+                result = conn.execute(
+                    """
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name='subreddits' AND column_name='last_mod_activity_utc'
+                    """
+                ).fetchone()
+                if result:
+                    conn.execute("ALTER TABLE subreddits DROP COLUMN last_mod_activity_utc")
+            else:
+                # For SQLite, check pragma table_info
+                columns = conn.execute("PRAGMA table_info(subreddits)").fetchall()
+                has_column = any(col["name"] == "last_mod_activity_utc" for col in columns)
+                if has_column:
+                    # SQLite doesn't support DROP COLUMN directly before version 3.35.0
+                    # We need to recreate the table
+                    conn.execute("BEGIN TRANSACTION")
+                    conn.execute("""
+                        CREATE TABLE subreddits_new (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name TEXT UNIQUE NOT NULL,
+                            display_name_prefixed TEXT,
+                            title TEXT,
+                            public_description TEXT,
+                            url TEXT,
+                            subscribers INTEGER,
+                            is_unmoderated INTEGER NOT NULL DEFAULT 0,
+                            is_nsfw INTEGER NOT NULL DEFAULT 0,
+                            last_activity_utc INTEGER,
+                            mod_count INTEGER,
+                            last_seen_run_id INTEGER,
+                            last_keyword TEXT,
+                            source TEXT,
+                            first_seen_at TEXT,
+                            updated_at TEXT,
+                            FOREIGN KEY(last_seen_run_id) REFERENCES query_runs(id) ON DELETE SET NULL
+                        )
+                    """)
+                    conn.execute("""
+                        INSERT INTO subreddits_new
+                        SELECT id, name, display_name_prefixed, title, public_description, url,
+                               subscribers, is_unmoderated, is_nsfw, last_activity_utc,
+                               mod_count, last_seen_run_id, last_keyword, source,
+                               first_seen_at, updated_at
+                        FROM subreddits
+                    """)
+                    conn.execute("DROP TABLE subreddits")
+                    conn.execute("ALTER TABLE subreddits_new RENAME TO subreddits")
+                    # Recreate indexes
+                    conn.execute("CREATE INDEX IF NOT EXISTS idx_subreddits_subscribers ON subreddits(subscribers DESC)")
+                    conn.execute("CREATE INDEX IF NOT EXISTS idx_subreddits_updated_at ON subreddits(updated_at DESC)")
+                    conn.execute("CREATE INDEX IF NOT EXISTS idx_subreddits_unmod ON subreddits(is_unmoderated, subscribers DESC)")
+                    conn.execute("COMMIT")
+    except Exception as e:
+        # Log but don't fail on migration errors
+        import logging
+        logging.getLogger(__name__).warning("Database migration warning: %s", e)
 
 
 def record_run_start(job_id: str, params: Dict, source: str = "manual") -> None:
@@ -467,11 +532,6 @@ def persist_subreddits(
                 last_activity_val = int(last_activity) if last_activity is not None else None
             except (TypeError, ValueError):
                 last_activity_val = None
-            last_mod_activity = sub.get("last_mod_activity_utc")
-            try:
-                last_mod_activity_val = int(last_mod_activity) if last_mod_activity is not None else None
-            except (TypeError, ValueError):
-                last_mod_activity_val = None
             row = {
                 "name": name,
                 "display_name_prefixed": sub.get("display_name_prefixed") or f"r/{name}",
@@ -482,7 +542,6 @@ def persist_subreddits(
                 "is_unmoderated": 1 if sub.get("is_unmoderated") else 0,
                 "is_nsfw": 1 if sub.get("is_nsfw") else 0,
                 "last_activity_utc": last_activity_val,
-                "last_mod_activity_utc": last_mod_activity_val,
                 "mod_count": mod_count_val,
                 "run_id": run_id,
                 "last_keyword": (sub.get("keyword") or keyword or "")[:128],
@@ -499,7 +558,6 @@ def persist_subreddits(
                     "is_unmoderated": bool(row["is_unmoderated"]),
                     "is_nsfw": bool(row["is_nsfw"]),
                     "last_activity_utc": row["last_activity_utc"],
-                    "last_mod_activity_utc": row["last_mod_activity_utc"],
                     "mod_count": row["mod_count"],
                     "last_keyword": row["last_keyword"],
                     "source": row["source"],
@@ -513,12 +571,12 @@ def persist_subreddits(
             INSERT INTO subreddits
             (name, display_name_prefixed, title, public_description, url,
              subscribers, is_unmoderated, is_nsfw, last_activity_utc,
-             last_mod_activity_utc, mod_count, last_seen_run_id, last_keyword,
+             mod_count, last_seen_run_id, last_keyword,
              source, first_seen_at, updated_at)
             VALUES
             (:name, :display_name_prefixed, :title, :public_description, :url,
              :subscribers, :is_unmoderated, :is_nsfw, :last_activity_utc,
-             :last_mod_activity_utc, :mod_count, :run_id, :last_keyword,
+             :mod_count, :run_id, :last_keyword,
              :source, :now, :now)
             ON CONFLICT(name) DO UPDATE SET
                 display_name_prefixed = COALESCE(
@@ -544,7 +602,6 @@ def persist_subreddits(
                 END,
                 is_nsfw = EXCLUDED.is_nsfw,
                 last_activity_utc = COALESCE(EXCLUDED.last_activity_utc, subreddits.last_activity_utc),
-                last_mod_activity_utc = COALESCE(EXCLUDED.last_mod_activity_utc, subreddits.last_mod_activity_utc),
                 mod_count = COALESCE(EXCLUDED.mod_count, subreddits.mod_count),
                 last_seen_run_id = EXCLUDED.last_seen_run_id,
                 last_keyword = CASE
@@ -582,6 +639,30 @@ def get_summary_stats() -> Dict:
         }
     summary_cache.set("summary", result)
     return result
+
+
+def get_job_stats() -> Dict:
+    """Get statistics about completed, failed, and pending jobs."""
+    with db_conn() as conn:
+        stats = conn.execute(
+            """
+            SELECT
+                COUNT(*) AS total,
+                SUM(CASE WHEN completed_at IS NOT NULL AND error IS NULL THEN 1 ELSE 0 END) AS completed,
+                SUM(CASE WHEN error IS NOT NULL THEN 1 ELSE 0 END) AS failed,
+                SUM(CASE WHEN completed_at IS NULL THEN 1 ELSE 0 END) AS pending
+            FROM query_runs
+            WHERE source = 'sub_search'
+            """
+        ).fetchone()
+    if not stats:
+        return {"total": 0, "completed": 0, "failed": 0, "pending": 0}
+    return {
+        "total": stats["total"] or 0,
+        "completed": stats["completed"] or 0,
+        "failed": stats["failed"] or 0,
+        "pending": stats["pending"] or 0,
+    }
 
 
 def fetch_recent_runs(limit: int = 5, source_filter: Optional[str] = None) -> List[Dict]:
@@ -723,8 +804,7 @@ def search_subreddits(
             f"""
             SELECT name, display_name_prefixed, title, public_description,
                    url, subscribers, is_unmoderated, is_nsfw,
-                   last_activity_utc, last_mod_activity_utc,
-                   mod_count, source, first_seen_at, updated_at
+                   last_activity_utc, mod_count, source, first_seen_at, updated_at
             FROM subreddits
             {where_clause}
             ORDER BY {sort_column} {order_dir}
@@ -793,8 +873,7 @@ def fetch_subreddits_by_job(job_id: str) -> List[Dict]:
             """
             SELECT name, display_name_prefixed, title, public_description,
                    url, subscribers, is_unmoderated, is_nsfw,
-                   last_activity_utc, last_mod_activity_utc,
-                   mod_count, source, first_seen_at, updated_at
+                   last_activity_utc, mod_count, source, first_seen_at, updated_at
             FROM subreddits
             WHERE last_seen_run_id = :run_id
             ORDER BY subscribers DESC

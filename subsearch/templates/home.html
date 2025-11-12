@@ -24,15 +24,19 @@
             <span class="text-lg font-semibold text-white">{{ (stats.total_subreddits or 0)|int }}</span>
           </li>
           <li class="flex items-center justify-between">
-            <span>Total Sub Search runs</span>
+            <span>Total Sub Searches</span>
             <span class="text-lg font-semibold text-white">{{ (stats.total_runs or 0)|int }}</span>
+          </li>
+          <li class="flex items-center justify-between">
+            <span>Searches in queue</span>
+            <span class="text-lg font-semibold text-sky-300">{{ queue_count or 0 }}</span>
           </li>
           <li class="flex flex-col gap-1">
             <span>Last indexed</span>
             <span class="local-time text-sm text-white/90" data-ts="{{ stats.last_indexed }}">{{ stats.last_indexed_display or "pending" }}</span>
           </li>
           <li class="flex flex-col gap-1">
-            <span>Last run started</span>
+            <span>Last search started</span>
             <span class="local-time text-sm text-white/90" data-ts="{{ stats.last_run_started }}">{{ stats.last_run_display or "pending" }}</span>
           </li>
         </ul>
@@ -52,9 +56,9 @@
       <p class="mt-2 text-sm text-white/80">Anyone can run a node that feeds the main database, fueling faster growth and fresher results.</p>
     </article>
     <article class="rounded-3xl border border-white/10 bg-slate-900/40 p-5 shadow-lg">
-      <p class="text-xs uppercase tracking-[0.3em] text-white/60">Search & export</p>
-      <h3 class="mt-2 text-xl font-semibold text-white">Custom subreddit lists</h3>
-      <p class="mt-2 text-sm text-white/80">Search for subs directly (slower, fresher data) or with the All The Subs database (faster, day-old bread).</p>
+      <p class="text-xs uppercase tracking-[0.3em] text-white/60">One search at a time</p>
+      <h3 class="mt-2 text-xl font-semibold text-white">Queued search processing</h3>
+      <p class="mt-2 text-sm text-white/80">Only one search runs at a time to protect Reddit's API limits. Others wait in queue with real-time ETA updates.</p>
     </article>
   </div>
 </section>
@@ -119,7 +123,7 @@
       </li>
       {% endfor %}
       {% else %}
-      <p class="text-white/70">No runs logged yet. Be the first to generate data!</p>
+      <p class="text-white/70">No Sub Searches logged yet. Be the first to generate data!</p>
       {% endif %}
     </ul>
   </div>

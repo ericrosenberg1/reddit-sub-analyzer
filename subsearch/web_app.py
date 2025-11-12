@@ -57,6 +57,7 @@ from .storage import (
     fetch_latest_random_run,
     fetch_recent_runs,
     get_summary_stats,
+    get_job_stats,
     get_node_stats,
     list_public_nodes,
     init_db,
@@ -100,6 +101,8 @@ auto_ingest_thread = None
 auto_ingest_lock = threading.Lock()
 node_cleanup_thread = None
 node_cleanup_lock = threading.Lock()
+job_cleanup_thread = None
+job_cleanup_lock = threading.Lock()
 
 # All configuration now centralized in config.py
 
@@ -131,6 +134,8 @@ def home():
         item["last_check_display"] = _format_human_ts(entry.get("last_check_in_at") or entry.get("updated_at"))
         volunteer_nodes.append(item)
 
+    queue_count = _get_queue_count()
+
     return render_template(
         "home.html",
         stats=stats_display,
@@ -138,8 +143,15 @@ def home():
         random_run=latest_random_run,
         node_stats=node_stats,
         volunteer_nodes=volunteer_nodes,
+        queue_count=queue_count,
         nav_active="home",
     )
+
+
+def _get_queue_count() -> int:
+    """Get the current count of jobs in the queue."""
+    with queue_lock:
+        return len(job_queue)
 
 
 @app.route("/logs")
@@ -147,7 +159,15 @@ def logs():
     entries = fetch_recent_runs(limit=30)
     for entry in entries:
         entry["started_display"] = _format_human_ts(entry.get("started_at"))
-    return render_template("logs.html", entries=entries, nav_active=None)
+    job_stats = get_job_stats()
+    queue_count = _get_queue_count()
+    return render_template(
+        "logs.html",
+        entries=entries,
+        job_stats=job_stats,
+        queue_count=queue_count,
+        nav_active=None
+    )
 
 
 @app.route("/nodes")
@@ -636,6 +656,75 @@ def _start_node_cleanup_thread_if_needed():
         node_cleanup_thread.start()
 
 
+def _job_cleanup_loop():
+    """Check for stalled/failed jobs every 5 minutes and re-queue them if needed."""
+    while True:
+        try:
+            # Sleep first, then check
+            time.sleep(300)  # 5 minutes
+
+            # Get all jobs from database that are not completed but were started
+            from .storage import fetch_recent_runs
+            recent_runs = fetch_recent_runs(limit=100)
+
+            for run in recent_runs:
+                job_id = run.get("job_id")
+                if not job_id:
+                    continue
+
+                # Check if this job is already in memory
+                with jobs_lock:
+                    if job_id in jobs:
+                        # Job is still active in memory, skip
+                        continue
+
+                # Check if job is incomplete (no completed_at) and has an error or is stale
+                started_at = run.get("started_at")
+                completed_at = run.get("completed_at")
+                error = run.get("error")
+
+                if completed_at:
+                    # Job is complete, skip
+                    continue
+
+                # Check if job is stale (started more than 1 hour ago)
+                if started_at:
+                    try:
+                        started = datetime.fromisoformat(started_at)
+                        age_hours = (datetime.utcnow() - started).total_seconds() / 3600
+                        if age_hours < 1:
+                            # Job is still fresh, skip
+                            continue
+                    except Exception:
+                        pass
+
+                # This job is stale or has an error - mark as failed in DB
+                logger.info(
+                    "Job cleanup marking job %s as failed (error=%s, started=%s)",
+                    job_id,
+                    error,
+                    started_at
+                )
+                from .storage import record_run_complete
+                record_run_complete(
+                    job_id,
+                    0,
+                    error="Job cleanup: marked as failed due to stall or error"
+                )
+
+        except Exception:
+            logger.exception("Job cleanup loop failed")
+
+
+def _start_job_cleanup_thread_if_needed():
+    global job_cleanup_thread
+    with job_cleanup_lock:
+        if job_cleanup_thread and job_cleanup_thread.is_alive():
+            return
+        job_cleanup_thread = threading.Thread(target=_job_cleanup_loop, name="job-cleanup", daemon=True)
+        job_cleanup_thread.start()
+
+
 def _calculate_average_job_time():
     """Calculate average job completion time from recent runs for ETA estimation."""
     recent = fetch_recent_runs(limit=10, source_filter="sub_search")
@@ -1004,6 +1093,7 @@ init_db()
 _start_auto_ingest_thread_if_needed()
 _start_random_search_thread_if_needed()
 _start_node_cleanup_thread_if_needed()
+_start_job_cleanup_thread_if_needed()
 
 
 @app.route("/sub_search", methods=["GET", "POST"])
@@ -1225,7 +1315,6 @@ def job_download_csv(job_id):
         "is_unmoderated",
         "is_nsfw",
         "last_activity_utc",
-        "last_mod_activity_utc",
         "updated_at",
         "url",
         "source",

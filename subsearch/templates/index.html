@@ -99,7 +99,7 @@
         <p id="queue-eta" class="hidden text-sm text-white/50">—</p>
         <span id="queue-chip" class="hidden w-fit rounded-full border border-white/20 px-3 py-1 text-xs uppercase tracking-[0.3em] text-white/70"></span>
       </div>
-      <button type="button" id="stopBtn" class="h-fit rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-white/40 hover:text-white">Stop run</button>
+      <button type="button" id="stopBtn" class="h-fit rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-white/40 hover:text-white">Stop search</button>
     </div>
     <dl class="mt-6 grid gap-4 sm:grid-cols-3">
       <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
@@ -138,12 +138,11 @@
               <th class="cursor-pointer px-4 py-3" data-sort="subscribers">Subscribers</th>
               <th class="cursor-pointer px-4 py-3" data-sort="mod_count">Moderators</th>
               <th class="cursor-pointer px-4 py-3" data-sort="is_nsfw">NSFW</th>
-              <th class="cursor-pointer px-4 py-3" data-sort="last_mod_activity_utc">Last mod activity</th>
               <th class="cursor-pointer px-4 py-3" data-sort="updated_at">Indexed</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-white/5">
-            <tr><td colspan="7" class="px-4 py-6 text-center text-white/60">No results yet.</td></tr>
+            <tr><td colspan="6" class="px-4 py-6 text-center text-white/60">No results yet.</td></tr>
           </tbody>
         </table>
       </div>
@@ -415,7 +414,7 @@
       queueChip.classList.add('hidden');
     } else {
       stopPhraseRotation();
-      statusTitle.textContent = state === 'stopped' ? 'Run stopped' : 'Run complete';
+      statusTitle.textContent = state === 'stopped' ? 'Search stopped' : 'Search complete';
       statusSub.textContent = data.error ? data.error : 'Results synced below.';
       queueOrdersEl.classList.add('hidden');
       queueEtaEl.classList.add('hidden');
@@ -500,7 +499,7 @@
 
   function renderResultsTable(){
     if (!currentResults.length){
-      tableBody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-white/60">No results yet.</td></tr>';
+      tableBody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-white/60">No results yet.</td></tr>';
       return;
     }
     const sorted = [...currentResults].sort((a, b) => compareRows(a, b, currentSort.key, currentSort.dir));
@@ -511,7 +510,6 @@
       const subscribers = formatNumber(row.subscribers);
       const modCount = formatNumber(row.mod_count);
       const nsfw = row.is_nsfw ? 'Yes' : 'No';
-      const modActivity = formatEpoch(row.last_mod_activity_utc);
       const indexed = formatIso(row.updated_at);
       const url = row.url || `https://www.reddit.com/${name}`;
       return `
@@ -529,7 +527,6 @@
           <td class="px-4 py-3 align-top font-semibold">${subscribers}</td>
           <td class="px-4 py-3 align-top">${modCount}</td>
           <td class="px-4 py-3 align-top">${nsfw}</td>
-          <td class="px-4 py-3 align-top">${modActivity}</td>
           <td class="px-4 py-3 align-top">${indexed}</td>
         </tr>
       `;
