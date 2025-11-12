@@ -111,7 +111,8 @@ if DB_TYPE == "postgres" and not DB_POSTGRES_PASSWORD:
 
 # Job Queue Configuration
 MAX_CONCURRENT_JOBS = _get_int("SUBSEARCH_MAX_CONCURRENT_JOBS", 1, min_val=1, max_val=10)
-RATE_LIMIT_DELAY = _get_float("SUBSEARCH_RATE_LIMIT_DELAY", 0.2, min_val=0.1, max_val=5.0)
+# Reduced default rate limit delay from 0.2 to 0.15 for better performance
+RATE_LIMIT_DELAY = _get_float("SUBSEARCH_RATE_LIMIT_DELAY", 0.15, min_val=0.1, max_val=5.0)
 PUBLIC_API_LIMIT_CAP = _get_int("SUBSEARCH_PUBLIC_API_LIMIT", 2000, min_val=200, max_val=5000)
 JOB_TIMEOUT_SECONDS = _get_int("SUBSEARCH_JOB_TIMEOUT_SECONDS", 3600, min_val=60, max_val=86400)
 PERSIST_BATCH_SIZE = _get_int("SUBSEARCH_PERSIST_BATCH_SIZE", 32, min_val=5, max_val=256)

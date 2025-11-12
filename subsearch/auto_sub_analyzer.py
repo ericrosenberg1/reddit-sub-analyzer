@@ -36,8 +36,9 @@ def _int_from_env(key: str, default: int) -> int:
 # Limits to keep moderator lookups in check while still surfacing activity.
 # Sample size controls how many moderators per subreddit we inspect (sorted by
 # newest assignment). Fetch limit bounds total Redditor lookups per run.
-MOD_ACTIVITY_SAMPLE_SIZE = max(0, _int_from_env("SUBSEARCH_MOD_ACTIVITY_SAMPLE_SIZE", 5))
-MOD_ACTIVITY_FETCH_LIMIT = max(0, _int_from_env("SUBSEARCH_MOD_ACTIVITY_FETCH_LIMIT", 8000))
+# Reduced defaults for better performance: 2 mods/sub, 1000 max fetches
+MOD_ACTIVITY_SAMPLE_SIZE = max(0, _int_from_env("SUBSEARCH_MOD_ACTIVITY_SAMPLE_SIZE", 2))
+MOD_ACTIVITY_FETCH_LIMIT = max(0, _int_from_env("SUBSEARCH_MOD_ACTIVITY_FETCH_LIMIT", 1000))
 
 def _current_reddit_config():
     """Resolve current Reddit configuration from environment (runtime).

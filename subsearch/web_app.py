@@ -538,6 +538,7 @@ def _schedule_random_job(keyword: str):
             "queue_position": None,
             "orders_ahead": None,
             "queue_size": 0,
+            "eta_seconds": 0,
             "results_ready": False,
             "results": [],
             "result_count": 0,
@@ -619,6 +620,26 @@ def _start_node_cleanup_thread_if_needed():
         node_cleanup_thread.start()
 
 
+def _calculate_average_job_time():
+    """Calculate average job completion time from recent runs for ETA estimation."""
+    recent = fetch_recent_runs(limit=10, source_filter="sub_search")
+    if not recent:
+        return 60  # Default to 60 seconds if no history
+
+    durations = []
+    for run in recent:
+        started = _parse_iso(run.get("started_at"))
+        completed = _parse_iso(run.get("completed_at"))
+        if started and completed:
+            delta = (completed - started).total_seconds()
+            if 0 < delta < 600:  # Only consider jobs that took less than 10 minutes
+                durations.append(delta)
+
+    if durations:
+        return sum(durations) / len(durations)
+    return 60  # Default to 60 seconds
+
+
 def _update_queue_positions_locked():
     queue_len = len(job_queue)
     return [(job_id, idx, queue_len) for idx, job_id in enumerate(list(job_queue))]
@@ -627,6 +648,7 @@ def _update_queue_positions_locked():
 def _apply_queue_positions(updates):
     if not updates:
         return
+    avg_time = _calculate_average_job_time()
     with jobs_lock:
         for job_id, idx, queue_len in updates:
             job = jobs.get(job_id)
@@ -635,6 +657,8 @@ def _apply_queue_positions(updates):
             job["queue_position"] = idx + 1
             job["orders_ahead"] = idx
             job["queue_size"] = queue_len
+            # Calculate ETA: jobs ahead * average time per job
+            job["eta_seconds"] = int(idx * avg_time) if idx > 0 else 0
 
 
 def _enqueue_job(job_id: str) -> None:
@@ -847,6 +871,13 @@ def _run_job_thread(job_id: str) -> None:
         if prefixed_raw:
             existing_names.add(prefixed_raw)
     subs = list(existing_matches)
+
+    # Update progress phase to indicate DB search complete
+    with jobs_lock:
+        job = jobs.get(job_id)
+        if job:
+            job["progress_phase"] = "api_search"
+            job["found"] = len(subs)
 
     persist_queue, persist_thread = _start_persist_worker(job_id, keyword, job_source)
     try:
@@ -1072,6 +1103,8 @@ def sub_search():
                 'queue_position': None,
                 'orders_ahead': None,
                 'queue_size': 0,
+                'eta_seconds': 0,
+                'progress_phase': 'queued',
                 'results_ready': False,
                 'results': [],
                 'result_count': 0,

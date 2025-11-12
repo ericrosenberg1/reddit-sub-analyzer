@@ -96,6 +96,7 @@
           </div>
         </div>
         <p id="queue-orders" class="hidden text-sm text-white/60">Orders ahead: 0</p>
+        <p id="queue-eta" class="hidden text-sm text-white/50">—</p>
         <span id="queue-chip" class="hidden w-fit rounded-full border border-white/20 px-3 py-1 text-xs uppercase tracking-[0.3em] text-white/70"></span>
       </div>
       <button type="button" id="stopBtn" class="h-fit rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-white/40 hover:text-white">Stop run</button>
@@ -186,6 +187,7 @@
   const statusTitle = document.getElementById('status-title');
   const statusSub = document.getElementById('status-sub');
   const queueOrdersEl = document.getElementById('queue-orders');
+  const queueEtaEl = document.getElementById('queue-eta');
   const queueChip = document.getElementById('queue-chip');
   const checkedEl = document.getElementById('checked');
   const foundEl = document.getElementById('found');
@@ -319,6 +321,7 @@
     runState.classList.remove('hidden');
     setPhraseMode('queued');
     queueOrdersEl.classList.add('hidden');
+    queueEtaEl.classList.add('hidden');
     queueChip.classList.add('hidden');
     fetchStatus(id);
     if (pollTimer) clearInterval(pollTimer);
@@ -336,6 +339,18 @@
     const state = data.state || (data.done ? 'complete' : 'running');
     const queuePosition = data.queue_position ?? null;
     const ordersAhead = data.orders_ahead ?? null;
+    const etaSeconds = data.eta_seconds ?? 0;
+
+    function formatEta(seconds){
+      if (!seconds || seconds <= 0) return '';
+      const mins = Math.ceil(seconds / 60);
+      if (mins <= 1) return 'ETA: ~1 minute';
+      if (mins < 60) return `ETA: ~${mins} minutes`;
+      const hours = Math.floor(mins / 60);
+      const remainMins = mins % 60;
+      if (remainMins === 0) return `ETA: ~${hours} hour${hours > 1 ? 's' : ''}`;
+      return `ETA: ~${hours}h ${remainMins}m`;
+    }
 
     if (state === 'queued'){
       statusTitle.textContent = 'Queued at the sandwich counter';
@@ -345,26 +360,36 @@
         queueChip.classList.remove('hidden');
         queueChip.textContent = queuePosition === 1 ? 'On deck' : `Order #${queuePosition}`;
         queueOrdersEl.textContent = ordersAhead && ordersAhead > 0 ? `${ordersAhead} order(s) ahead of you` : 'You are next in line';
+        if (etaSeconds > 0){
+          queueEtaEl.classList.remove('hidden');
+          queueEtaEl.textContent = formatEta(etaSeconds);
+        } else {
+          queueEtaEl.classList.add('hidden');
+        }
       } else {
         queueOrdersEl.classList.add('hidden');
+        queueEtaEl.classList.add('hidden');
         queueChip.classList.add('hidden');
       }
     } else if (state === 'running'){
       statusTitle.textContent = 'Assembling your sandwich of subs';
       setPhraseMode('running');
       queueOrdersEl.classList.add('hidden');
+      queueEtaEl.classList.add('hidden');
       queueChip.classList.add('hidden');
     } else if (state === 'error'){
       stopPhraseRotation();
       statusTitle.textContent = 'The kitchen slipped on a tomato';
       statusSub.textContent = data.error || 'Unknown error';
       queueOrdersEl.classList.add('hidden');
+      queueEtaEl.classList.add('hidden');
       queueChip.classList.add('hidden');
     } else {
       stopPhraseRotation();
       statusTitle.textContent = state === 'stopped' ? 'Run stopped' : 'Run complete';
       statusSub.textContent = data.error ? data.error : 'Results synced below.';
       queueOrdersEl.classList.add('hidden');
+      queueEtaEl.classList.add('hidden');
       queueChip.classList.add('hidden');
     }
 
