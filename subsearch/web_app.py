@@ -21,7 +21,7 @@ from flask import Flask, render_template, request, flash, redirect, url_for, ses
 from dotenv import load_dotenv
 
 # Reuse core sub_search functions
-from .auto_sub_search import find_unmoderated_subreddits
+from .auto_sub_analyzer import find_unmoderated_subreddits
 from .build_info import get_current_build_number
 from .config import (
     FLASK_SECRET_KEY,

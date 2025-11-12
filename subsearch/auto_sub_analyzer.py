@@ -8,6 +8,8 @@ import praw
 import prawcore
 from dotenv import load_dotenv
 
+from .broadened_search import broadened_subreddit_search
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -159,12 +161,20 @@ def find_unmoderated_subreddits(
     # Note: Finding truly unmoderated subs is rare, so we check various sources
     subreddit_iter = None
     if name_keyword:
-        # Use Reddit's search to find subreddits matching the keyword in their name
-        # PRAW's search returns subreddits whose names/titles match the query
+        # Use broadened search strategy for better coverage
+        # This searches by name, title, description, popular subs, and new subs
         try:
-            subreddit_iter = reddit.subreddits.search(query=name_keyword, limit=limit)
+            subreddit_iter = broadened_subreddit_search(
+                reddit=reddit,
+                query=name_keyword,
+                limit=limit,
+                delay=max(0.0, rate_limit_delay or 0.0),
+                include_over_18=not exclude_nsfw,
+                breadth=3,  # Full breadth: search, search_by_name, tokens, popular, new
+                popular_sip=min(300, limit),
+            )
         except (prawcore.exceptions.Forbidden, praw.exceptions.PRAWException) as e:
-            logger.warning("Search endpoint error: %s. Falling back to recent subreddits.", e)
+            logger.warning("Broadened search error: %s. Falling back to recent subreddits.", e)
             subreddit_iter = reddit.subreddits.new(limit=limit)
     else:
         subreddit_iter = reddit.subreddits.new(limit=limit)
@@ -187,14 +197,9 @@ def find_unmoderated_subreddits(
         latest_post_utc = None
 
         try:
-            # If a keyword is provided, restrict to subs whose NAME contains it
-            if name_keyword:
-                try:
-                    if name_keyword.lower() not in subreddit.display_name.lower():
-                        continue
-                except AttributeError:
-                    # If subreddit has no display_name, skip
-                    continue
+            # Note: We trust broadened_subreddit_search to return relevant results
+            # based on name, title, description matching. No additional name filtering needed
+            # as it would reject valid matches found by title/description.
 
             # Exclude NSFW subreddits if requested
             if exclude_nsfw:
