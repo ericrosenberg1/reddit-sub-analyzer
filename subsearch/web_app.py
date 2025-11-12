@@ -23,12 +23,41 @@ from dotenv import load_dotenv
 # Reuse core sub_search functions
 from .auto_sub_search import find_unmoderated_subreddits
 from .build_info import get_current_build_number
+from .config import (
+    FLASK_SECRET_KEY,
+    SITE_URL,
+    PORT,
+    MAX_CONCURRENT_JOBS,
+    RATE_LIMIT_DELAY,
+    PUBLIC_API_LIMIT_CAP,
+    JOB_TIMEOUT_SECONDS,
+    PERSIST_BATCH_SIZE,
+    AUTO_INGEST_ENABLED,
+    AUTO_INGEST_INTERVAL_MINUTES,
+    AUTO_INGEST_LIMIT,
+    AUTO_INGEST_MIN_SUBS,
+    AUTO_INGEST_DELAY,
+    AUTO_INGEST_KEYWORDS,
+    RANDOM_SEARCH_ENABLED,
+    RANDOM_SEARCH_INTERVAL_MINUTES,
+    RANDOM_SEARCH_LIMIT,
+    RANDOM_WORD_API,
+    NODE_EMAIL_SENDER,
+    NODE_EMAIL_SENDER_NAME,
+    NODE_EMAIL_SMTP_HOST,
+    NODE_EMAIL_SMTP_PORT,
+    NODE_EMAIL_SMTP_USERNAME,
+    NODE_EMAIL_SMTP_PASSWORD,
+    NODE_EMAIL_USE_TLS,
+    NODE_CLEANUP_INTERVAL_SECONDS,
+    NODE_BROKEN_RETENTION_DAYS,
+    get_config_warnings,
+)
 from .storage import (
     fetch_latest_random_run,
     fetch_recent_runs,
     get_summary_stats,
     get_node_stats,
-    get_config_warnings,
     list_public_nodes,
     init_db,
     create_volunteer_node,
@@ -53,7 +82,7 @@ import prawcore
 load_dotenv()
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
+app.secret_key = FLASK_SECRET_KEY
 
 # Logging setup
 log_level = logging.DEBUG if os.getenv("FLASK_DEBUG") == "1" or os.getenv("DEBUG") == "1" else logging.INFO
@@ -71,29 +100,7 @@ auto_ingest_lock = threading.Lock()
 node_cleanup_thread = None
 node_cleanup_lock = threading.Lock()
 
-# Restrict directory browsing removed (no server-side saving)
-SITE_URL = os.getenv("SITE_URL", "")
-
-NODE_EMAIL_SENDER = os.getenv("NODE_EMAIL_SENDER", "").strip()
-NODE_EMAIL_SENDER_NAME = os.getenv("NODE_EMAIL_SENDER_NAME", "Sub Search Nodes").strip() or "Sub Search Nodes"
-NODE_EMAIL_SMTP_HOST = os.getenv("NODE_EMAIL_SMTP_HOST", "").strip()
-try:
-    NODE_EMAIL_SMTP_PORT = int(os.getenv("NODE_EMAIL_SMTP_PORT", "587") or 587)
-except (TypeError, ValueError):
-    NODE_EMAIL_SMTP_PORT = 587
-NODE_EMAIL_SMTP_USERNAME = os.getenv("NODE_EMAIL_SMTP_USERNAME", "").strip()
-NODE_EMAIL_SMTP_PASSWORD = os.getenv("NODE_EMAIL_SMTP_PASSWORD", "").strip()
-NODE_EMAIL_USE_TLS = str(os.getenv("NODE_EMAIL_USE_TLS", "1")).strip().lower() not in {"0", "false", "off", "no"}
-try:
-    NODE_CLEANUP_INTERVAL_SECONDS = int(os.getenv("NODE_CLEANUP_INTERVAL_SECONDS", "86400") or 86400)
-except (TypeError, ValueError):
-    NODE_CLEANUP_INTERVAL_SECONDS = 86400
-NODE_CLEANUP_INTERVAL_SECONDS = max(3600, NODE_CLEANUP_INTERVAL_SECONDS)
-try:
-    NODE_BROKEN_RETENTION_DAYS = int(os.getenv("NODE_BROKEN_RETENTION_DAYS", "7") or 7)
-except (TypeError, ValueError):
-    NODE_BROKEN_RETENTION_DAYS = 7
-NODE_BROKEN_RETENTION_DAYS = max(1, NODE_BROKEN_RETENTION_DAYS)
+# All configuration now centralized in config.py
 
 @app.route("/")
 def home():
@@ -253,8 +260,10 @@ def node_manage(token):
             broken_since = None
             previous_status = (node.get("health_status") or "").lower()
             if chosen_status == "broken" and (previous_status != "broken" or not node.get("broken_since")):
-                broken_since = datetime.utcnow().isoformat()
+                # Use timezone-aware datetime for consistency
+                broken_since = datetime.now(timezone.utc).isoformat()
             elif previous_status == "broken" and chosen_status != "broken":
+                # Clear the broken_since timestamp when status is no longer broken
                 broken_since = ""
             updated = update_volunteer_node(
                 token,
@@ -310,29 +319,7 @@ def _safe_int(value, default=None):
         return default
 
 
-MAX_CONCURRENT_JOBS = max(1, _safe_int(os.getenv("SUBSEARCH_MAX_CONCURRENT_JOBS"), 1) or 1)
-try:
-    RATE_LIMIT_DELAY = float(os.getenv("SUBSEARCH_RATE_LIMIT_DELAY", "0.2") or 0.2)
-except (TypeError, ValueError):
-    RATE_LIMIT_DELAY = 0.2
-RATE_LIMIT_DELAY = max(0.1, RATE_LIMIT_DELAY)
-PUBLIC_API_LIMIT_CAP = max(200, min(5000, _safe_int(os.getenv("SUBSEARCH_PUBLIC_API_LIMIT"), 2000) or 2000))
-JOB_TIMEOUT_SECONDS = max(60, _safe_int(os.getenv("SUBSEARCH_JOB_TIMEOUT_SECONDS"), 3600) or 3600)
-PERSIST_BATCH_SIZE = max(5, min(256, _safe_int(os.getenv("SUBSEARCH_PERSIST_BATCH_SIZE"), 32) or 32))
-
-RANDOM_SEARCH_ENABLED = str(os.getenv("RANDOM_SEARCH_ENABLED", "1")).strip().lower() not in {
-    "0",
-    "false",
-    "off",
-    "no",
-}
-RANDOM_SEARCH_INTERVAL_MINUTES = max(
-    15, _safe_int(os.getenv("RANDOM_SEARCH_INTERVAL_MINUTES"), 360) or 360
-)
-RANDOM_SEARCH_LIMIT = min(
-    2000, max(50, _safe_int(os.getenv("RANDOM_SEARCH_LIMIT"), 2000) or 2000)
-)
-RANDOM_WORD_API = os.getenv("RANDOM_WORD_API", "https://random-word-api.vercel.app/api?words=1")
+# Fallback words for random search when API fails
 DEFAULT_RANDOM_WORDS = [
     "atlas",
     "harbor",
@@ -387,6 +374,7 @@ def _format_human_ts(ts):
 
 
 def _normalize_username(value: str) -> str:
+    """Normalize Reddit username by removing /u/ or u/ prefix."""
     if not value:
         return ""
     cleaned = value.strip()
@@ -395,6 +383,7 @@ def _normalize_username(value: str) -> str:
         cleaned = cleaned[3:]
     elif lowered.startswith("u/"):
         cleaned = cleaned[2:]
+    # Remove any remaining leading slashes
     return cleaned.strip().lstrip("/")
 
 
@@ -445,15 +434,7 @@ def _send_node_email(recipient: str, manage_link: str) -> bool:
         return False
 
 
-AUTO_INGEST_ENABLED = str(os.getenv("AUTO_INGEST_ENABLED", "1")).strip().lower() not in {"0", "false", "off", "no"}
-AUTO_INGEST_INTERVAL_MINUTES = max(15, _safe_int(os.getenv("AUTO_INGEST_INTERVAL_MINUTES"), 180) or 180)
-AUTO_INGEST_LIMIT = min(5000, max(100, _safe_int(os.getenv("AUTO_INGEST_LIMIT"), 1000) or 1000))
-AUTO_INGEST_MIN_SUBS = max(0, _safe_int(os.getenv("AUTO_INGEST_MIN_SUBS"), 0) or 0)
-try:
-    AUTO_INGEST_DELAY = max(0.0, float(os.getenv("AUTO_INGEST_DELAY_SEC", "0.25") or 0.25))
-except ValueError:
-    AUTO_INGEST_DELAY = 0.25
-AUTO_INGEST_KEYWORDS = [k.strip() for k in os.getenv("AUTO_INGEST_KEYWORDS", "").split(",") if k.strip()]
+# Auto-ingest configuration imported from config module
 
 
 def _run_auto_ingest_job(keyword=None):
@@ -803,7 +784,8 @@ def _run_job_thread(job_id: str) -> None:
 
     keyword = job_config.get('keyword')
     limit = job_config.get('limit', 1000)
-    unmoderated_only = job_config.get('unmoderated_only', True)
+    # Default to False - persist ALL subreddits to grow the database
+    unmoderated_only = job_config.get('unmoderated_only', False)
     exclude_nsfw = job_config.get('exclude_nsfw', False)
     min_subs = job_config.get('min_subs', 0)
     activity_mode = job_config.get('activity_mode', "any")
@@ -823,16 +805,20 @@ def _run_job_thread(job_id: str) -> None:
     evaluated = []
     existing_matches = []
     try:
+        # For NSFW filter: None means no filter, False means exclude NSFW
         nsfw_filter = False if exclude_nsfw else None
         activity_mode_filter = activity_mode if activity_mode in {"active_after", "inactive_before"} else None
         activity_threshold_filter = activity_threshold_utc if activity_mode_filter else None
         db_target = min(max(limit, PUBLIC_API_LIMIT_CAP, 2000), 5000)
         db_page = 1
+        # Query database for existing matches
+        # Note: We query with the user's filters to show them existing data first
         while len(existing_matches) < db_target:
             page_size = min(200, db_target - len(existing_matches))
             chunk = search_subreddits(
                 q=keyword or None,
-                is_unmoderated=unmoderated_only,
+                # Only filter by unmoderated if user explicitly requested it
+                is_unmoderated=unmoderated_only if unmoderated_only else None,
                 nsfw=nsfw_filter,
                 min_subs=min_subs,
                 sort="subscribers",
@@ -881,6 +867,14 @@ def _run_job_thread(job_id: str) -> None:
         )
         api_results = payload.get("results", []) or []
         evaluated = payload.get("evaluated", api_results)
+
+        logger.info(
+            "Job %s: API returned %d results (%d evaluated total)",
+            job_id,
+            len(api_results),
+            len(evaluated)
+        )
+
         seen = {(row.get("name") or "").strip().lower() for row in subs if row.get("name")}
         additionals = []
         for row in api_results:
@@ -889,6 +883,14 @@ def _run_job_thread(job_id: str) -> None:
                 seen.add(normalized)
                 additionals.append(row)
         subs.extend(additionals)
+
+        logger.info(
+            "Job %s: Total results = %d (DB: %d + API: %d new)",
+            job_id,
+            len(subs),
+            len(existing_matches),
+            len(additionals)
+        )
         with jobs_lock:
             job_timeout = bool(job and job.get("timeout"))
         if job_timeout:
@@ -966,17 +968,26 @@ def sub_search():
         # Read raw inputs
         keyword_raw = request.form.get("keyword", "").strip()
         limit_raw = request.form.get("limit", "1000").strip()
+        # Default to False - we want to build the database with ALL subreddits, not just unmoderated
         unmoderated_only = request.form.get("unmoderated_only") == "on"
         exclude_nsfw = request.form.get("exclude_nsfw") == "on"
-        min_subs_raw = request.form.get("min_subs", "100").strip()
+        # Default to 0 to capture more subreddits in database
+        min_subs_raw = request.form.get("min_subs", "0").strip()
         activity_enabled = request.form.get("activity_enabled") == "on"
         activity_mode = request.form.get("activity_mode", "any").strip()
         activity_date_raw = request.form.get("activity_date", "").strip()
 
         # Server-side validation and sanitization
         def sanitize_keyword(s: str) -> str:
+            """Sanitize keyword to prevent injection and ensure valid format."""
+            if not s:
+                return ""
+            # Limit length
             s = s[:64]
-            return re.sub(r"[^A-Za-z0-9 _\-]", "", s)
+            # Remove any characters that aren't alphanumeric, space, underscore, or hyphen
+            sanitized = re.sub(r"[^A-Za-z0-9 _\-]", "", s)
+            # Remove excess whitespace
+            return " ".join(sanitized.split()).strip()
 
         # Accept commas in numeric fields
         limit_raw_clean = limit_raw.replace(",", "").replace("_", "").replace(" ", "")
@@ -1287,12 +1298,11 @@ def api_subreddits():
 
 
 def run():
-    # Run on a non-standard port for easy access
-    port = int(os.getenv("PORT", "5055"))
+    """Run the Flask web application with configured settings."""
     # Elevate logging when running in debug mode
     logger.setLevel(logging.DEBUG)
     logging.getLogger("sub_search").setLevel(logging.DEBUG)
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=PORT, debug=False)
 
 
 if __name__ == "__main__":

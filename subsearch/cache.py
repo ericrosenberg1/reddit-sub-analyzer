@@ -1,21 +1,24 @@
 import time
+from collections import OrderedDict
 from threading import RLock
-from typing import Any, Dict, Hashable, Optional, Tuple
+from typing import Any, Hashable, Optional, Tuple
 
 
 class TTLCache:
-    """Simple in-memory TTL cache suitable for low-traffic self-hosted usage."""
+    """Simple in-memory TTL cache with LRU eviction for low-traffic self-hosted usage."""
 
     def __init__(self, default_ttl: int = 60, maxsize: int = 256):
         self.default_ttl = max(1, default_ttl)
         self.maxsize = maxsize
-        self._store: Dict[Hashable, Tuple[Any, float]] = {}
+        # OrderedDict to maintain insertion/access order for LRU
+        self._store: OrderedDict[Hashable, Tuple[Any, float]] = OrderedDict()
         self._lock = RLock()
 
     def _now(self) -> float:
         return time.monotonic()
 
     def _purge_expired(self) -> None:
+        """Remove all expired entries from cache."""
         now = self._now()
         expired = [key for key, (_, exp) in self._store.items() if exp < now]
         for key in expired:
@@ -30,6 +33,8 @@ class TTLCache:
             if expires_at < self._now():
                 self._store.pop(key, None)
                 return None
+            # Move to end for LRU (most recently used)
+            self._store.move_to_end(key)
             return value
 
     def set(self, key: Hashable, value: Any, ttl: Optional[int] = None) -> Any:
@@ -38,10 +43,11 @@ class TTLCache:
             if len(self._store) >= self.maxsize:
                 self._purge_expired()
                 if len(self._store) >= self.maxsize:
-                    # Remove the oldest item (FIFO) to keep cache bounded
-                    oldest = next(iter(self._store))
-                    self._store.pop(oldest, None)
+                    # Remove least recently used item (LRU) - first item in OrderedDict
+                    self._store.popitem(last=False)
             self._store[key] = (value, self._now() + ttl)
+            # Move to end to mark as most recently used
+            self._store.move_to_end(key)
         return value
 
     def invalidate(self, key: Optional[Hashable] = None) -> None:

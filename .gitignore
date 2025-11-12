@@ -1,30 +1,38 @@
-# Virtual envs
-.venv/
-venv/
-ENV/
+.claude
 
-# Python build / cache
+# Environment and secrets
+.env
+.env.*
+
+# Python virtual environments
+venv/
+.venv/
+ENV/
 __pycache__/
 *.py[cod]
+
+# Build and distribution
+build/
+dist/
 *.egg-info/
 *.dist-info/
 .build/
-build/
-dist/
 .coverage
 .pytest_cache/
 .mypy_cache/
 .cache/
 
-# Editors & OS
-.vscode/
-.DS_Store
-
-# Local runtime/output
-*.log
+# Data and logs
+data/
 *.csv
+*.log
+logs/
+*.db
+*.sqlite3
 *.bak.*
 *.tmp
-.env
-.env.*
-data/*.db
+
+# Editors and OS files
+.vscode/
+.DS_Store
+.ds_store

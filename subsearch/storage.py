@@ -14,6 +14,19 @@ from .cache import (
     summary_cache,
     invalidate_all_caches,
 )
+from .config import (
+    DB_TYPE,
+    SUBSEARCH_BASE_DIR,
+    SUBSEARCH_DATA_DIR,
+    SUBSEARCH_DB_PATH,
+    DB_POSTGRES_HOST,
+    DB_POSTGRES_PORT,
+    DB_POSTGRES_DB,
+    DB_POSTGRES_USER,
+    DB_POSTGRES_PASSWORD,
+    DB_POSTGRES_SSLMODE,
+    PHONE_HOME_ENABLED,
+)
 from .phone_home import queue_phone_home
 
 try:
@@ -24,35 +37,12 @@ except ImportError:  # pragma: no cover - psycopg2 is optional until postgres is
     RealDictCursor = None
 
 
-def _truthy(value: Optional[str], default: str = "false") -> bool:
-    if value is None:
-        value = default
-    return str(value).strip().lower() in {"1", "true", "yes", "on"}
-
-
-DB_TYPE = os.getenv("DB_TYPE", "sqlite").strip().lower() or "sqlite"
 IS_POSTGRES = DB_TYPE == "postgres"
-
-BASE_DIR = os.getenv("SUBSEARCH_BASE_DIR") or os.path.abspath(os.getcwd())
-DATA_DIR = os.getenv("SUBSEARCH_DATA_DIR") or os.path.join(BASE_DIR, "data")
-DB_PATH = os.getenv("SUBSEARCH_DB_PATH") or os.path.join(DATA_DIR, "subsearch.db")
-
-DB_POSTGRES_HOST = os.getenv("DB_POSTGRES_HOST", "").strip()
-DB_POSTGRES_PORT = os.getenv("DB_POSTGRES_PORT", "5432").strip()
-DB_POSTGRES_DB = os.getenv("DB_POSTGRES_DB", "").strip()
-DB_POSTGRES_USER = os.getenv("DB_POSTGRES_USER", "").strip()
-DB_POSTGRES_PASSWORD = os.getenv("DB_POSTGRES_PASSWORD", "").strip()
-DB_POSTGRES_SSLMODE = os.getenv("DB_POSTGRES_SSLMODE", "prefer").strip()
-
-CONFIG_WARNINGS: List[str] = []
+BASE_DIR = SUBSEARCH_BASE_DIR
+DATA_DIR = SUBSEARCH_DATA_DIR
+DB_PATH = SUBSEARCH_DB_PATH
 
 NAMED_PARAM_PATTERN = re.compile(r":([A-Za-z_][A-Za-z0-9_]*)")
-
-PHONE_HOME_ENABLED = _truthy(os.getenv("PHONE_HOME", "false"))
-if PHONE_HOME_ENABLED and not os.getenv("PHONE_HOME_TOKEN"):
-    CONFIG_WARNINGS.append(
-        "PHONE_HOME is enabled without PHONE_HOME_TOKEN; upstream sync will be anonymous."
-    )
 
 
 def _validate_database_settings() -> None:
@@ -139,6 +129,7 @@ def _prepare_sql(sql: str) -> str:
 
 
 def _connect_sqlite() -> sqlite3.Connection:
+    """Create and configure SQLite connection with safe defaults."""
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(
         DB_PATH,
@@ -147,7 +138,10 @@ def _connect_sqlite() -> sqlite3.Connection:
         check_same_thread=False,
     )
     conn.row_factory = sqlite3.Row
+    # Enable foreign key constraints for referential integrity
     conn.execute("PRAGMA foreign_keys = ON;")
+    # Use WAL mode for better concurrent access (set in init_db, but also set here for safety)
+    conn.execute("PRAGMA journal_mode = WAL;")
     return conn
 
 
@@ -187,20 +181,18 @@ def db_conn():
 
 
 def _now_iso() -> str:
+    """Return current UTC time as ISO string."""
     return datetime.utcnow().isoformat()
 
 
 def _clean_text(value: Optional[str], *, limit: int = 255) -> str:
+    """Clean and truncate text for database storage."""
     if not value:
         return ""
     text = str(value).strip()
     if not text:
         return ""
     return text[:limit]
-
-
-def get_config_warnings() -> List[str]:
-    return list(CONFIG_WARNINGS)
 
 
 def init_db() -> None:
@@ -597,11 +589,14 @@ def fetch_recent_runs(limit: int = 5, source_filter: Optional[str] = None) -> Li
     cached = recent_runs_cache.get(cache_key)
     if cached is not None:
         return cached
-    where_clause = ""
     params: Dict[str, object] = {"limit": limit}
+    # Build WHERE clause safely without string interpolation
     if source_filter:
         where_clause = "WHERE source = :source"
         params["source"] = source_filter
+    else:
+        where_clause = ""
+
     with db_conn() as conn:
         rows = conn.execute(
             f"""
@@ -716,6 +711,8 @@ def search_subreddits(
     params_with_paging = dict(params)
     params_with_paging.update({"limit": page_size, "offset": offset})
 
+    # Note: where_clause and sort_column are constructed from controlled values (not user input),
+    # and order_dir is validated. All dynamic user values go through parameterized queries.
     with db_conn() as conn:
         total_row = conn.execute(
             f"SELECT COUNT(*) AS c FROM subreddits {where_clause}",

@@ -6,12 +6,13 @@
   <div class="relative z-10 grid gap-6 lg:grid-cols-[1.1fr,0.9fr] lg:items-center">
     <div class="max-w-2xl space-y-4">
       <p class="text-sm font-semibold uppercase tracking-[0.3em] text-white/60">Sub Search</p>
-      <h1 class="font-display text-3xl text-white sm:text-4xl">The most delicious Subreddit search tool and database ever crafted.</h1>
-      <p class="text-base text-white/80">Sub Search is a free, community-driven database and subreddit search tool. It's open source (contribute on Github) and the database grows automatically with every search.</p>
-      <p class="text-base text-white/80">The database grows automatically with a background task, it saves the result of every search, and others can self-host their own instance that sends the database results back here.</p>
+      <h1 class="font-display text-3xl text-white sm:text-4xl">Discover and explore Reddit communities with ease</h1>
+      <p class="text-sm text-white/50 -mt-2">By <a href="https://ericrosenberg.com" target="_blank" rel="noopener" class="underline decoration-dotted hover:text-white/70">Eric Rosenberg</a></p>
+      <p class="text-base text-white/80">Search millions of subreddits by keyword, activity, size, and moderation status. Our community-driven database grows with every search and helps you find the perfect communities for your interests.</p>
+      <p class="text-base text-white/80">Features automated discovery, real-time search, and CSV export. Self-host your own instance to contribute to the global database.</p>
       <div class="flex flex-wrap gap-2 text-sm text-white/70">
-        <a class="nav-link active text-sm" href="{{ url_for('all_subs') }}">View All The Subs</a>
-        <a class="nav-link text-sm" href="{{ url_for('home') }}">About this project</a>
+        <a class="nav-link active text-sm" href="{{ url_for('all_subs') }}">Browse Database</a>
+        <a class="nav-link text-sm" href="{{ url_for('home') }}">Learn More</a>
       </div>
     </div>
     <div class="flex flex-col items-center gap-3">
@@ -31,7 +32,7 @@
       </div>
       <div>
         <label for="min_subs" class="text-sm font-semibold text-white/90">Minimum subscribers</label>
-        <input type="text" id="min_subs" name="min_subs" inputmode="numeric" pattern="[0-9,]*" value="100" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white placeholder:text-white/30 focus:border-brand focus:ring-2 focus:ring-brand/40" />
+        <input type="text" id="min_subs" name="min_subs" inputmode="numeric" pattern="[0-9,]*" value="0" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white placeholder:text-white/30 focus:border-brand focus:ring-2 focus:ring-brand/40" />
       </div>
     </div>
     <div class="space-y-4">

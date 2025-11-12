@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{% block title %}Eric Rosenberg Sub Search{% endblock %}</title>
+    <title>{% block title %}Sub Search - Reddit Subreddit Discovery{% endblock %}</title>
     {% if site_url %}
     <link rel="canonical" href="{{ site_url.rstrip('/') }}{{ request.path }}" />
     {% endif %}
@@ -45,10 +45,10 @@
       <header class="sticky top-0 z-20 border-b border-white/10 bg-slate-950/80 backdrop-blur">
         <div class="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4">
           <a href="{{ url_for('home') }}" class="flex items-center gap-3 text-white">
-            <img src="{{ url_for('static', filename='img/sub-sando-badge.svg') }}" alt="Sub Search badge" class="h-12 w-12 rounded-2xl bg-black/20 p-1 shadow-brand hero-art">
+            <img src="{{ url_for('static', filename='img/sub-sando-badge.svg') }}" alt="Sub Search logo" class="h-12 w-12 rounded-2xl bg-black/20 p-1 shadow-brand hero-art">
             <div class="flex flex-col leading-[1.1]">
-              <span class="font-display text-lg">Eric Rosenberg</span>
-              <span class="text-xs uppercase tracking-[0.3em] text-white/70">Sub Search</span>
+              <span class="font-display text-xl">Sub Search</span>
+              <span class="text-xs text-white/50">Reddit Discovery Tool</span>
             </div>
           </a>
           <nav class="flex items-center gap-2 text-sm font-semibold">
@@ -74,17 +74,15 @@
       </main>
       <footer class="border-t border-white/5 bg-slate-950/70">
         <div class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-4 px-4 py-6 text-xs text-white/60">
-          <span>© {{ datetime.utcnow().year }} Eric Rosenberg</span>
-          <span>•</span>
           <span>Open source on <a class="underline decoration-dotted" href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" rel="noopener">GitHub</a></span>
           <span>•</span>
-          <span><a class="underline decoration-dotted" href="{{ url_for('helpdocs') }}">Help Center</a></span>
+          <span><a class="underline decoration-dotted" href="{{ url_for('helpdocs') }}">Help</a></span>
           <span>•</span>
-          <span><a class="underline decoration-dotted" href="{{ url_for('developer_docs') }}">Developer Docs</a></span>
+          <span><a class="underline decoration-dotted" href="{{ url_for('developer_docs') }}">Docs</a></span>
           <span>•</span>
-          <span><a class="underline decoration-dotted" href="{{ url_for('logs') }}">Activity Log</a></span>
+          <span><a class="underline decoration-dotted" href="{{ url_for('logs') }}">Activity</a></span>
           <span>•</span>
-          <span>Build {{ build_number }}</span>
+          <span>v{{ build_number }}</span>
         </div>
       </footer>
     </div>

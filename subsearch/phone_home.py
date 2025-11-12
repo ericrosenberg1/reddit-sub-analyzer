@@ -1,23 +1,17 @@
 import logging
-import os
 import threading
 from typing import Dict, List
 
 import requests
 
-
-def _truthy(value: str) -> bool:
-    if value is None:
-        return False
-    return str(value).strip().lower() in {"1", "true", "yes", "on"}
-
-
-PHONE_HOME_ENABLED = _truthy(os.getenv("PHONE_HOME", "false"))
-PHONE_HOME_ENDPOINT = os.getenv("PHONE_HOME_ENDPOINT", "https://allthesubs.ericrosenberg.com/api/ingest").strip()
-PHONE_HOME_TOKEN = os.getenv("PHONE_HOME_TOKEN", "").strip()
-PHONE_HOME_TIMEOUT = float(os.getenv("PHONE_HOME_TIMEOUT", "10") or 10)
-PHONE_HOME_BATCH_MAX = int(os.getenv("PHONE_HOME_BATCH_MAX", "500") or 500)
-PHONE_HOME_SOURCE = os.getenv("SITE_URL", "").strip() or os.getenv("PHONE_HOME_SOURCE", "self-hosted").strip() or "self-hosted"
+from .config import (
+    PHONE_HOME_ENABLED,
+    PHONE_HOME_ENDPOINT,
+    PHONE_HOME_TOKEN,
+    PHONE_HOME_TIMEOUT,
+    PHONE_HOME_BATCH_MAX,
+    PHONE_HOME_SOURCE,
+)
 
 logger = logging.getLogger("phone_home")
 
@@ -37,6 +31,10 @@ def queue_phone_home(records: List[Dict]):
 
 
 def _send_payload(records: List[Dict]):
+    """Send discovered subreddits to upstream endpoint (non-blocking, best-effort)."""
+    if not records:
+        return
+
     payload = {
         "source": PHONE_HOME_SOURCE,
         "count": len(records),
@@ -54,5 +52,9 @@ def _send_payload(records: List[Dict]):
         )
         resp.raise_for_status()
         logger.info("Phone-home sync delivered %d subreddits to %s", len(records), PHONE_HOME_ENDPOINT)
-    except Exception as exc:
+    except requests.exceptions.Timeout:
+        logger.warning("Phone-home sync timed out after %ds", PHONE_HOME_TIMEOUT)
+    except requests.exceptions.RequestException as exc:
         logger.warning("Phone-home sync failed: %s", exc)
+    except Exception as exc:
+        logger.exception("Unexpected error in phone-home sync: %s", exc)
