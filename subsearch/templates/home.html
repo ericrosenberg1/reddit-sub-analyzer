@@ -27,13 +27,13 @@
             <span>Total Sub Search runs</span>
             <span class="text-lg font-semibold text-white">{{ (stats.total_runs or 0)|int }}</span>
           </li>
-          <li class="flex items-center justify-between">
+          <li class="flex flex-col gap-1">
             <span>Last indexed</span>
-            <span class="font-mono text-sm text-white/80">{{ stats.last_indexed_display or "pending" }}</span>
+            <span class="local-time text-sm text-white/90" data-ts="{{ stats.last_indexed }}">{{ stats.last_indexed_display or "pending" }}</span>
           </li>
-          <li class="flex items-center justify-between">
+          <li class="flex flex-col gap-1">
             <span>Last run started</span>
-            <span class="font-mono text-sm text-white/80">{{ stats.last_run_display or "pending" }}</span>
+            <span class="local-time text-sm text-white/90" data-ts="{{ stats.last_run_started }}">{{ stats.last_run_display or "pending" }}</span>
           </li>
         </ul>
       </div>
@@ -42,19 +42,19 @@
 
   <div class="mt-10 grid gap-4 md:grid-cols-3">
     <article class="rounded-3xl border border-white/10 bg-slate-900/40 p-5 shadow-lg">
-      <p class="text-xs uppercase tracking-[0.3em] text-white/60">1. The Always Growing Sub Database</p>
-      <h3 class="mt-2 text-xl font-semibold text-white">Explain & Invite</h3>
+      <p class="text-xs uppercase tracking-[0.3em] text-white/60">Always growing</p>
+      <h3 class="mt-2 text-xl font-semibold text-white">Automatic database expansion</h3>
       <p class="mt-2 text-sm text-white/80">Every search is saved in the public database, and random subreddits are added automatically.</p>
     </article>
     <article class="rounded-3xl border border-white/10 bg-slate-900/40 p-5 shadow-lg">
-      <p class="text-xs uppercase tracking-[0.3em] text-white/60">2. The Secret Sauce</p>
-      <h3 class="mt-2 text-xl font-semibold text-white">The node network</h3>
+      <p class="text-xs uppercase tracking-[0.3em] text-white/60">Community powered</p>
+      <h3 class="mt-2 text-xl font-semibold text-white">Distributed node network</h3>
       <p class="mt-2 text-sm text-white/80">Anyone can run a node that feeds the main database, fueling faster growth and fresher results.</p>
     </article>
     <article class="rounded-3xl border border-white/10 bg-slate-900/40 p-5 shadow-lg">
-      <p class="text-xs uppercase tracking-[0.3em] text-white/60">3. Search and Export Custom Sub Lists</p>
-      <h3 class="mt-2 text-xl font-semibold text-white">Search & Export</h3>
-      <p class="mt-2 text-sm text-white/80">Search for subs directly (slower, fresher data) or with the All The Subs database (faster, day old bread).</p>
+      <p class="text-xs uppercase tracking-[0.3em] text-white/60">Search & export</p>
+      <h3 class="mt-2 text-xl font-semibold text-white">Custom subreddit lists</h3>
+      <p class="mt-2 text-sm text-white/80">Search for subs directly (slower, fresher data) or with the All The Subs database (faster, day-old bread).</p>
     </article>
   </div>
 </section>
@@ -67,7 +67,7 @@
       {% if random_run %}
       <p class="mt-2 text-sm text-white/80">
         Keyword <span class="font-semibold text-white">{{ random_run.keyword or "—" }}</span> • Limit {{ random_run.limit_value or random_run.limit or "2000" }}
-        • {{ random_run.started_display or "—" }} UTC • <span class="local-time" data-ts="{{ random_run.started_at }}"></span>
+        • <span class="local-time" data-ts="{{ random_run.started_at }}"></span>
       </p>
       <p class="mt-1 text-xs text-white/60">{{ random_run.result_count or 0 }} total subs collected</p>
       {% if random_run.error %}
@@ -98,31 +98,30 @@
       </div>
       <a href="{{ url_for('sub_search') }}" class="nav-link text-sm">Find Your Subs →</a>
     </div>
-    {% if recent_user_runs %}
-    <ul class="mt-6 space-y-4">
+    <ul class="mt-6 space-y-4" id="recent-searches-list">
+      {% if recent_user_runs %}
       {% for run in recent_user_runs %}
-      <li class="rounded-2xl border border-white/10 bg-slate-900/50 p-4">
+      <li class="rounded-2xl border border-white/10 bg-slate-900/50 p-4" data-run-id="{{ run.job_id }}">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex flex-col">
             <span class="text-base font-semibold text-white">{{ run.keyword or "All subreddits" }}</span>
-            <span class="text-xs text-white/60">
-              Order Time • {{ run.started_display or "—" }} UTC
-              • <span class="local-time" data-ts="{{ run.started_at }}"></span>
-            </span>
+            <span class="local-time text-xs text-white/60" data-ts="{{ run.started_at }}">{{ run.started_display or "—" }}</span>
           </div>
-          <span class="rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] {% if run.status == 'complete' %}bg-emerald-500/15 text-emerald-200{% elif run.status == 'error' %}bg-red-500/15 text-red-200{% else %}bg-sky-500/15 text-sky-200{% endif %}">{{ run.status }}</span>
+          <span class="status-badge rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] {% if run.completed_at %}bg-emerald-500/15 text-emerald-200{% elif run.error %}bg-red-500/15 text-red-200{% else %}bg-sky-500/15 text-sky-200{% endif %}">
+            {% if run.completed_at %}complete{% elif run.error %}error{% else %}running{% endif %}
+          </span>
         </div>
         <div class="mt-3 flex flex-wrap items-center gap-3 text-xs text-white/60">
-          <span>{{ run.result_count or 0 }} subs</span>
+          <span class="result-count">{{ run.result_count or 0 }} subs</span>
           <span>Source: {{ run.source }}</span>
           {% if run.error %}<span class="text-red-300">Error: {{ run.error }}</span>{% endif %}
         </div>
       </li>
       {% endfor %}
+      {% else %}
+      <p class="text-white/70">No runs logged yet. Be the first to generate data!</p>
+      {% endif %}
     </ul>
-    {% else %}
-    <p class="mt-6 text-white/70">No runs logged yet. Be the first to generate data!</p>
-    {% endif %}
   </div>
 
   <div class="panel-surface p-6 shadow-xl">
@@ -151,6 +150,15 @@
         </div>
       </li>
     </ol>
+    <div class="mt-6 rounded-2xl border border-white/10 bg-slate-900/40 p-4">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p class="text-sm font-semibold text-white">Search History</p>
+          <p class="text-xs text-white/60">View detailed logs of all searches and background jobs</p>
+        </div>
+        <a href="{{ url_for('logs') }}" class="rounded-xl bg-brand/20 px-4 py-2 text-sm font-semibold text-brand-light transition hover:bg-brand/30">View Logs →</a>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -159,25 +167,23 @@
     <div>
       <p class="text-xs uppercase tracking-[0.3em] text-white/60">Distributed help</p>
       <h2 class="text-2xl font-semibold text-white">Bring your machine + Reddit account</h2>
-      <p class="mt-2 text-sm text-white/80">Volunteer nodes get a private link via email—no login—to update or delete their entry anytime. Mark a node “broken” if it goes offline; anything broken for 7+ days is automatically removed during the nightly cleanup.</p>
+      <p class="mt-2 text-sm text-white/80">Volunteer nodes get a private link via email—no login—to update or delete their entry anytime. Mark a node "broken" if it goes offline; anything broken for 7+ days is automatically removed during the nightly cleanup.</p>
     </div>
     <a href="{{ url_for('node_join') }}" class="rounded-2xl bg-gradient-to-r from-brand to-brand-light px-6 py-3 text-base font-semibold text-slate-950 shadow-brand transition hover:scale-[1.01]">Add a node</a>
   </div>
-  <div class="mt-6 grid gap-4 md:grid-cols-3">
+  <div class="mt-6 grid gap-4 md:grid-cols-2">
     <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-4 text-sm text-white/70">
       <p class="text-xs uppercase tracking-[0.3em] text-white/50">Nodes in pool</p>
       <p class="mt-2 text-3xl font-semibold text-white">{{ node_stats.total or 0 }}</p>
       <p class="mt-1 text-xs text-white/50">Active {{ node_stats.active or 0 }} • Pending {{ node_stats.pending or 0 }}</p>
     </div>
     <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-4 text-sm text-white/70">
-      <p class="text-xs uppercase tracking-[0.3em] text-white/50">Nightly cleanup</p>
-      <p class="mt-2 text-3xl font-semibold text-white">7 days</p>
-      <p class="mt-1 text-xs text-white/50">Broken nodes age out automatically.</p>
-    </div>
-    <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-4 text-sm text-white/70">
-      <p class="text-xs uppercase tracking-[0.3em] text-white/50">Manual + auto</p>
-      <p class="mt-2 text-3xl font-semibold text-white">Dual fuel</p>
-      <p class="mt-1 text-xs text-white/50">Manual searches fuel niche leads while nodes sweep background keywords.</p>
+      <p class="text-xs uppercase tracking-[0.3em] text-white/50">Open source & contributor friendly</p>
+      <p class="mt-2 text-base font-semibold text-white">Help build the largest trustworthy subreddit index</p>
+      <div class="mt-3 flex gap-3">
+        <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer/issues" target="_blank" rel="noopener" class="nav-link text-xs">File an issue</a>
+        <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer/pulls" target="_blank" rel="noopener" class="nav-link text-xs">Submit PR</a>
+      </div>
     </div>
   </div>
   {% if volunteer_nodes %}
@@ -201,18 +207,6 @@
   {% endif %}
 </section>
 
-<section class="panel-surface mt-10 p-6 text-white shadow-xl lg:p-10">
-  <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-    <div>
-      <h2 class="text-2xl font-semibold">Open-source and contributor friendly</h2>
-      <p class="mt-2 text-white/80">Bug reports, feature ideas, and pull requests are welcome. Help build the largest trustworthy index of subreddits on the internet.</p>
-    </div>
-    <div class="flex gap-3">
-      <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer/issues" target="_blank" rel="noopener" class="nav-link text-sm">File an issue</a>
-      <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer/pulls" target="_blank" rel="noopener" class="nav-link text-sm">Submit PR</a>
-    </div>
-  </div>
-</section>
 {% endblock %}
 
 {% block scripts %}
@@ -225,9 +219,14 @@
     if (Number.isNaN(date.getTime())) {
       return '—';
     }
-    return date.toLocaleString(undefined, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
+    // US style formatting: MM/DD/YYYY, H:MM AM/PM
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
       timeZoneName: 'short',
     });
   }
@@ -239,6 +238,71 @@
     });
   }
 
-  document.addEventListener('DOMContentLoaded', refreshLocalTimeElements);
+  // Auto-refresh recent searches every 5 seconds
+  let recentSearchesRefreshTimer = null;
+
+  async function refreshRecentSearches() {
+    try {
+      const response = await fetch('/api/recent-runs?limit=5');
+      if (!response.ok) return;
+
+      const data = await response.json();
+      if (!data || !data.runs) return;
+
+      const listEl = document.getElementById('recent-searches-list');
+      if (!listEl) return;
+
+      // Update existing items or add new ones
+      data.runs.forEach((run, index) => {
+        let itemEl = listEl.querySelector(`[data-run-id="${run.job_id}"]`);
+
+        if (!itemEl && index < listEl.children.length) {
+          // Replace old item with new run
+          itemEl = listEl.children[index];
+          itemEl.setAttribute('data-run-id', run.job_id);
+        }
+
+        if (itemEl) {
+          // Update status badge
+          const statusBadge = itemEl.querySelector('.status-badge');
+          if (statusBadge) {
+            const status = run.completed_at ? 'complete' : (run.error ? 'error' : 'running');
+            statusBadge.className = 'status-badge rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]';
+            if (status === 'complete') {
+              statusBadge.className += ' bg-emerald-500/15 text-emerald-200';
+            } else if (status === 'error') {
+              statusBadge.className += ' bg-red-500/15 text-red-200';
+            } else {
+              statusBadge.className += ' bg-sky-500/15 text-sky-200';
+            }
+            statusBadge.textContent = status;
+          }
+
+          // Update result count
+          const countEl = itemEl.querySelector('.result-count');
+          if (countEl) {
+            countEl.textContent = `${run.result_count || 0} subs`;
+          }
+        }
+      });
+
+      refreshLocalTimeElements();
+    } catch (error) {
+      console.error('Failed to refresh recent searches:', error);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    refreshLocalTimeElements();
+    refreshRecentSearches();
+    recentSearchesRefreshTimer = setInterval(refreshRecentSearches, 5000);
+  });
+
+  // Clean up on page unload
+  window.addEventListener('beforeunload', () => {
+    if (recentSearchesRefreshTimer) {
+      clearInterval(recentSearchesRefreshTimer);
+    }
+  });
 </script>
 {% endblock %}

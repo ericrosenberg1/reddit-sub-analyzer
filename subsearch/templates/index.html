@@ -170,7 +170,7 @@
     'Layering lettuce like an architecture nerd.',
     'Brining olives and optimism simultaneously.',
   ];
-  const POLL_MS = 3000;
+  const POLL_MS = 1000; // Poll every 1 second for real-time updates
   const STORE_KEY = 'sub_search_form_v2';
   const STORE_TTL_MS = 60 * 60 * 1000;
 
@@ -180,6 +180,8 @@
   let activeJobId = jobIdFromServer;
   let currentResults = [];
   let currentSort = { key: 'subscribers', dir: 'desc' };
+  let lastChecked = 0;
+  let lastFound = 0;
 
   const form = document.getElementById('run-form');
   const runState = document.getElementById('run-state');
@@ -328,13 +330,40 @@
     pollTimer = setInterval(() => fetchStatus(id), POLL_MS);
   }
 
+  function animateNumber(element, from, to, duration = 300) {
+    const start = Date.now();
+    const diff = to - from;
+
+    function update() {
+      const elapsed = Date.now() - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const current = Math.floor(from + diff * progress);
+      element.textContent = current.toLocaleString();
+
+      if (progress < 1) {
+        requestAnimationFrame(update);
+      }
+    }
+
+    requestAnimationFrame(update);
+  }
+
   function updateStatusUi(data){
     const limit = Number(data.limit || data.job_config?.limit || 0);
     const checked = Number(data.checked || 0);
     const found = Number(data.found || 0);
+
     limitEl.textContent = limit.toLocaleString();
-    checkedEl.textContent = checked.toLocaleString();
-    foundEl.textContent = found.toLocaleString();
+
+    // Animate counters if they changed
+    if (checked !== lastChecked) {
+      animateNumber(checkedEl, lastChecked, checked);
+      lastChecked = checked;
+    }
+    if (found !== lastFound) {
+      animateNumber(foundEl, lastFound, found);
+      lastFound = found;
+    }
 
     const state = data.state || (data.done ? 'complete' : 'running');
     const queuePosition = data.queue_position ?? null;
@@ -417,13 +446,31 @@
     if (!value) return '—';
     const num = Number(value);
     if (!Number.isFinite(num) || num <= 0) return '—';
-    return new Date(num * 1000).toISOString().replace('T', ' ').replace('Z', ' UTC');
+    const date = new Date(num * 1000);
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZoneName: 'short',
+    });
   }
 
   function formatIso(value){
     if (!value) return '—';
     try {
-      return new Date(value).toISOString().replace('T', ' ').replace('Z', ' UTC');
+      const date = new Date(value);
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZoneName: 'short',
+      });
     } catch (e) {
       return value;
     }

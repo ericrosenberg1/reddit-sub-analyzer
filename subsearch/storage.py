@@ -1032,3 +1032,27 @@ def prune_broken_nodes(max_age_days: int = 7) -> int:
             return count
     invalidate_all_caches()
     return 0
+
+
+def cleanup_stale_runs(max_age_hours: int = 24) -> int:
+    """Mark jobs stuck in 'running' state as failed if older than max_age_hours."""
+    max_age_hours = max(1, int(max_age_hours or 24))
+    cutoff = datetime.utcnow() - timedelta(hours=max_age_hours)
+    cutoff_iso = cutoff.isoformat()
+    with db_conn() as conn:
+        cur = conn.execute(
+            """
+            UPDATE query_runs
+            SET completed_at = :now,
+                error = 'Job stuck in running state, marked as failed by cleanup'
+            WHERE completed_at IS NULL
+              AND started_at <= :cutoff
+            """,
+            {"cutoff": cutoff_iso, "now": _now_iso()},
+        )
+        if hasattr(cur, "rowcount") and cur.rowcount is not None:
+            count = cur.rowcount
+            invalidate_all_caches()
+            return count
+    invalidate_all_caches()
+    return 0

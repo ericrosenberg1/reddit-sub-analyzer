@@ -33,12 +33,8 @@ def _int_from_env(key: str, default: int) -> int:
         return default
 
 
-# Limits to keep moderator lookups in check while still surfacing activity.
-# Sample size controls how many moderators per subreddit we inspect (sorted by
-# newest assignment). Fetch limit bounds total Redditor lookups per run.
-# Reduced defaults for better performance: 2 mods/sub, 1000 max fetches
-MOD_ACTIVITY_SAMPLE_SIZE = max(0, _int_from_env("SUBSEARCH_MOD_ACTIVITY_SAMPLE_SIZE", 2))
-MOD_ACTIVITY_FETCH_LIMIT = max(0, _int_from_env("SUBSEARCH_MOD_ACTIVITY_FETCH_LIMIT", 1000))
+# Moderator activity tracking disabled for performance
+# (Checking moderator profiles adds thousands of extra API calls)
 
 def _current_reddit_config():
     """Resolve current Reddit configuration from environment (runtime).
@@ -111,43 +107,7 @@ def find_unmoderated_subreddits(
         except Exception:
             pass
 
-    mod_activity_cache: Dict[str, Optional[int]] = {}
-    mod_activity_fetches = 0
     normalized_excludes = {name.strip().lower() for name in (exclude_names or set()) if name and name.strip()}
-
-    def _fetch_mod_activity(mod_name: str) -> Optional[int]:
-        """Return most recent known activity UTC for the given moderator."""
-        nonlocal mod_activity_fetches
-        if not mod_name:
-            return None
-        if MOD_ACTIVITY_SAMPLE_SIZE <= 0:
-            return None
-        key = mod_name.lower()
-        if key in mod_activity_cache:
-            return mod_activity_cache[key]
-        if MOD_ACTIVITY_FETCH_LIMIT and mod_activity_fetches >= MOD_ACTIVITY_FETCH_LIMIT:
-            mod_activity_cache[key] = None
-            return None
-        mod_activity_fetches += 1
-        last_ts: Optional[int] = None
-        try:
-            redditor = reddit.redditor(mod_name)
-            for item in redditor.new(limit=1):
-                ts = getattr(item, 'created_utc', None)
-                if ts is None:
-                    continue
-                try:
-                    last_ts = int(ts)
-                except (TypeError, ValueError):
-                    last_ts = None
-                if last_ts is not None:
-                    break
-        except (praw.exceptions.PRAWException, prawcore.exceptions.PrawcoreException):
-            last_ts = None
-        except Exception:
-            last_ts = None
-        mod_activity_cache[key] = last_ts
-        return last_ts
 
     filtered_subs = []
     evaluated_subs = []
@@ -244,30 +204,7 @@ def find_unmoderated_subreddits(
                 mod_count = len(real_mods)
             except (praw.exceptions.PRAWException, prawcore.exceptions.PrawcoreException, AttributeError):
                 # If we can't fetch moderators, assume we don't have that data
-                real_mods = []
                 mod_count = None
-
-            last_mod_activity_utc = None
-            if real_mods and MOD_ACTIVITY_SAMPLE_SIZE > 0:
-                def _mod_sort_key(mod_obj):
-                    raw = getattr(mod_obj, 'date', None)
-                    if isinstance(raw, datetime):
-                        return int(raw.timestamp())
-                    try:
-                        return int(raw or 0)
-                    except (TypeError, ValueError):
-                        return 0
-
-                sorted_mods = sorted(real_mods, key=_mod_sort_key, reverse=True)
-                for mod in sorted_mods[:MOD_ACTIVITY_SAMPLE_SIZE]:
-                    mod_name = getattr(mod, 'name', None)
-                    if not mod_name or mod_name.lower() == 'automoderator':
-                        continue
-                    ts = _fetch_mod_activity(mod_name)
-                    if ts is None:
-                        continue
-                    if last_mod_activity_utc is None or ts > last_mod_activity_utc:
-                        last_mod_activity_utc = ts
 
             display_name = getattr(subreddit, 'display_name', 'unknown')
             display_name_prefixed = getattr(subreddit, 'display_name_prefixed', f"r/{display_name}")
@@ -284,7 +221,7 @@ def find_unmoderated_subreddits(
                 'is_nsfw': bool(getattr(subreddit, 'over18', False)),
                 'mod_count': mod_count,
                 'last_activity_utc': latest_post_utc,
-                'last_mod_activity_utc': last_mod_activity_utc,
+                'last_mod_activity_utc': None,  # Disabled for performance
             }
             name_key = (display_name or "").strip().lower()
             if normalized_excludes and name_key in normalized_excludes:

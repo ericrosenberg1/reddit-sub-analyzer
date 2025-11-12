@@ -66,6 +66,7 @@ from .storage import (
     delete_volunteer_node,
     mark_manage_link_sent,
     prune_broken_nodes,
+    cleanup_stale_runs,
     persist_subreddits,
     record_run_complete,
     record_run_start,
@@ -296,10 +297,17 @@ def node_manage(token):
 
 @app.context_processor
 def inject_globals():
+    from pathlib import Path
+    version_file = Path(__file__).parent.parent / "VERSION"
+    try:
+        version = version_file.read_text().strip()
+    except:
+        version = "dev"
+
     return {
         "site_url": SITE_URL,
         "datetime": datetime,
-        "build_number": get_current_build_number(),
+        "build_number": version,
         "config_warnings": get_config_warnings(),
         "random_search_interval": RANDOM_SEARCH_INTERVAL_MINUTES,
     }
@@ -605,6 +613,14 @@ def _node_cleanup_loop():
                     "Nightly node cleanup removed %d broken node(s) older than %d days",
                     removed,
                     NODE_BROKEN_RETENTION_DAYS,
+                )
+
+            # Clean up stale runs stuck in running state
+            stale_count = cleanup_stale_runs(max_age_hours=24)
+            if stale_count:
+                logger.info(
+                    "Nightly cleanup marked %d stale job(s) as failed",
+                    stale_count,
                 )
         except Exception:
             logger.exception("Nightly node cleanup failed.")
@@ -1259,14 +1275,12 @@ def stop(job_id):
     return jsonify({"ok": True, "message": "Stopping current run"})
 
 
-@app.route('/helpdocs')
-def helpdocs():
-    return render_template("help.html", nav_active=None)
-
-
-@app.route('/docs/developers')
-def developer_docs():
-    return render_template("developer_docs.html", nav_active=None)
+@app.get("/api/recent-runs")
+def api_recent_runs():
+    limit = _safe_int(request.args.get("limit"), 5) or 5
+    limit = min(max(limit, 1), 50)  # Cap between 1-50
+    runs = fetch_recent_runs(limit=limit, source_filter="sub_search")
+    return jsonify({"runs": runs})
 
 
 @app.get("/api/subreddits")
