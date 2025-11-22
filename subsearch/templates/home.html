@@ -3,7 +3,11 @@
 
 {% block content %}
 <section class="panel-surface overflow-hidden p-6 shadow-2xl lg:p-10">
-  <h1 class="font-display text-4xl text-white sm:text-5xl mb-6">Sub Search</h1>
+  <div class="max-w-3xl space-y-4 mb-8">
+    <p class="text-sm font-semibold uppercase tracking-[0.4em] text-white/60">An <a href="https://ericrosenberg.com">Eric Rosenberg</a> project</p>
+    <h1 class="font-display text-4xl text-white sm:text-5xl">Sub Search</h1>
+    <p class="text-lg text-white/80">Sub Search keeps a living index of subreddit names, descriptions, moderator counts, and last human moderator activity so you can analyze communities and export targeted lists. With more than 3 million subs, this is a community-driven effort to maintain an updated database.</p>
+  </div>
 
   <form method="post" action="{{ url_for('home') }}" id="run-form" class="relative z-10 mb-8 grid gap-6 rounded-2xl border border-white/5 bg-slate-900/60 p-6 shadow-xl backdrop-blur lg:grid-cols-2">
     <div class="space-y-4">
@@ -121,17 +125,7 @@
 
 <section class="panel-surface overflow-hidden p-6 shadow-2xl lg:p-10 mt-10">
   <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-    <div class="max-w-3xl space-y-4">
-      <p class="text-sm font-semibold uppercase tracking-[0.4em] text-white/60">An <a href="https://ericrosenberg.com">Eric Rosenberg</a> project</p>
-      <h1 class="font-display text-4xl text-white sm:text-5xl">Sub Search</h1>
-      <p class="text-lg text-white/80">Sub Search keeps a living index of subreddit names, descriptions, moderator counts, and last human moderator activity so you can analyze communities and export targeted lists. With more than 3 million subs, this is a community-driven effort to maintain an updated database.</p>
-      <div class="mt-6 flex flex-wrap gap-3">
-        <a href="{{ url_for('sub_search') }}" class="rounded-2xl bg-gradient-to-r from-brand to-brand-light px-6 py-3 text-base font-semibold text-slate-950 shadow-brand transition hover:scale-[1.01]">Launch Sub Search</a>
-        <a href="{{ url_for('all_subs') }}" class="nav-link text-sm">Browse All The Subs</a>
-        <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" rel="noopener" class="nav-link text-sm">View on GitHub</a>
-      </div>
-    </div>
-    <div class="flex flex-col gap-4 lg:max-w-sm">
+    <div class="flex flex-col gap-4 lg:max-w-sm order-2 lg:order-1">
       <img src="{{ url_for('static', filename='img/sub-sando-hero.svg') }}" alt="Sub Search hero illustration" class="hero-art w-full rounded-3xl border border-white/10 bg-slate-900/40 p-3">
       <div class="rounded-3xl border border-white/10 bg-slate-900/50 p-6 text-sm text-white/70 shadow-lg">
         <p class="text-xs uppercase tracking-[0.3em] text-white/50">Data health</p>
@@ -157,6 +151,14 @@
             <span class="local-time text-sm text-white/90" data-ts="{{ stats.last_run_started }}">{{ stats.last_run_display or "pending" }}</span>
           </li>
         </ul>
+      </div>
+    </div>
+    <div class="max-w-3xl space-y-4 order-1 lg:order-2">
+      <h2 class="text-2xl font-semibold text-white">About This Project</h2>
+      <p class="text-base text-white/80">Features automated discovery, real-time search, and CSV export. Self-host your own instance to contribute to the global database.</p>
+      <div class="mt-6 flex flex-wrap gap-3">
+        <a href="{{ url_for('all_subs') }}" class="rounded-2xl bg-gradient-to-r from-brand to-brand-light px-6 py-3 text-base font-semibold text-slate-950 shadow-brand transition hover:scale-[1.01]">Browse All The Subs</a>
+        <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" rel="noopener" class="nav-link text-sm">View on GitHub</a>
       </div>
     </div>
   </div>

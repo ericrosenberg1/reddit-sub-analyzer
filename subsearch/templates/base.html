@@ -53,7 +53,6 @@
           </a>
           <nav class="flex items-center gap-2 text-sm font-semibold">
             <a href="{{ url_for('home') }}" class="nav-link {% if nav_active == 'home' %}active{% endif %}">Home</a>
-            <a href="{{ url_for('sub_search') }}" class="nav-link {% if nav_active == 'sub_search' %}active{% endif %}">Sub Search</a>
             <a href="{{ url_for('nodes_home') }}" class="nav-link {% if nav_active == 'nodes' %}active{% endif %}">Nodes</a>
             <a href="{{ url_for('all_subs') }}" class="nav-link {% if nav_active == 'allsubs' %}active{% endif %}">All The Subs</a>
           </nav>
