@@ -8,6 +8,7 @@ import smtplib
 import ssl
 import csv
 import io
+import heapq
 from collections import deque
 from datetime import datetime, timezone, timedelta
 from email.message import EmailMessage
@@ -94,7 +95,10 @@ logger = logging.getLogger("web_app")
 # Job store for background runs
 jobs = {}
 jobs_lock = threading.Lock()
-job_queue = deque()
+# Priority queue: manual searches (priority 0) before automated (priority 1)
+# Each item is tuple: (priority, insertion_order, job_id)
+job_queue = []
+job_queue_counter = 0  # Ensures FIFO within same priority
 queue_lock = threading.Lock()
 running_jobs = set()
 auto_ingest_thread = None
@@ -106,8 +110,117 @@ job_cleanup_lock = threading.Lock()
 
 # All configuration now centralized in config.py
 
-@app.route("/")
+@app.route("/", methods=["GET", "POST"])
 def home():
+    job_id = request.args.get("job")
+
+    if request.method == "POST":
+        # Handle sub search form submission
+        keyword_raw = request.form.get("keyword", "").strip()
+        limit_raw = request.form.get("limit", "1000").strip()
+        unmoderated_only = request.form.get("unmoderated_only") == "on"
+        exclude_nsfw = request.form.get("exclude_nsfw") == "on"
+        min_subs_raw = request.form.get("min_subs", "0").strip()
+        activity_enabled = request.form.get("activity_enabled") == "on"
+        activity_mode = request.form.get("activity_mode", "any").strip()
+        activity_date_raw = request.form.get("activity_date", "").strip()
+
+        def sanitize_keyword(s: str) -> str:
+            if not s:
+                return ""
+            s = s[:64]
+            sanitized = re.sub(r"[^A-Za-z0-9 _\-]", "", s)
+            return " ".join(sanitized.split()).strip()
+
+        limit_raw_clean = limit_raw.replace(",", "").replace("_", "").replace(" ", "")
+        try:
+            limit = int(limit_raw_clean)
+            if limit <= 0 or limit > 100000:
+                raise ValueError
+            requested_limit = limit
+            limit = min(limit, PUBLIC_API_LIMIT_CAP)
+            if requested_limit > limit:
+                flash(
+                    f"API checks are limited to {PUBLIC_API_LIMIT_CAP} subreddits per run to protect Reddit rate limits.",
+                    "info",
+                )
+        except ValueError:
+            flash("Limit must be an integer between 1 and 100,000.", "error")
+            return redirect(url_for('home'))
+
+        keyword = sanitize_keyword(keyword_raw) or None
+
+        min_subs_raw_clean = min_subs_raw.replace(",", "").replace("_", "").replace(" ", "")
+        try:
+            min_subs = int(min_subs_raw_clean)
+            if min_subs < 0 or min_subs > 10_000_000:
+                raise ValueError
+        except ValueError:
+            flash("Minimum subscribers must be a non-negative integer.", "error")
+            return redirect(url_for('home'))
+
+        activity_threshold_utc = None
+        if activity_enabled and activity_mode in ("active_after", "inactive_before") and activity_date_raw:
+            if not re.match(r"^\d{4}-\d{2}-\d{2}$", activity_date_raw):
+                flash("Invalid date format. Use YYYY-MM-DD.", "error")
+                return redirect(url_for('home'))
+            try:
+                dt = datetime.strptime(activity_date_raw, "%Y-%m-%d")
+                activity_threshold_utc = int(dt.timestamp())
+            except Exception:
+                flash("Invalid date provided.", "error")
+                return redirect(url_for('home'))
+        elif not activity_enabled:
+            activity_mode = "any"
+            activity_date_raw = ""
+
+        import uuid
+        job_params = {
+            'keyword': keyword,
+            'limit': limit,
+            'requested_limit': requested_limit,
+            'unmoderated_only': unmoderated_only,
+            'exclude_nsfw': exclude_nsfw,
+            'min_subs': min_subs,
+            'activity_mode': activity_mode,
+            'activity_threshold_utc': activity_threshold_utc,
+            'source': 'sub_search',
+        }
+        job_id = uuid.uuid4().hex
+        with jobs_lock:
+            jobs[job_id] = {
+                'job_id': job_id,
+                'keyword': keyword,
+                'limit': limit,
+                'requested_limit': requested_limit,
+                'unmoderated_only': unmoderated_only,
+                'exclude_nsfw': exclude_nsfw,
+                'min_subs': min_subs,
+                'activity_mode': activity_mode,
+                'activity_date': activity_date_raw,
+                'checked': 0,
+                'found': 0,
+                'done': False,
+                'error': None,
+                'started_at': None,
+                'stopped': False,
+                'stop': False,
+                'source': 'sub_search',
+                'state': 'queued',
+                'queue_position': None,
+                'orders_ahead': None,
+                'queue_size': 0,
+                'eta_seconds': 0,
+                'progress_phase': 'queued',
+                'results_ready': False,
+                'results': [],
+                'result_count': 0,
+                'job_config': job_params,
+            }
+        record_run_start(job_id, job_params, source="sub_search")
+        _enqueue_job(job_id, priority=0)
+        return redirect(url_for('home', job=job_id))
+
     stats = get_summary_stats() or {}
     stats_display = dict(stats)
     stats_display["last_indexed_display"] = _format_human_ts(stats.get("last_indexed"))
@@ -144,6 +257,8 @@ def home():
         node_stats=node_stats,
         volunteer_nodes=volunteer_nodes,
         queue_count=queue_count,
+        job_id=job_id,
+        site_url=SITE_URL,
         nav_active="home",
     )
 
@@ -573,7 +688,7 @@ def _schedule_random_job(keyword: str):
             "job_config": job_params,
         }
     record_run_start(job_id, job_params, source="auto-random")
-    _enqueue_job(job_id)
+    _enqueue_job(job_id, priority=1)  # Lower priority for automated searches
 
 
 def _random_search_loop():
@@ -687,29 +802,33 @@ def _job_cleanup_loop():
                     # Job is complete, skip
                     continue
 
-                # Check if job is stale (started more than 1 hour ago)
+                # Check if job is stale (started more than 2 hours ago)
                 if started_at:
                     try:
                         started = datetime.fromisoformat(started_at)
-                        age_hours = (datetime.utcnow() - started).total_seconds() / 3600
-                        if age_hours < 1:
+                        # Use timezone-aware comparison
+                        if started.tzinfo is None:
+                            started = started.replace(tzinfo=timezone.utc)
+                        now = datetime.now(timezone.utc)
+                        age_hours = (now - started).total_seconds() / 3600
+                        if age_hours < 2:
                             # Job is still fresh, skip
                             continue
                     except Exception:
                         pass
 
-                # This job is stale or has an error - mark as failed in DB
+                # This job is stale - mark as failed in DB
                 logger.info(
-                    "Job cleanup marking job %s as failed (error=%s, started=%s)",
+                    "Job cleanup marking job %s as failed (started=%s, age=%.1fh)",
                     job_id,
-                    error,
-                    started_at
+                    started_at,
+                    age_hours if 'age_hours' in locals() else -1
                 )
                 from .storage import record_run_complete
                 record_run_complete(
                     job_id,
                     0,
-                    error="Job cleanup: marked as failed due to stall or error"
+                    error="Job stuck in running state, marked as failed by cleanup"
                 )
 
         except Exception:
@@ -747,7 +866,9 @@ def _calculate_average_job_time():
 
 def _update_queue_positions_locked():
     queue_len = len(job_queue)
-    return [(job_id, idx, queue_len) for idx, job_id in enumerate(list(job_queue))]
+    # Extract job_ids from priority queue tuples (priority, counter, job_id)
+    sorted_jobs = sorted(job_queue)  # Sorts by priority first, then counter
+    return [(job_id, idx, queue_len) for idx, (_, _, job_id) in enumerate(sorted_jobs)]
 
 
 def _apply_queue_positions(updates):
@@ -766,9 +887,16 @@ def _apply_queue_positions(updates):
             job["eta_seconds"] = int(idx * avg_time) if idx > 0 else 0
 
 
-def _enqueue_job(job_id: str) -> None:
+def _enqueue_job(job_id: str, priority: int = 0) -> None:
+    """Enqueue a job with priority. Lower priority numbers run first.
+    Priority 0 = manual user searches (highest priority)
+    Priority 1 = automated searches (lower priority)
+    """
+    global job_queue_counter
     with queue_lock:
-        job_queue.append(job_id)
+        job_queue_counter += 1
+        # Use heapq to maintain priority ordering
+        heapq.heappush(job_queue, (priority, job_queue_counter, job_id))
         updates = _update_queue_positions_locked()
     _apply_queue_positions(updates)
     with jobs_lock:
@@ -776,6 +904,7 @@ def _enqueue_job(job_id: str) -> None:
         if job:
             job["state"] = "queued"
             job["results_ready"] = False
+            job["priority"] = priority
     _start_jobs_if_possible()
 
 
@@ -783,7 +912,8 @@ def _start_jobs_if_possible():
     to_start = []
     with queue_lock:
         while len(running_jobs) < MAX_CONCURRENT_JOBS and job_queue:
-            job_id = job_queue.popleft()
+            # Pop highest priority job (lowest priority number)
+            priority, counter, job_id = heapq.heappop(job_queue)
             running_jobs.add(job_id)
             to_start.append(job_id)
         updates = _update_queue_positions_locked()
@@ -1078,11 +1208,12 @@ def _run_job_thread(job_id: str) -> None:
 def _remove_from_queue(job_id: str) -> bool:
     removed = False
     with queue_lock:
-        try:
-            job_queue.remove(job_id)
+        # Find and remove tuple containing job_id from priority queue
+        new_queue = [item for item in job_queue if item[2] != job_id]
+        if len(new_queue) < len(job_queue):
+            job_queue[:] = new_queue
+            heapq.heapify(job_queue)  # Restore heap property
             removed = True
-        except ValueError:
-            removed = False
         updates = _update_queue_positions_locked()
     _apply_queue_positions(updates)
     return removed
@@ -1098,6 +1229,13 @@ _start_job_cleanup_thread_if_needed()
 
 @app.route("/sub_search", methods=["GET", "POST"])
 def sub_search():
+    # Redirect to homepage - sub search is now on homepage
+    job_id = request.args.get("job")
+    if job_id:
+        return redirect(url_for('home', job=job_id))
+    return redirect(url_for('home'))
+
+    # Legacy code below (kept for reference but unreachable)
     result = None
     job_id = request.args.get("job")
 
@@ -1217,7 +1355,7 @@ def sub_search():
                 'job_config': job_params,
             }
         record_run_start(job_id, job_params, source="sub_search")
-        _enqueue_job(job_id)
+        _enqueue_job(job_id, priority=0)  # Highest priority for manual searches
         return redirect(url_for('sub_search', job=job_id))
 
     return render_template("index.html", result=result, job_id=job_id, site_url=SITE_URL, nav_active="sub_search")
@@ -1370,6 +1508,49 @@ def api_recent_runs():
     limit = min(max(limit, 1), 50)  # Cap between 1-50
     runs = fetch_recent_runs(limit=limit, source_filter="sub_search")
     return jsonify({"runs": runs})
+
+
+@app.get("/api/queue")
+def api_queue():
+    """Get current queue status with priority separation and ETA calculations."""
+    limit = _safe_int(request.args.get("limit"), 10) or 10
+    limit = min(max(limit, 1), 50)  # Cap between 1-50
+
+    queue_items = []
+    avg_time = _calculate_average_job_time()
+
+    with queue_lock:
+        # Get sorted queue (priority, counter, job_id)
+        sorted_queue = sorted(job_queue)[:limit]
+
+        for idx, (priority, counter, job_id) in enumerate(sorted_queue):
+            with jobs_lock:
+                job = jobs.get(job_id)
+                if not job:
+                    continue
+
+                # Calculate ETAs
+                eta_start = int(idx * avg_time)
+                eta_completion = int((idx + 1) * avg_time)
+
+                queue_items.append({
+                    "job_id": job_id,
+                    "keyword": job.get("keyword") or "All subreddits",
+                    "limit": job.get("limit"),
+                    "source": job.get("source"),
+                    "priority": priority,
+                    "position": idx + 1,
+                    "eta_start_seconds": eta_start,
+                    "eta_completion_seconds": eta_completion,
+                    "is_manual": priority == 0,
+                })
+
+    return jsonify({
+        "queue": queue_items,
+        "total_queued": len(job_queue),
+        "running_count": len(running_jobs),
+        "avg_job_time_seconds": avg_time,
+    })
 
 
 @app.get("/api/subreddits")

@@ -3,7 +3,7 @@ import re
 import secrets
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Iterable, List, Optional, Sequence
 
 from .cache import (
@@ -470,7 +470,10 @@ def record_run_complete(job_id: str, result_count: int, error: Optional[str] = N
         if started_value:
             try:
                 started = datetime.fromisoformat(started_value)
-                duration_ms = int((datetime.utcnow() - started).total_seconds() * 1000)
+                if started.tzinfo is None:
+                    started = started.replace(tzinfo=timezone.utc)
+                now = datetime.now(timezone.utc)
+                duration_ms = int((now - started).total_seconds() * 1000)
             except Exception:
                 duration_ms = None
         conn.execute(

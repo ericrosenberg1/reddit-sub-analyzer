@@ -181,6 +181,41 @@
   let currentSort = { key: 'subscribers', dir: 'desc' };
   let lastChecked = 0;
   let lastFound = 0;
+  let notificationPermissionGranted = false;
+  let jobNotificationSent = new Set(); // Track which jobs we've notified about
+
+  // Request notification permission on page load
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().then(permission => {
+      notificationPermissionGranted = permission === 'granted';
+    });
+  } else if ('Notification' in window && Notification.permission === 'granted') {
+    notificationPermissionGranted = true;
+  }
+
+  function showJobCompleteNotification(jobId, keyword, resultCount) {
+    if (!notificationPermissionGranted || !('Notification' in window)) return;
+    if (jobNotificationSent.has(jobId)) return; // Don't send duplicate notifications
+
+    jobNotificationSent.add(jobId);
+
+    const title = 'Sub Search Complete!';
+    const options = {
+      body: `Found ${resultCount.toLocaleString()} subreddits for "${keyword || 'All subreddits'}"`,
+      icon: '{{ url_for("static", filename="img/sub-sando-hero.svg") }}',
+      badge: '{{ url_for("static", filename="img/sub-sando-hero.svg") }}',
+      tag: `job-${jobId}`,
+      requireInteraction: false,
+    };
+
+    const notification = new Notification(title, options);
+
+    // Focus the window when notification is clicked
+    notification.onclick = function() {
+      window.focus();
+      notification.close();
+    };
+  }
 
   const form = document.getElementById('run-form');
   const runState = document.getElementById('run-state');
@@ -433,6 +468,9 @@
       enableButton(downloadBtn, `/job/${activeJobId}/download.csv`);
       enableButton(viewAllBtn, `${allSubsBase}?job_id=${encodeURIComponent(activeJobId)}`);
       renderResultsTable();
+
+      // Send browser notification when job completes
+      showJobCompleteNotification(activeJobId, data.keyword, total);
     }
   }
 

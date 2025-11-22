@@ -1,0 +1,17 @@
+# Core dependencies (from requirements.txt)
+flask>=3.0
+praw>=7.7
+python-dotenv>=1.0
+requests>=2.31
+gunicorn>=21.0
+
+# Redis dependencies for queue management
+redis>=5.0
+rq>=1.15  # Redis Queue for job processing
+
+# PostgreSQL dependencies
+psycopg2-binary>=2.9
+sqlalchemy>=2.0  # For easier database migrations and ORM
+
+# Optional: for monitoring and debugging
+redis-cli  # Redis command-line interface (install via system package manager)
