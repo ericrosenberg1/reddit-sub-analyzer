@@ -6,7 +6,7 @@
   <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
     <div class="max-w-3xl space-y-4">
       <p class="text-sm font-semibold uppercase tracking-[0.4em] text-white/60">An <a href="https://ericrosenberg.com">Eric Rosenberg</a> project</p>
-      <h1 class="font-display text-4xl text-white sm:text-5xl">Sub Search</h1>
+      <h1 class="font-display text-4xl text-white sm:text-5xl">Sub Search + All The Subs</h1>
       <p class="text-lg text-white/80">Sub Search keeps a living index of subreddit names, descriptions, moderator counts, and last human moderator activity so you can analyze communities and export targeted lists. With more than 3 million subs, this is a community-driven effort to maintain an updated database.</p>
       <div class="mt-6 flex flex-wrap gap-3">
         <a href="{{ url_for('all_subs') }}" class="nav-link text-sm">Browse All The Subs</a>
@@ -45,6 +45,7 @@
 </section>
 
 <section class="panel-surface mt-10 p-6 shadow-2xl lg:p-10">
+  <h2 class="mb-6 text-2xl font-semibold text-white">Sub Search</h2>
   <form method="post" action="{{ url_for('home') }}" id="run-form" class="grid gap-6 lg:grid-cols-2">
     <div class="space-y-4">
       <div>
