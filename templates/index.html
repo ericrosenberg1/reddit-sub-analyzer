@@ -1,0 +1,626 @@
+{% extends "base.html" %}
+{% block title %}Sub Search • Feed Your Subreddit Need{% endblock %}
+
+{% block content %}
+<section class="panel-surface relative overflow-hidden p-6 shadow-2xl lg:p-10">
+  <div class="relative z-10 grid gap-6 lg:grid-cols-[1.1fr,0.9fr] lg:items-center">
+    <div class="max-w-2xl space-y-4">
+      <p class="text-sm font-semibold uppercase tracking-[0.3em] text-white/60">Sub Search</p>
+      <h1 class="font-display text-3xl text-white sm:text-4xl">Discover and explore Reddit communities with ease</h1>
+      <p class="text-sm text-white/50 -mt-2">By <a href="https://ericrosenberg.com" target="_blank" rel="noopener" class="underline decoration-dotted hover:text-white/70">Eric Rosenberg</a></p>
+      <p class="text-base text-white/80">Search millions of subreddits by keyword, activity, size, and moderation status. Our community-driven database grows with every search and helps you find the perfect communities for your interests.</p>
+      <p class="text-base text-white/80">Features automated discovery, real-time search, and CSV export. Self-host your own instance to contribute to the global database.</p>
+      <div class="flex flex-wrap gap-2 text-sm text-white/70">
+        <a class="nav-link active text-sm" href="{{ url_for('all_subs') }}">Browse Database</a>
+        <a class="nav-link text-sm" href="{{ url_for('home') }}">Learn More</a>
+      </div>
+    </div>
+    <div class="flex flex-col items-center gap-3">
+      <img src="{{ url_for('static', filename='img/sub-sando-hero.svg') }}" alt="Sub Search hero art" class="hero-art w-full max-w-sm">
+      <p class="text-center text-xs uppercase tracking-[0.3em] text-white/60">Baked fresh daily</p>
+    </div>
+  </div>
+  <form method="post" id="run-form" class="relative z-10 mt-8 grid gap-6 rounded-2xl border border-white/5 bg-slate-900/60 p-6 shadow-xl backdrop-blur lg:grid-cols-2">
+    <div class="space-y-4">
+      <div>
+        <label for="keyword" class="text-sm font-semibold text-white/90">Subreddit name contains</label>
+        <input type="text" id="keyword" name="keyword" placeholder="e.g. fintech, outdoor, language" maxlength="64" pattern="[A-Za-z0-9 _\-]*" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white placeholder:text-white/30 focus:border-brand focus:ring-2 focus:ring-brand/40" />
+      </div>
+      <div>
+        <label for="limit" class="text-sm font-semibold text-white/90">Max subreddits to check</label>
+        <input type="text" id="limit" name="limit" inputmode="numeric" pattern="[0-9,]*" value="1,000" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white placeholder:text-white/30 focus:border-brand focus:ring-2 focus:ring-brand/40" />
+      </div>
+      <div>
+        <label for="min_subs" class="text-sm font-semibold text-white/90">Minimum subscribers</label>
+        <input type="text" id="min_subs" name="min_subs" inputmode="numeric" pattern="[0-9,]*" value="0" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-900/80 px-4 py-3 text-white placeholder:text-white/30 focus:border-brand focus:ring-2 focus:ring-brand/40" />
+      </div>
+    </div>
+    <div class="space-y-4">
+      <div class="rounded-xl border border-white/10 bg-slate-900/50 p-4">
+        <label class="flex items-center gap-3 text-sm font-semibold text-white/90">
+          <input type="checkbox" id="unmoderated_only" name="unmoderated_only" class="rounded border-white/20 bg-slate-900 text-brand focus:ring-brand/60" />
+          Only show unmoderated subreddits
+        </label>
+        <label class="mt-3 flex items-center gap-3 text-sm font-semibold text-white/90">
+          <input type="checkbox" id="exclude_nsfw" name="exclude_nsfw" class="rounded border-white/20 bg-slate-900 text-brand focus:ring-brand/60" />
+          Exclude NSFW subreddits
+        </label>
+      </div>
+      <div class="rounded-xl border border-white/10 bg-slate-900/50 p-4">
+        <label class="flex items-center gap-3 text-sm font-semibold text-white/90">
+          <input type="checkbox" id="activity_enabled" name="activity_enabled" class="rounded border-white/20 bg-slate-900 text-brand focus:ring-brand/60" />
+          Enable activity filter
+        </label>
+        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+          <div>
+            <label for="activity_mode" class="text-xs uppercase tracking-[0.2em] text-white/50">Mode</label>
+            <select id="activity_mode" name="activity_mode" disabled class="mt-1 w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white focus:border-brand focus:ring-brand/50">
+              <option value="any">Any activity</option>
+              <option value="active_after">Active since date</option>
+              <option value="inactive_before">Inactive since date</option>
+            </select>
+          </div>
+          <div>
+            <label for="activity_date" class="text-xs uppercase tracking-[0.2em] text-white/50">Date</label>
+            <input type="date" id="activity_date" name="activity_date" disabled class="mt-1 w-full rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white focus:border-brand focus:ring-brand/50" />
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="lg:col-span-2">
+      <button type="submit" class="flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-brand to-brand-light px-6 py-4 text-lg font-semibold text-slate-950 shadow-brand transition hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-brand-light/60">Find Your Subs</button>
+      <p class="mt-2 text-center text-xs text-white/60">Sub Search automatically stores every search in our public All The Subs database.</p>
+    </div>
+  </form>
+
+  <div class="mt-6 space-y-3" id="flash-messages">
+    <div class="flash">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="rounded-2xl border px-4 py-3 text-sm {% if category == 'success' %}border-green-500/40 bg-green-500/10 text-green-100{% elif category == 'error' %}border-red-500/40 bg-red-500/10 text-red-100{% else %}border-sky-500/40 bg-sky-500/10 text-sky-100{% endif %}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    </div>
+  </div>
+
+  <div id="run-state" class="mt-6 hidden rounded-2xl border border-white/5 bg-slate-900/70 p-6">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center gap-4">
+          <div class="loader" id="status-loader"></div>
+          <div>
+            <p id="status-title" class="text-lg font-semibold text-white">Waiting for the sandwich counter...</p>
+            <p id="status-sub" class="text-sm text-white/70">—</p>
+          </div>
+        </div>
+        <p id="queue-orders" class="hidden text-sm text-white/60">Orders ahead: 0</p>
+        <p id="queue-eta" class="hidden text-sm text-white/50">—</p>
+        <span id="queue-chip" class="hidden w-fit rounded-full border border-white/20 px-3 py-1 text-xs uppercase tracking-[0.3em] text-white/70"></span>
+      </div>
+      <button type="button" id="stopBtn" class="h-fit rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-white/40 hover:text-white">Stop search</button>
+    </div>
+    <dl class="mt-6 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+        <dt class="text-xs uppercase tracking-[0.3em] text-white/50">Checked</dt>
+        <dd id="checked" class="text-2xl font-bold text-white">0</dd>
+      </div>
+      <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+        <dt class="text-xs uppercase tracking-[0.3em] text-white/50">Limit</dt>
+        <dd id="limit_count" class="text-2xl font-bold text-white">0</dd>
+      </div>
+      <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+        <dt class="text-xs uppercase tracking-[0.3em] text-white/50">Found</dt>
+        <dd id="found" class="text-2xl font-bold text-white">0</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div id="results-panel" class="mt-6 hidden rounded-2xl border border-white/5 bg-slate-900/70 p-6">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <p id="results-title" class="text-lg font-semibold text-white">Results ready</p>
+        <p id="results-subtitle" class="text-sm text-white/80">Subreddits synced to All The Subs.</p>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <a id="download-btn" href="#" class="pointer-events-none rounded-full border border-white/30 px-4 py-2 text-sm font-semibold text-white/40 opacity-40 transition hover:border-white/60 hover:text-white" target="_blank" rel="noopener">Download results as .csv</a>
+        <a id="view-all-btn" href="{{ url_for('all_subs') }}" class="pointer-events-none rounded-full bg-brand/40 px-4 py-2 text-sm font-semibold text-slate-900/60 transition">View results with All The Subs</a>
+      </div>
+    </div>
+    <div class="mt-6 overflow-hidden rounded-2xl border border-white/10">
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[720px] text-sm text-white/80" id="results-table">
+          <thead class="bg-white/5 text-left text-xs uppercase tracking-[0.3em] text-white/40">
+            <tr>
+              <th class="cursor-pointer px-4 py-3" data-sort="display_name_prefixed">Subreddit</th>
+              <th class="cursor-pointer px-4 py-3" data-sort="title">Title & description</th>
+              <th class="cursor-pointer px-4 py-3" data-sort="subscribers">Subscribers</th>
+              <th class="cursor-pointer px-4 py-3" data-sort="mod_count">Moderators</th>
+              <th class="cursor-pointer px-4 py-3" data-sort="is_nsfw">NSFW</th>
+              <th class="cursor-pointer px-4 py-3" data-sort="updated_at">Indexed</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/5">
+            <tr><td colspan="6" class="px-4 py-6 text-center text-white/60">No results yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const jobIdFromServer = {{ job_id|tojson }};
+  const allSubsBase = {{ url_for('all_subs')|tojson }};
+  const queuePhrases = [
+    'Proofing patience like a sourdough starter.',
+    'Counting pickle slices so you don’t end up in a jar.',
+    'Dad joke alert: this line is sub-stantial.',
+    'Sharpening the bread knife for your spot.',
+    'Restocking banana peppers for your order.',
+  ];
+  const runPhrases = [
+    'Reticulating splines of ciabatta goodness.',
+    'Slicing the cheese with extreme precision.',
+    'Toasting the bread just shy of crunchy.',
+    'Layering lettuce like an architecture nerd.',
+    'Brining olives and optimism simultaneously.',
+  ];
+  const POLL_MS = 1000; // Poll every 1 second for real-time updates
+  const STORE_KEY = 'sub_search_form_v2';
+  const STORE_TTL_MS = 60 * 60 * 1000;
+
+  let pollTimer = null;
+  let phraseTimer = null;
+  let phraseMode = null;
+  let activeJobId = jobIdFromServer;
+  let currentResults = [];
+  let currentSort = { key: 'subscribers', dir: 'desc' };
+  let lastChecked = 0;
+  let lastFound = 0;
+  let notificationPermissionGranted = false;
+  let jobNotificationSent = new Set(); // Track which jobs we've notified about
+
+  // Request notification permission on page load
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().then(permission => {
+      notificationPermissionGranted = permission === 'granted';
+    });
+  } else if ('Notification' in window && Notification.permission === 'granted') {
+    notificationPermissionGranted = true;
+  }
+
+  function showJobCompleteNotification(jobId, keyword, resultCount) {
+    if (!notificationPermissionGranted || !('Notification' in window)) return;
+    if (jobNotificationSent.has(jobId)) return; // Don't send duplicate notifications
+
+    jobNotificationSent.add(jobId);
+
+    const title = 'Sub Search Complete!';
+    const options = {
+      body: `Found ${resultCount.toLocaleString()} subreddits for "${keyword || 'All subreddits'}"`,
+      icon: '{{ url_for("static", filename="img/sub-sando-hero.svg") }}',
+      badge: '{{ url_for("static", filename="img/sub-sando-hero.svg") }}',
+      tag: `job-${jobId}`,
+      requireInteraction: false,
+    };
+
+    const notification = new Notification(title, options);
+
+    // Focus the window when notification is clicked
+    notification.onclick = function() {
+      window.focus();
+      notification.close();
+    };
+  }
+
+  const form = document.getElementById('run-form');
+  const runState = document.getElementById('run-state');
+  const resultsPanel = document.getElementById('results-panel');
+  const statusTitle = document.getElementById('status-title');
+  const statusSub = document.getElementById('status-sub');
+  const queueOrdersEl = document.getElementById('queue-orders');
+  const queueEtaEl = document.getElementById('queue-eta');
+  const queueChip = document.getElementById('queue-chip');
+  const checkedEl = document.getElementById('checked');
+  const foundEl = document.getElementById('found');
+  const limitEl = document.getElementById('limit_count');
+  const stopBtn = document.getElementById('stopBtn');
+  const downloadBtn = document.getElementById('download-btn');
+  const viewAllBtn = document.getElementById('view-all-btn');
+  const resultsTitle = document.getElementById('results-title');
+  const resultsSubtitle = document.getElementById('results-subtitle');
+  const tableBody = document.querySelector('#results-table tbody');
+
+  function saveFormState(){
+    const data = {
+      ts: Date.now(),
+      keyword: document.getElementById('keyword')?.value || '',
+      limit: (document.getElementById('limit')?.value || '').replace(/,/g,''),
+      min_subs: (document.getElementById('min_subs')?.value || '').replace(/,/g,''),
+      unmoderated_only: document.getElementById('unmoderated_only')?.checked || false,
+      exclude_nsfw: document.getElementById('exclude_nsfw')?.checked || false,
+      activity_enabled: document.getElementById('activity_enabled')?.checked || false,
+      activity_mode: document.getElementById('activity_mode')?.value || 'any',
+      activity_date: document.getElementById('activity_date')?.value || ''
+    };
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch(e){}
+  }
+
+  function restoreFormState(){
+    let raw = null; try { raw = localStorage.getItem(STORE_KEY); } catch(e){}
+    if (!raw) return;
+    try {
+      const data = JSON.parse(raw);
+      if (!data || typeof data !== 'object') return;
+      if (Date.now() - (data.ts || 0) > STORE_TTL_MS) { localStorage.removeItem(STORE_KEY); return; }
+      const setVal = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined) el.value = v; };
+      const setChk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+      setVal('keyword', data.keyword);
+      setVal('limit', data.limit);
+      setVal('min_subs', data.min_subs);
+      setChk('unmoderated_only', data.unmoderated_only);
+      setChk('exclude_nsfw', data.exclude_nsfw);
+      setChk('activity_enabled', data.activity_enabled);
+      setVal('activity_mode', data.activity_mode);
+      setVal('activity_date', data.activity_date);
+    } catch(e){}
+  }
+
+  function toggleActivity(){
+    const activityEnabled = document.getElementById('activity_enabled');
+    const activityMode = document.getElementById('activity_mode');
+    const activityDate = document.getElementById('activity_date');
+    if (!activityEnabled) return;
+    const on = activityEnabled.checked;
+    if (activityMode) activityMode.disabled = !on;
+    if (activityDate) activityDate.disabled = !on;
+    if (!on){
+      if (activityMode) activityMode.value = 'any';
+      if (activityDate) activityDate.value = '';
+      activityDate?.removeAttribute('required');
+    } else {
+      activityDate?.setAttribute('required','required');
+    }
+  }
+
+  function setPhraseMode(mode){
+    if (phraseMode === mode) return;
+    phraseMode = mode;
+    if (phraseTimer) clearInterval(phraseTimer);
+    const list = mode === 'running' ? runPhrases : queuePhrases;
+    let idx = 0;
+    statusSub.textContent = list[idx];
+    phraseTimer = setInterval(() => {
+      idx = (idx + 1) % list.length;
+      statusSub.textContent = list[idx];
+    }, 3500);
+  }
+
+  function stopPhraseRotation(){
+    if (phraseTimer){
+      clearInterval(phraseTimer);
+      phraseTimer = null;
+    }
+  }
+
+  function resetResultsPanel(){
+    resultsPanel.classList.add('hidden');
+    currentResults = [];
+    disableButton(downloadBtn);
+    disableButton(viewAllBtn);
+    tableBody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-white/60">No results yet.</td></tr>';
+  }
+
+  function enableButton(btn, href){
+    if (!btn) return;
+    btn.href = href;
+    btn.classList.remove('pointer-events-none','opacity-40','text-white/40','bg-brand/40','text-slate-900/60');
+    if (btn === viewAllBtn){
+      btn.classList.add('bg-brand','text-slate-950','shadow-brand','hover:scale-[1.01]');
+    }
+  }
+
+  function disableButton(btn){
+    if (!btn) return;
+    btn.href = '#';
+    btn.classList.add('pointer-events-none','opacity-40');
+    if (btn === viewAllBtn){
+      btn.classList.remove('bg-brand','text-slate-950','shadow-brand','hover:scale-[1.01]');
+      btn.classList.add('bg-brand/40','text-slate-900/60');
+    }
+  }
+
+  async function fetchStatus(id){
+    try {
+      const res = await fetch(`/status/${id}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data) return;
+      updateStatusUi(data);
+      if (data.done && pollTimer){
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function startPolling(id){
+    if (!id) return;
+    activeJobId = id;
+    resetResultsPanel();
+    runState.classList.remove('hidden');
+    setPhraseMode('queued');
+    queueOrdersEl.classList.add('hidden');
+    queueEtaEl.classList.add('hidden');
+    queueChip.classList.add('hidden');
+    fetchStatus(id);
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(() => fetchStatus(id), POLL_MS);
+  }
+
+  function animateNumber(element, from, to, duration = 300) {
+    const start = Date.now();
+    const diff = to - from;
+
+    function update() {
+      const elapsed = Date.now() - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const current = Math.floor(from + diff * progress);
+      element.textContent = current.toLocaleString();
+
+      if (progress < 1) {
+        requestAnimationFrame(update);
+      }
+    }
+
+    requestAnimationFrame(update);
+  }
+
+  function updateStatusUi(data){
+    const limit = Number(data.limit || data.job_config?.limit || 0);
+    const checked = Number(data.checked || 0);
+    const found = Number(data.found || 0);
+
+    limitEl.textContent = limit.toLocaleString();
+
+    // Animate counters if they changed
+    if (checked !== lastChecked) {
+      animateNumber(checkedEl, lastChecked, checked);
+      lastChecked = checked;
+    }
+    if (found !== lastFound) {
+      animateNumber(foundEl, lastFound, found);
+      lastFound = found;
+    }
+
+    const state = data.state || (data.done ? 'complete' : 'running');
+    const queuePosition = data.queue_position ?? null;
+    const ordersAhead = data.orders_ahead ?? null;
+    const etaSeconds = data.eta_seconds ?? 0;
+
+    function formatEta(seconds){
+      if (!seconds || seconds <= 0) return '';
+      const mins = Math.ceil(seconds / 60);
+      if (mins <= 1) return 'ETA: ~1 minute';
+      if (mins < 60) return `ETA: ~${mins} minutes`;
+      const hours = Math.floor(mins / 60);
+      const remainMins = mins % 60;
+      if (remainMins === 0) return `ETA: ~${hours} hour${hours > 1 ? 's' : ''}`;
+      return `ETA: ~${hours}h ${remainMins}m`;
+    }
+
+    if (state === 'queued'){
+      statusTitle.textContent = 'Queued at the sandwich counter';
+      setPhraseMode('queued');
+      if (queuePosition !== null){
+        queueOrdersEl.classList.remove('hidden');
+        queueChip.classList.remove('hidden');
+        queueChip.textContent = queuePosition === 1 ? 'On deck' : `Order #${queuePosition}`;
+        queueOrdersEl.textContent = ordersAhead && ordersAhead > 0 ? `${ordersAhead} order(s) ahead of you` : 'You are next in line';
+        if (etaSeconds > 0){
+          queueEtaEl.classList.remove('hidden');
+          queueEtaEl.textContent = formatEta(etaSeconds);
+        } else {
+          queueEtaEl.classList.add('hidden');
+        }
+      } else {
+        queueOrdersEl.classList.add('hidden');
+        queueEtaEl.classList.add('hidden');
+        queueChip.classList.add('hidden');
+      }
+    } else if (state === 'running'){
+      statusTitle.textContent = 'Assembling your sandwich of subs';
+      setPhraseMode('running');
+      queueOrdersEl.classList.add('hidden');
+      queueEtaEl.classList.add('hidden');
+      queueChip.classList.add('hidden');
+    } else if (state === 'error'){
+      stopPhraseRotation();
+      statusTitle.textContent = 'The kitchen slipped on a tomato';
+      statusSub.textContent = data.error || 'Unknown error';
+      queueOrdersEl.classList.add('hidden');
+      queueEtaEl.classList.add('hidden');
+      queueChip.classList.add('hidden');
+    } else {
+      stopPhraseRotation();
+      statusTitle.textContent = state === 'stopped' ? 'Search stopped' : 'Search complete';
+      statusSub.textContent = data.error ? data.error : 'Results synced below.';
+      queueOrdersEl.classList.add('hidden');
+      queueEtaEl.classList.add('hidden');
+      queueChip.classList.add('hidden');
+    }
+
+    stopBtn.disabled = !!data.done;
+
+    if (data.done && data.results_ready){
+      runState.classList.add('hidden');
+      resultsPanel.classList.remove('hidden');
+      currentResults = Array.isArray(data.results) ? data.results.slice() : [];
+      const total = Number(data.result_count || currentResults.length || found);
+      resultsTitle.textContent = `${total.toLocaleString()} subreddits plated`;
+      resultsSubtitle.textContent = 'Use the buttons above to export or browse in All The Subs.';
+      enableButton(downloadBtn, `/job/${activeJobId}/download.csv`);
+      enableButton(viewAllBtn, `${allSubsBase}?job_id=${encodeURIComponent(activeJobId)}`);
+      renderResultsTable();
+
+      // Send browser notification when job completes
+      showJobCompleteNotification(activeJobId, data.keyword, total);
+    }
+  }
+
+  function formatNumber(value){
+    if (value === null || value === undefined || value === '') return '—';
+    return Number(value).toLocaleString();
+  }
+
+  function formatEpoch(value){
+    if (!value) return '—';
+    const num = Number(value);
+    if (!Number.isFinite(num) || num <= 0) return '—';
+    const date = new Date(num * 1000);
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZoneName: 'short',
+    });
+  }
+
+  function formatIso(value){
+    if (!value) return '—';
+    try {
+      const date = new Date(value);
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZoneName: 'short',
+      });
+    } catch (e) {
+      return value;
+    }
+  }
+
+  function escapeHtml(str){
+    if (!str) return '';
+    return String(str).replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function compareRows(a, b, key, dir){
+    const multiplier = dir === 'asc' ? 1 : -1;
+    const va = a[key];
+    const vb = b[key];
+    if (va === vb) return 0;
+    if (va === undefined || va === null) return 1 * multiplier;
+    if (vb === undefined || vb === null) return -1 * multiplier;
+    if (typeof va === 'number' && typeof vb === 'number'){
+      return (va - vb) * multiplier;
+    }
+    const sa = String(va).toLowerCase();
+    const sb = String(vb).toLowerCase();
+    if (sa < sb) return -1 * multiplier;
+    if (sa > sb) return 1 * multiplier;
+    return 0;
+  }
+
+  function renderResultsTable(){
+    if (!currentResults.length){
+      tableBody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-white/60">No results yet.</td></tr>';
+      return;
+    }
+    const sorted = [...currentResults].sort((a, b) => compareRows(a, b, currentSort.key, currentSort.dir));
+    tableBody.innerHTML = sorted.map((row) => {
+      const name = row.display_name_prefixed || row.name || 'r/unknown';
+      const title = row.title || name;
+      const description = row.public_description || 'No description provided.';
+      const subscribers = formatNumber(row.subscribers);
+      const modCount = formatNumber(row.mod_count);
+      const nsfw = row.is_nsfw ? 'Yes' : 'No';
+      const indexed = formatIso(row.updated_at);
+      const url = row.url || `https://www.reddit.com/${name}`;
+      return `
+        <tr>
+          <td class="px-4 py-3 align-top">
+            <div class="flex flex-col">
+              <a href="${url}" target="_blank" rel="noopener" class="font-semibold text-white hover:underline">${escapeHtml(name)}</a>
+              <span class="text-xs text-white/50">${escapeHtml(row.url || '')}</span>
+            </div>
+          </td>
+          <td class="px-4 py-3 align-top">
+            <p class="font-semibold text-white/90">${escapeHtml(title)}</p>
+            <p class="clamp-2 text-sm text-white/60">${escapeHtml(description)}</p>
+          </td>
+          <td class="px-4 py-3 align-top font-semibold">${subscribers}</td>
+          <td class="px-4 py-3 align-top">${modCount}</td>
+          <td class="px-4 py-3 align-top">${nsfw}</td>
+          <td class="px-4 py-3 align-top">${indexed}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  document.querySelectorAll('#results-table th[data-sort]').forEach((th) => {
+    th.addEventListener('click', () => {
+      const key = th.getAttribute('data-sort');
+      if (currentSort.key === key){
+        currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        currentSort.key = key;
+        currentSort.dir = key === 'display_name_prefixed' ? 'asc' : 'desc';
+      }
+      renderResultsTable();
+    });
+  });
+
+  stopBtn?.addEventListener('click', async () => {
+    if (!activeJobId) return;
+    stopBtn.disabled = true;
+    statusSub.textContent = 'Stop requested… wrapping things up.';
+    try {
+      await fetch(`/stop/${activeJobId}`, { method: 'POST' });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      stopBtn.disabled = false;
+    }
+  });
+
+  form?.addEventListener('submit', saveFormState);
+  restoreFormState();
+
+  const activityEnabled = document.getElementById('activity_enabled');
+  activityEnabled?.addEventListener('change', toggleActivity);
+  toggleActivity();
+
+  function attachNumberFormat(id){
+    const el = document.getElementById(id);
+    if (!el) return;
+    const toNumber = (v) => v ? v.replace(/,/g,'') : '';
+    el.addEventListener('focus', () => { el.value = toNumber(el.value); });
+    el.addEventListener('blur', () => {
+      const raw = toNumber(el.value);
+      if (!raw) return;
+      const n = parseInt(raw, 10);
+      if (!Number.isNaN(n)) el.value = n.toLocaleString();
+    });
+  }
+  attachNumberFormat('limit');
+  attachNumberFormat('min_subs');
+
+  if (jobIdFromServer){
+    startPolling(jobIdFromServer);
+  }
+</script>
+{% endblock %}

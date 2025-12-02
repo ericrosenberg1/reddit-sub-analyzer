@@ -1,11 +1,20 @@
 # Core dependencies
-flask>=3.0
+django>=5.0
+celery>=5.3
+django-celery-results>=2.5
+django-celery-beat>=2.5
 praw>=7.7
 python-dotenv>=1.0
 requests>=2.32.2
 gunicorn>=21.0
+whitenoise>=6.6
+
+# Redis support (optional, will fallback to memory broker if unavailable)
+redis>=5.0
 
 # Optional: PostgreSQL support (uncomment if using DB_TYPE=postgres)
 # psycopg2-binary>=2.9
-zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
-urllib3>=1.26.19 # not directly required, pinned by Snyk to avoid a vulnerability
+
+# Security fixes (pinned by Snyk)
+zipp>=3.19.1
+urllib3>=1.26.19

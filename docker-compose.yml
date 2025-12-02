@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_POSTGRES_USER:-subsearch}
+      POSTGRES_PASSWORD: ${DB_POSTGRES_PASSWORD:-subsearch}
+      POSTGRES_DB: ${DB_POSTGRES_DB:-subsearch}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_POSTGRES_USER:-subsearch}"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  web:
+    build: .
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn reddit_analyzer.wsgi:application --bind 0.0.0.0:8000 --workers 2"
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DEBUG=${DEBUG:-0}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      - DB_TYPE=postgres
+      - DB_POSTGRES_HOST=postgres
+      - DB_POSTGRES_PORT=5432
+      - DB_POSTGRES_USER=${DB_POSTGRES_USER:-subsearch}
+      - DB_POSTGRES_PASSWORD=${DB_POSTGRES_PASSWORD:-subsearch}
+      - DB_POSTGRES_DB=${DB_POSTGRES_DB:-subsearch}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID}
+      - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET}
+      - REDDIT_USERNAME=${REDDIT_USERNAME}
+      - REDDIT_PASSWORD=${REDDIT_PASSWORD}
+      - SITE_URL=${SITE_URL}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - static_files:/app/staticfiles
+      - ./data:/app/data
+
+  worker:
+    build: .
+    command: celery -A reddit_analyzer worker -l info --concurrency 1
+    environment:
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DB_TYPE=postgres
+      - DB_POSTGRES_HOST=postgres
+      - DB_POSTGRES_PORT=5432
+      - DB_POSTGRES_USER=${DB_POSTGRES_USER:-subsearch}
+      - DB_POSTGRES_PASSWORD=${DB_POSTGRES_PASSWORD:-subsearch}
+      - DB_POSTGRES_DB=${DB_POSTGRES_DB:-subsearch}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID}
+      - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET}
+      - REDDIT_USERNAME=${REDDIT_USERNAME}
+      - REDDIT_PASSWORD=${REDDIT_PASSWORD}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data
+
+  beat:
+    build: .
+    command: celery -A reddit_analyzer beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    environment:
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DB_TYPE=postgres
+      - DB_POSTGRES_HOST=postgres
+      - DB_POSTGRES_PORT=5432
+      - DB_POSTGRES_USER=${DB_POSTGRES_USER:-subsearch}
+      - DB_POSTGRES_PASSWORD=${DB_POSTGRES_PASSWORD:-subsearch}
+      - DB_POSTGRES_DB=${DB_POSTGRES_DB:-subsearch}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+volumes:
+  redis_data:
+  postgres_data:
+  static_files:

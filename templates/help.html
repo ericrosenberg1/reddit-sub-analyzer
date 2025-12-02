@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Help Center • Eric Rosenberg Sub Search{% endblock %}
+
+{% block content %}
+<section class="panel-surface p-6 shadow-2xl lg:p-10">
+  <p class="text-xs uppercase tracking-[0.3em] text-white/60">Help Center</p>
+  <h1 class="mt-2 font-display text-3xl text-white sm:text-4xl">Everything you need to run Sub Search</h1>
+  <p class="mt-3 max-w-3xl text-sm text-white/80">Sub Search builds a community-owned index of subreddits. The steps below walk you through running a query, reading the queue, reviewing results, and helping the directory grow—no app development experience required.</p>
+  <div class="mt-6 grid gap-4 md:grid-cols-3">
+    <article class="rounded-2xl border border-white/10 bg-slate-900/50 p-4 text-sm text-white/80">
+      <p class="text-xs uppercase tracking-[0.3em] text-white/50">1. Kick off a run</p>
+      <p class="mt-2">Open Sub Search, pick a keyword, set your limit + filters, then choose <span class="font-semibold">Find Your Subs</span>. Every request is queued so the Reddit API stays happy.</p>
+    </article>
+    <article class="rounded-2xl border border-white/10 bg-slate-900/50 p-4 text-sm text-white/80">
+      <p class="text-xs uppercase tracking-[0.3em] text-white/50">2. Watch the queue</p>
+      <p class="mt-2">If there are other sandwich orders ahead of you, you’ll see dad-joke status updates plus the exact number of requests in front. When it becomes your turn, the status flips to “assembling.”</p>
+    </article>
+    <article class="rounded-2xl border border-white/10 bg-slate-900/50 p-4 text-sm text-white/80">
+      <p class="text-xs uppercase tracking-[0.3em] text-white/50">3. Review & share</p>
+      <p class="mt-2">When a job finishes you get a sortable table, a CSV export, and a deep link into All The Subs filtered to just that run.</p>
+    </article>
+  </div>
+</section>
+
+<section class="panel-surface mt-8 p-6 shadow-2xl lg:p-10">
+  <h2 class="text-2xl font-semibold text-white">Frequently asked questions</h2>
+  <div class="mt-6 space-y-4">
+    {% set faqs = [
+      ("What exactly does Sub Search do?", "It queries Reddit’s official API for subreddits that match your filters, enriches them with moderator counts + activity timestamps, and writes every evaluated subreddit into the All The Subs database."),
+      ("Why is there a queue?", "The queue protects everyone from Reddit rate limits. Each job runs with a shared delay so no single user can overwhelm the API. You can keep browsing while you wait."),
+      ("Can I contribute data faster?", "Yes! Enable the optional phone-home setting when you self-host or volunteer a node via the Nodes tab. Those runs stream data back to the main corpus automatically."),
+      ("How do I suggest a feature or report a bug?", "Open an issue on GitHub: https://github.com/ericrosenberg1/reddit-sub-analyzer/issues . Include as much detail as you can."),
+      ("Is the app really free?", "Absolutely. The goal is a trustworthy, community-maintained directory. Running searches, exporting CSVs, and reviewing data in All The Subs all stay free."),
+      ("How do I help keep data fresh?", "Run searches for keywords you care about, turn on auto-ingest in your deployment, volunteer a node, or submit pull requests if you build something new.")
+    ] %}
+    {% for question, answer in faqs %}
+    <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
+      <h3 class="text-lg font-semibold text-white">{{ question }}</h3>
+      <p class="mt-2 text-sm text-white/80">{{ answer }}</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel-surface mt-8 p-6 shadow-2xl lg:p-10">
+  <h2 class="text-2xl font-semibold text-white">Need extra help?</h2>
+  <div class="mt-4 grid gap-4 md:grid-cols-2">
+    <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-5 text-sm text-white/80">
+      <p class="text-xs uppercase tracking-[0.3em] text-white/50">Raise your hand</p>
+      <p class="mt-2">File a GitHub issue for bugs, feature ideas, or data questions. Every request helps shape the roadmap.</p>
+      <a class="mt-3 inline-flex items-center gap-2 text-brand hover:text-white" href="https://github.com/ericrosenberg1/reddit-sub-analyzer/issues" target="_blank" rel="noopener">Open GitHub Issues →</a>
+    </article>
+    <article class="rounded-2xl border border-white/10 bg-slate-900/60 p-5 text-sm text-white/80">
+      <p class="text-xs uppercase tracking-[0.3em] text-white/50">Contribute data</p>
+      <p class="mt-2">Enable <code>PHONE_HOME=true</code> in your `.env`, set <code>PHONE_HOME_TOKEN</code> if you have one, and each self-hosted run will sync to the shared dataset.</p>
+      <a class="mt-3 inline-flex items-center gap-2 text-brand hover:text-white" href="{{ url_for('nodes_home') }}">Volunteer a node →</a>
+    </article>
+  </div>
+</section>
+{% endblock %}

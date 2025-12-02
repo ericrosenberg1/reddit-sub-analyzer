@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+{% block title %}All The Subs • Eric Rosenberg Sub Search{% endblock %}
+
+{% block content %}
+<section class="panel-surface p-6 shadow-2xl lg:p-10">
+  <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div>
+      <p class="text-xs uppercase tracking-[0.3em] text-white/60">All The Subs</p>
+      <h1 class="font-display text-3xl text-white sm:text-4xl">The continuously growing subreddit directory</h1>
+      {% if initial_filters.job_id %}
+      <p class="mt-2 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-1 text-xs uppercase tracking-[0.2em] text-white/80">
+        Showing job {{ initial_filters.job_id }}
+        <a href="{{ url_for('all_subs') }}" class="text-brand hover:text-white">Clear</a>
+      </p>
+      {% endif %}
+    </div>
+    <a href="{{ url_for('sub_search') }}" class="nav-link active text-sm">Run a Sub Search</a>
+  </div>
+
+  <div class="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-4 text-white/70">
+      <p class="text-xs uppercase tracking-[0.3em] text-white/50">Filter</p>
+      <input type="text" id="filter-q" placeholder="Keyword" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-brand focus:ring-brand/40" />
+    </div>
+    <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-4 text-white/70">
+      <p class="text-xs uppercase tracking-[0.3em] text-white/50">Min subscribers</p>
+      <input type="number" id="filter-min-subs" min="0" step="100" placeholder="0" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-brand focus:ring-brand/40" />
+    </div>
+    <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-4 text-white/70">
+      <p class="text-xs uppercase tracking-[0.3em] text-white/50">Moderated</p>
+      <select id="filter-unmoderated" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white focus:border-brand focus:ring-brand/40">
+        <option value="">All subs</option>
+        <option value="true">Unmoderated only</option>
+        <option value="false">Moderated included</option>
+      </select>
+    </div>
+    <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-4 text-white/70">
+      <p class="text-xs uppercase tracking-[0.3em] text-white/50">NSFW</p>
+      <select id="filter-nsfw" class="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white focus:border-brand focus:ring-brand/40">
+        <option value="">All</option>
+        <option value="false">Exclude NSFW</option>
+        <option value="true">Only NSFW</option>
+      </select>
+    </div>
+  </div>
+  <div class="mt-3 flex flex-wrap items-center gap-3 text-xs text-white/70">
+    <button type="button" id="reset-filters" class="nav-link text-xs">Reset filters</button>
+    <span id="table-summary" class="text-white/60">Loading…</span>
+  </div>
+
+  <div class="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50">
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[720px] text-sm text-white/80" id="subs-table">
+        <thead class="bg-white/5 text-left text-xs uppercase tracking-[0.3em] text-white/40">
+          <tr>
+            <th class="cursor-pointer px-4 py-3" data-sort="name">Subreddit</th>
+            <th class="px-4 py-3">Title & description</th>
+            <th class="cursor-pointer px-4 py-3" data-sort="subscribers">Subscribers</th>
+            <th class="cursor-pointer px-4 py-3" data-sort="mod_count">Moderators</th>
+            <th class="cursor-pointer px-4 py-3" data-sort="mod_activity">Last mod activity</th>
+            <th class="cursor-pointer px-4 py-3" data-sort="updated_at">Last indexed</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5">
+          <tr><td colspan="6" class="px-4 py-6 text-center text-white/60">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="flex items-center justify-between border-t border-white/10 px-4 py-4 text-xs text-white/70">
+      <button type="button" id="prev-page" class="nav-link text-xs">← Prev</button>
+      <span id="page-indicator">Page 1</span>
+      <button type="button" id="next-page" class="nav-link text-xs">Next →</button>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const initialFilters = {{ initial_filters|tojson }};
+  const state = {
+    q: initialFilters.q || '',
+    min_subs: initialFilters.min_subs || '',
+    unmoderated: initialFilters.unmoderated || '',
+    nsfw: initialFilters.nsfw || '',
+    sort: initialFilters.sort || 'subscribers',
+    order: (initialFilters.order || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc',
+    page: 1,
+    total: 0,
+    pageSize: 50,
+    job_id: initialFilters.job_id || '',
+  };
+
+  const qInput = document.getElementById('filter-q');
+  const minSubsInput = document.getElementById('filter-min-subs');
+  const unmodSelect = document.getElementById('filter-unmoderated');
+  const nsfwSelect = document.getElementById('filter-nsfw');
+  const tableBody = document.querySelector('#subs-table tbody');
+  const tableSummary = document.getElementById('table-summary');
+  const pageIndicator = document.getElementById('page-indicator');
+
+  qInput.value = state.q;
+  minSubsInput.value = state.min_subs;
+  if (state.unmoderated) unmodSelect.value = state.unmoderated;
+  if (state.nsfw) nsfwSelect.value = state.nsfw;
+
+  let debounceTimer = null;
+  const debouncedUpdate = () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      state.page = 1;
+      loadSubs();
+    }, 250);
+  };
+
+  qInput.addEventListener('input', () => { state.q = qInput.value.trim(); debouncedUpdate(); });
+  minSubsInput.addEventListener('input', () => { state.min_subs = minSubsInput.value; debouncedUpdate(); });
+  unmodSelect.addEventListener('change', () => { state.unmoderated = unmodSelect.value; state.page = 1; loadSubs(); });
+  nsfwSelect.addEventListener('change', () => { state.nsfw = nsfwSelect.value; state.page = 1; loadSubs(); });
+  document.getElementById('reset-filters').addEventListener('click', () => {
+    state.q = '';
+    state.min_subs = '';
+    state.unmoderated = '';
+    state.nsfw = '';
+    qInput.value = '';
+    minSubsInput.value = '';
+    unmodSelect.value = '';
+    nsfwSelect.value = '';
+    state.page = 1;
+    loadSubs();
+  });
+
+  document.getElementById('prev-page').addEventListener('click', () => {
+    if (state.page > 1){
+      state.page -= 1;
+      loadSubs();
+    }
+  });
+  document.getElementById('next-page').addEventListener('click', () => {
+    const maxPage = Math.ceil(state.total / state.pageSize) || 1;
+    if (state.page < maxPage){
+      state.page += 1;
+      loadSubs();
+    }
+  });
+
+  document.querySelectorAll('#subs-table th[data-sort]').forEach((th) => {
+    th.addEventListener('click', () => {
+      const key = th.getAttribute('data-sort');
+      if (state.sort === key){
+        state.order = state.order === 'asc' ? 'desc' : 'asc';
+      } else {
+        state.sort = key;
+        state.order = key === 'name' ? 'asc' : 'desc';
+      }
+      state.page = 1;
+      loadSubs();
+    });
+  });
+
+  function formatNumber(value){
+    if (value === null || value === undefined) return '—';
+    return Number(value).toLocaleString();
+  }
+
+  function formatDate(value){
+    if (!value) return '—';
+    return value.replace('T', ' ').replace('+00:00', ' UTC');
+  }
+
+  function formatEpoch(value){
+    if (value === null || value === undefined) return '—';
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return '—';
+    return new Date(n * 1000).toISOString().replace('T', ' ').replace('Z', ' UTC');
+  }
+
+  function escapeHtml(str){
+    if (!str) return '';
+    return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]));
+  }
+
+  function safeUrl(url){
+    if (!url) return '#';
+    try {
+      if (url.startsWith('http://') || url.startsWith('https://')){
+        return url;
+      }
+    } catch (e) {}
+    return '#';
+  }
+
+  async function loadSubs(){
+    tableSummary.textContent = 'Loading…';
+    tableBody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-white/60">Loading…</td></tr>';
+    const params = new URLSearchParams();
+    if (state.q) params.set('q', state.q);
+    if (state.min_subs) params.set('min_subs', state.min_subs);
+    if (state.unmoderated) params.set('unmoderated', state.unmoderated);
+    if (state.nsfw) params.set('nsfw', state.nsfw);
+    params.set('sort', state.sort);
+    params.set('order', state.order);
+    params.set('page', String(state.page));
+    params.set('page_size', String(state.pageSize));
+    if (state.job_id) params.set('job_id', state.job_id);
+
+    try {
+      const res = await fetch(`/api/subreddits?${params.toString()}`);
+      if (!res.ok) throw new Error('Request failed');
+      const data = await res.json();
+      state.total = data.total || 0;
+      renderRows(data.rows || []);
+      const maxPage = Math.max(1, Math.ceil((state.total || 0) / state.pageSize));
+      pageIndicator.textContent = `Page ${state.page} of ${maxPage}`;
+      const filtersActive = [state.q, state.min_subs, state.unmoderated, state.nsfw].some(Boolean);
+      tableSummary.textContent = `${formatNumber(state.total)} subreddits${filtersActive ? ' • filtered' : ''}`;
+    } catch (err) {
+      tableBody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-red-300">Unable to load subreddits. Please try again.</td></tr>';
+      tableSummary.textContent = 'Error loading results.';
+    }
+  }
+
+  function renderRows(rows){
+    if (!rows.length){
+      tableBody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-white/60">No subreddits match the current filters.</td></tr>';
+      return;
+    }
+    tableBody.innerHTML = rows.map(row => {
+      const flags = [];
+      if (row.is_unmoderated) flags.push('<span class="rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-green-100">Unmoderated</span>');
+      if (row.is_nsfw) flags.push('<span class="rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-red-100">NSFW</span>');
+      const title = row.title ? escapeHtml(row.title) : `r/${escapeHtml(row.name)}`;
+      const desc = row.public_description ? escapeHtml(row.public_description) : 'No description provided yet.';
+      const hasModCount = row.mod_count !== null && row.mod_count !== undefined;
+      const modCount = hasModCount ? Number(row.mod_count).toLocaleString() : '—';
+      const modActivity = formatEpoch(row.last_mod_activity_utc);
+      const lastIndexed = formatDate(row.updated_at);
+      return `
+        <tr class="align-top hover:bg-white/5">
+          <td class="px-4 py-4 text-white">
+            <a class="font-semibold underline decoration-dotted" href="${safeUrl(row.url)}" target="_blank" rel="noopener">${escapeHtml(row.display_name_prefixed || `r/${row.name}`)}</a>
+            <div class="mt-1 flex flex-wrap gap-1 text-white/60 text-[11px]">
+              ${flags.join('') || ''}
+            </div>
+          </td>
+          <td class="px-4 py-4">
+            <p class="font-semibold text-white/90">${title}</p>
+            <p class="clamp-2 text-xs text-white/70">${desc}</p>
+          </td>
+          <td class="px-4 py-4">${formatNumber(row.subscribers)}</td>
+          <td class="px-4 py-4">${modCount}</td>
+          <td class="px-4 py-4">${modActivity}</td>
+          <td class="px-4 py-4">${lastIndexed}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  loadSubs();
+</script>
+{% endblock %}
