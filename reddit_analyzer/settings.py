@@ -122,9 +122,10 @@ def get_database_config():
                 warnings.warn("psycopg2 not installed, falling back to SQLite")
 
     # Default to SQLite
-    data_dir = os.environ.get('SUBSEARCH_DATA_DIR', str(BASE_DIR / 'data'))
-    os.makedirs(data_dir, exist_ok=True)
-    db_path = os.environ.get('SUBSEARCH_DB_PATH', os.path.join(data_dir, 'subsearch.db'))
+    data_dir = os.environ.get('SUBSEARCH_DATA_DIR', '') or str(BASE_DIR / 'data')
+    if data_dir:
+        os.makedirs(data_dir, exist_ok=True)
+    db_path = os.environ.get('SUBSEARCH_DB_PATH', '') or os.path.join(data_dir, 'subsearch.db')
 
     return {
         'ENGINE': 'django.db.backends.sqlite3',
