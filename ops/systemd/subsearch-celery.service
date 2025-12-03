@@ -9,7 +9,7 @@ User=subsearch
 Group=subsearch
 WorkingDirectory=/opt/subsearch
 EnvironmentFile=-/etc/subsearch.env
-ExecStart=/opt/subsearch/.venv/bin/celery -A reddit_analyzer worker --loglevel=info --concurrency=1
+ExecStart=/opt/subsearch/venv/bin/celery -A reddit_analyzer worker --loglevel=info --concurrency=1
 Restart=on-failure
 RestartSec=5
 PrivateTmp=true
