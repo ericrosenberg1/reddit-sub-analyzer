@@ -1,28 +1,29 @@
-# Core framework
-django>=5.0,<6.0
+# Core framework - Django 5.2 LTS (most stable, security supported)
+Django>=5.2,<5.3
 
-# Task queue
-celery>=5.3,<6.0
-django-celery-results>=2.5,<3.0
-django-celery-beat>=2.5,<3.0
+# Task queue - latest stable
+celery>=5.6,<6.0
+django-celery-results>=2.6,<3.0
+django-celery-beat>=2.8,<3.0
 
-# Reddit API
-praw>=7.7,<8.0
+# Reddit API - latest stable
+praw>=7.8,<8.0
 
 # Utilities
-python-dotenv>=1.0,<2.0
+python-dotenv>=1.2,<2.0
 
-# HTTP server
-gunicorn>=21.0,<24.0
+# HTTP server - latest stable
+gunicorn>=23.0,<24.0
 
-# Static files
-whitenoise>=6.6,<7.0
+# Static files - latest stable
+whitenoise>=6.11,<7.0
 
-# Redis (required for production)
-redis>=5.0,<6.0
+# Redis - latest stable
+redis>=7.1,<8.0
 
-# PostgreSQL (required for production)
+# PostgreSQL - latest stable
 psycopg2-binary>=2.9,<3.0
 
 # Security minimums (transitive deps)
-urllib3>=2.0
+urllib3>=2.5
+certifi>=2025.11
