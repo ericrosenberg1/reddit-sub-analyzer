@@ -261,9 +261,12 @@ def all_subs(request):
         except QueryRun.DoesNotExist:
             pass
 
+    stats = _get_summary_stats()
+
     return render(request, 'all_subs.html', {
         'initial_filters': initial_filters,
         'nav_active': 'allsubs',
+        'stats': stats,
     })
 
 
