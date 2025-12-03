@@ -278,13 +278,14 @@ class SecurityHeadersMiddleware:
         response = self.get_response(request)
 
         # Content Security Policy
+        # Allow Tailwind CDN, Google Fonts, and inline styles/scripts for template functionality
         csp = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline'; "
-            "style-src 'self' 'unsafe-inline'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "img-src 'self' data: https:; "
-            "font-src 'self'; "
-            "connect-src 'self'; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "connect-src 'self' https://random-word-api.vercel.app; "
             "frame-ancestors 'none'; "
             "base-uri 'self'; "
             "form-action 'self';"

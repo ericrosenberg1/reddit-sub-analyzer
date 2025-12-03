@@ -10,11 +10,11 @@
       {% if initial_filters.job_id %}
       <p class="mt-2 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-1 text-xs uppercase tracking-[0.2em] text-white/80">
         Showing job {{ initial_filters.job_id }}
-        <a href="{{ url_for('all_subs') }}" class="text-brand hover:text-white">Clear</a>
+        <a href="{% url 'all_subs' %}" class="text-brand hover:text-white">Clear</a>
       </p>
       {% endif %}
     </div>
-    <a href="{{ url_for('sub_search') }}" class="nav-link active text-sm">Run a Sub Search</a>
+    <a href="{% url 'home' %}" class="nav-link active text-sm">Run a Sub Search</a>
   </div>
 
   <div class="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -76,8 +76,9 @@
 {% endblock %}
 
 {% block scripts %}
+{{ initial_filters|json_script:"initial-filters-data" }}
 <script>
-  const initialFilters = {{ initial_filters|tojson }};
+  const initialFilters = JSON.parse(document.getElementById('initial-filters-data').textContent);
   const state = {
     q: initialFilters.q || '',
     min_subs: initialFilters.min_subs || '',

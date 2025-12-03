@@ -599,7 +599,13 @@
     stopBtn.addEventListener('click', async function(){
       if(!activeJobId) return;
       try{
-        const res = await fetch(`/stop/${activeJobId}`, {method: 'POST'});
+        const res = await fetch(`/stop/${activeJobId}`, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/json',
+          },
+        });
         if(res.ok){
           if(pollTimer){
             clearInterval(pollTimer);

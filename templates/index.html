@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Sub Search • Feed Your Subreddit Need{% endblock %}
 
 {% block content %}
@@ -11,12 +12,12 @@
       <p class="text-base text-white/80">Search millions of subreddits by keyword, activity, size, and moderation status. Our community-driven database grows with every search and helps you find the perfect communities for your interests.</p>
       <p class="text-base text-white/80">Features automated discovery, real-time search, and CSV export. Self-host your own instance to contribute to the global database.</p>
       <div class="flex flex-wrap gap-2 text-sm text-white/70">
-        <a class="nav-link active text-sm" href="{{ url_for('all_subs') }}">Browse Database</a>
-        <a class="nav-link text-sm" href="{{ url_for('home') }}">Learn More</a>
+        <a class="nav-link active text-sm" href="{% url 'all_subs' %}">Browse Database</a>
+        <a class="nav-link text-sm" href="{% url 'home' %}">Learn More</a>
       </div>
     </div>
     <div class="flex flex-col items-center gap-3">
-      <img src="{{ url_for('static', filename='img/sub-sando-hero.svg') }}" alt="Sub Search hero art" class="hero-art w-full max-w-sm">
+      <img src="{% static 'img/sub-sando-hero.svg' %}" alt="Sub Search hero art" class="hero-art w-full max-w-sm">
       <p class="text-center text-xs uppercase tracking-[0.3em] text-white/60">Baked fresh daily</p>
     </div>
   </div>
@@ -74,15 +75,11 @@
   </form>
 
   <div class="mt-6 space-y-3" id="flash-messages">
-    <div class="flash">
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, message in messages %}
-            <div class="rounded-2xl border px-4 py-3 text-sm {% if category == 'success' %}border-green-500/40 bg-green-500/10 text-green-100{% elif category == 'error' %}border-red-500/40 bg-red-500/10 text-red-100{% else %}border-sky-500/40 bg-sky-500/10 text-sky-100{% endif %}">{{ message }}</div>
-          {% endfor %}
-        {% endif %}
-      {% endwith %}
-    </div>
+    {% if messages %}
+      {% for message in messages %}
+        <div class="rounded-2xl border px-4 py-3 text-sm {% if message.tags == 'success' %}border-green-500/40 bg-green-500/10 text-green-100{% elif message.tags == 'error' %}border-red-500/40 bg-red-500/10 text-red-100{% else %}border-sky-500/40 bg-sky-500/10 text-sky-100{% endif %}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
   </div>
 
   <div id="run-state" class="mt-6 hidden rounded-2xl border border-white/5 bg-slate-900/70 p-6">
@@ -125,7 +122,7 @@
       </div>
       <div class="flex flex-wrap gap-3">
         <a id="download-btn" href="#" class="pointer-events-none rounded-full border border-white/30 px-4 py-2 text-sm font-semibold text-white/40 opacity-40 transition hover:border-white/60 hover:text-white" target="_blank" rel="noopener">Download results as .csv</a>
-        <a id="view-all-btn" href="{{ url_for('all_subs') }}" class="pointer-events-none rounded-full bg-brand/40 px-4 py-2 text-sm font-semibold text-slate-900/60 transition">View results with All The Subs</a>
+        <a id="view-all-btn" href="{% url 'all_subs' %}" class="pointer-events-none rounded-full bg-brand/40 px-4 py-2 text-sm font-semibold text-slate-900/60 transition">View results with All The Subs</a>
       </div>
     </div>
     <div class="mt-6 overflow-hidden rounded-2xl border border-white/10">
@@ -152,9 +149,10 @@
 {% endblock %}
 
 {% block scripts %}
+{{ job_id|json_script:"job-id-data" }}
 <script>
-  const jobIdFromServer = {{ job_id|tojson }};
-  const allSubsBase = {{ url_for('all_subs')|tojson }};
+  const jobIdFromServer = JSON.parse(document.getElementById('job-id-data').textContent);
+  const allSubsBase = "{% url 'all_subs' %}";
   const queuePhrases = [
     'Proofing patience like a sourdough starter.',
     'Counting pickle slices so you don’t end up in a jar.',
@@ -202,8 +200,8 @@
     const title = 'Sub Search Complete!';
     const options = {
       body: `Found ${resultCount.toLocaleString()} subreddits for "${keyword || 'All subreddits'}"`,
-      icon: '{{ url_for("static", filename="img/sub-sando-hero.svg") }}',
-      badge: '{{ url_for("static", filename="img/sub-sando-hero.svg") }}',
+      icon: '{% static "img/sub-sando-hero.svg" %}',
+      badge: '{% static "img/sub-sando-hero.svg" %}',
       tag: `job-${jobId}`,
       requireInteraction: false,
     };

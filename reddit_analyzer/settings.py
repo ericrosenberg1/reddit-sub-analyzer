@@ -16,16 +16,24 @@ load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Quick-start development settings - unsuitable for production
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', os.environ.get('FLASK_SECRET_KEY', ''))
-if not SECRET_KEY:
-    SECRET_KEY = 'dev-only-insecure-key-set-DJANGO_SECRET_KEY-in-production'
-    import warnings
-    warnings.warn("DJANGO_SECRET_KEY not set - using insecure default. THIS IS UNSAFE FOR PRODUCTION!")
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', '0').lower() in ('1', 'true', 'yes')
+
+# Quick-start development settings - unsuitable for production
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
+if not SECRET_KEY:
+    if DEBUG:
+        # Generate a temporary key for development only
+        import secrets
+        SECRET_KEY = secrets.token_hex(32)
+        import warnings
+        warnings.warn("DJANGO_SECRET_KEY not set - using random key for development. Set it in production!")
+    else:
+        raise ValueError(
+            "DJANGO_SECRET_KEY must be set in production. "
+            "Generate one with: python -c 'import secrets; print(secrets.token_hex(32))'"
+        )
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 ALLOWED_HOSTS = [h.strip() for h in ALLOWED_HOSTS if h.strip()]

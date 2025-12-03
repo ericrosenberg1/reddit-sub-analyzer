@@ -20,7 +20,6 @@ from django.http import JsonResponse, HttpResponse, StreamingHttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_GET, require_POST
-from django.views.decorators.csrf import csrf_exempt
 
 from reddit_analyzer.middleware import InputSanitizer
 from .models import QueryRun, Subreddit
@@ -299,7 +298,6 @@ def status(request, job_id):
 
 
 @require_POST
-@csrf_exempt
 def stop_job(request, job_id):
     """Stop a running job with input validation."""
     # Sanitize job_id

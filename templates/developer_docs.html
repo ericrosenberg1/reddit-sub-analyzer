@@ -61,7 +61,7 @@ sudo APP_DIR=/opt/subsearch VENV_PATH=/opt/subsearch/venv \
   <h2 class="text-2xl font-semibold text-white">5. Volunteer a node</h2>
   <p class="mt-2 text-sm text-white/80">Nodes add extra throughput by lending your computer + Reddit account:</p>
   <ul class="mt-3 space-y-2 text-sm text-white/80">
-    <li>Open the <a class="underline decoration-dotted" href="{{ url_for('nodes_home') }}">Nodes</a> page and submit the “Add a node” form.</li>
+    <li>Open the <a class="underline decoration-dotted" href="{% url 'nodes_home' %}">Nodes</a> page and submit the "Add a node" form.</li>
     <li>Use the private link emailed to you to update availability, hardware, or to pause/remove the node.</li>
     <li>Mark a node as “broken” if it goes offline—Sub Search automatically prunes broken nodes after seven days.</li>
   </ul>
