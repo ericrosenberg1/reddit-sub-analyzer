@@ -2,77 +2,129 @@
 {% block title %}All The Subs - Sub Search{% endblock %}
 
 {% block content %}
-<section class="panel-surface p-6 lg:p-10">
-  <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+<!-- Header -->
+<section class="panel p-6 mb-6">
+  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
     <div>
-      <p class="section-label">All The Subs</p>
-      <h1 class="font-display text-3xl sm:text-4xl">The continuously growing subreddit directory</h1>
+      <p class="section-label">The Menu</p>
+      <h1 class="mt-2">All The Subs</h1>
+      <p class="mt-2 text-gray-400">Browse our ever-growing directory of {{ stats.total_subreddits|default:"3M+" }} subreddits</p>
       {% if initial_filters.job_id %}
-      <p class="mt-2 data-chip">
-        Showing job {{ initial_filters.job_id }}
-        <a href="{% url 'all_subs' %}" class="ml-2 hover:text-white">Clear</a>
-      </p>
+      <div class="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-sub-yellow/10 border border-sub-yellow/30 rounded-lg text-sm">
+        <span class="text-sub-yellow">Filtered by job:</span>
+        <span class="font-semibold">{{ initial_filters.job_id|truncatechars:12 }}</span>
+        <a href="{% url 'all_subs' %}" class="text-gray-400 hover:text-white ml-2">&times; Clear</a>
+      </div>
       {% endif %}
     </div>
-    <a href="{% url 'home' %}" class="nav-link active">Run a Sub Search</a>
+    <a href="{% url 'home' %}" class="btn-primary">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+      </svg>
+      New Search
+    </a>
+  </div>
+</section>
+
+<!-- Filters -->
+<section class="panel p-5 mb-6">
+  <div class="flex items-center gap-3 mb-4">
+    <div class="w-8 h-8 rounded-lg bg-sub-yellow/20 flex items-center justify-center">
+      <svg class="w-5 h-5 text-sub-yellow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+      </svg>
+    </div>
+    <h2 class="text-lg">Filter Your Order</h2>
   </div>
 
-  <!-- Filters -->
-  <div class="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-    <div class="card p-4">
-      <p class="section-label">Filter</p>
-      <input type="text" id="filter-q" placeholder="Keyword" class="mt-2 text-sm">
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div>
+      <label for="filter-q">Keyword</label>
+      <input type="text" id="filter-q" placeholder="Search subs...">
     </div>
-    <div class="card p-4">
-      <p class="section-label">Min subscribers</p>
-      <input type="number" id="filter-min-subs" min="0" step="100" placeholder="0" class="mt-2 text-sm">
+    <div>
+      <label for="filter-min-subs">Min Subscribers</label>
+      <input type="number" id="filter-min-subs" min="0" step="100" placeholder="0">
     </div>
-    <div class="card p-4">
-      <p class="section-label">Moderated</p>
-      <select id="filter-unmoderated" class="mt-2 text-sm">
+    <div>
+      <label for="filter-unmoderated">Moderation</label>
+      <select id="filter-unmoderated">
         <option value="">All subs</option>
         <option value="true">Unmoderated only</option>
-        <option value="false">Moderated included</option>
+        <option value="false">Moderated only</option>
       </select>
     </div>
-    <div class="card p-4">
-      <p class="section-label">NSFW</p>
-      <select id="filter-nsfw" class="mt-2 text-sm">
-        <option value="">All</option>
-        <option value="false">Exclude NSFW</option>
-        <option value="true">Only NSFW</option>
+    <div>
+      <label for="filter-nsfw">Content Type</label>
+      <select id="filter-nsfw">
+        <option value="">All content</option>
+        <option value="false">SFW only</option>
+        <option value="true">NSFW only</option>
       </select>
     </div>
-  </div>
-  <div class="mt-3 flex flex-wrap items-center gap-3 text-xs">
-    <button type="button" id="reset-filters" class="nav-link text-xs">Reset filters</button>
-    <span id="table-summary" class="text-muted">Loading…</span>
   </div>
 
-  <!-- Table -->
-  <div class="mt-6 card overflow-hidden">
-    <div class="overflow-x-auto">
-      <table class="min-w-[720px]" id="subs-table">
-        <thead>
-          <tr>
-            <th data-sort="name">Subreddit</th>
-            <th>Title & description</th>
-            <th data-sort="subscribers">Subscribers</th>
-            <th data-sort="mod_count">Moderators</th>
-            <th data-sort="mod_activity">Last mod activity</th>
-            <th data-sort="updated_at">Last indexed</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td colspan="6" class="text-center py-6 text-muted">Loading…</td></tr>
-        </tbody>
-      </table>
+  <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-4">
+      <button type="button" id="reset-filters" class="btn-ghost text-sm">Reset Filters</button>
+      <span id="table-summary" class="text-sm text-muted">Loading...</span>
     </div>
-    <div class="flex items-center justify-between border-t border-white/10 px-4 py-4 text-xs">
-      <button type="button" id="prev-page" class="nav-link text-xs">← Prev</button>
-      <span id="page-indicator" class="text-muted">Page 1</span>
-      <button type="button" id="next-page" class="nav-link text-xs">Next →</button>
+    <div class="flex items-center gap-2">
+      <label for="page-size" class="text-sm text-gray-400">Show:</label>
+      <select id="page-size" class="w-20 text-sm py-1.5">
+        <option value="25">25</option>
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+      </select>
     </div>
+  </div>
+</section>
+
+<!-- Table -->
+<section class="panel overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="min-w-[900px]" id="subs-table">
+      <thead>
+        <tr>
+          <th data-sort="name" class="w-48">
+            <span class="flex items-center gap-1">Subreddit <span class="sort-indicator"></span></span>
+          </th>
+          <th>Description</th>
+          <th data-sort="subscribers" class="w-28 text-right">
+            <span class="flex items-center justify-end gap-1">Subscribers <span class="sort-indicator"></span></span>
+          </th>
+          <th data-sort="mod_count" class="w-24 text-right">
+            <span class="flex items-center justify-end gap-1">Mods <span class="sort-indicator"></span></span>
+          </th>
+          <th data-sort="mod_activity" class="w-36">
+            <span class="flex items-center gap-1">Mod Activity <span class="sort-indicator"></span></span>
+          </th>
+          <th data-sort="updated_at" class="w-36">
+            <span class="flex items-center gap-1">Indexed <span class="sort-indicator"></span></span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="6" class="text-center py-12 text-muted">Loading fresh subs...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="flex items-center justify-between border-t border-dark-600/50 px-4 py-4">
+    <button type="button" id="prev-page" class="btn-secondary text-sm">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+      </svg>
+      Previous
+    </button>
+    <span id="page-indicator" class="text-sm text-muted">Page 1</span>
+    <button type="button" id="next-page" class="btn-secondary text-sm">
+      Next
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+      </svg>
+    </button>
   </div>
 </section>
 {% endblock %}
@@ -94,29 +146,35 @@ const state = {
   job_id: initialFilters.job_id || '',
 };
 
+// DOM elements
 const qInput = document.getElementById('filter-q');
 const minSubsInput = document.getElementById('filter-min-subs');
 const unmodSelect = document.getElementById('filter-unmoderated');
 const nsfwSelect = document.getElementById('filter-nsfw');
+const pageSizeSelect = document.getElementById('page-size');
 const tableBody = document.querySelector('#subs-table tbody');
 const tableSummary = document.getElementById('table-summary');
 const pageIndicator = document.getElementById('page-indicator');
 
+// Initialize form values
 qInput.value = state.q;
 minSubsInput.value = state.min_subs;
 if (state.unmoderated) unmodSelect.value = state.unmoderated;
 if (state.nsfw) nsfwSelect.value = state.nsfw;
 
+// Debounced update
 let debounceTimer = null;
 const debouncedUpdate = () => {
   clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => { state.page = 1; loadSubs(); }, 250);
+  debounceTimer = setTimeout(() => { state.page = 1; loadSubs(); }, 300);
 };
 
+// Event listeners
 qInput.addEventListener('input', () => { state.q = qInput.value.trim(); debouncedUpdate(); });
 minSubsInput.addEventListener('input', () => { state.min_subs = minSubsInput.value; debouncedUpdate(); });
 unmodSelect.addEventListener('change', () => { state.unmoderated = unmodSelect.value; state.page = 1; loadSubs(); });
 nsfwSelect.addEventListener('change', () => { state.nsfw = nsfwSelect.value; state.page = 1; loadSubs(); });
+pageSizeSelect.addEventListener('change', () => { state.pageSize = parseInt(pageSizeSelect.value); state.page = 1; loadSubs(); });
 
 document.getElementById('reset-filters').addEventListener('click', () => {
   state.q = ''; state.min_subs = ''; state.unmoderated = ''; state.nsfw = '';
@@ -127,11 +185,13 @@ document.getElementById('reset-filters').addEventListener('click', () => {
 document.getElementById('prev-page').addEventListener('click', () => {
   if (state.page > 1) { state.page -= 1; loadSubs(); }
 });
+
 document.getElementById('next-page').addEventListener('click', () => {
   const maxPage = Math.ceil(state.total / state.pageSize) || 1;
   if (state.page < maxPage) { state.page += 1; loadSubs(); }
 });
 
+// Sorting
 document.querySelectorAll('#subs-table th[data-sort]').forEach(th => {
   th.addEventListener('click', () => {
     const key = th.getAttribute('data-sort');
@@ -141,24 +201,52 @@ document.querySelectorAll('#subs-table th[data-sort]').forEach(th => {
       state.sort = key;
       state.order = key === 'name' ? 'asc' : 'desc';
     }
-    state.page = 1; loadSubs();
+    state.page = 1;
+    updateSortIndicators();
+    loadSubs();
   });
 });
 
+function updateSortIndicators() {
+  document.querySelectorAll('#subs-table th[data-sort]').forEach(th => {
+    const indicator = th.querySelector('.sort-indicator');
+    const key = th.getAttribute('data-sort');
+    if (key === state.sort) {
+      indicator.textContent = state.order === 'asc' ? '↑' : '↓';
+      th.classList.add('text-sub-yellow');
+    } else {
+      indicator.textContent = '';
+      th.classList.remove('text-sub-yellow');
+    }
+  });
+}
+
+// Utility functions
 function formatNumber(v) { return v == null ? '—' : Number(v).toLocaleString(); }
-function formatDate(v) { return v ? v.replace('T', ' ').replace('+00:00', ' UTC') : '—'; }
+function formatDate(v) {
+  if (!v) return '—';
+  const d = new Date(v);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 function formatEpoch(v) {
   if (v == null) return '—';
   const n = Number(v);
   if (!Number.isFinite(n) || n <= 0) return '—';
-  return new Date(n * 1000).toISOString().replace('T', ' ').replace('Z', ' UTC');
+  return new Date(n * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
-function escapeHtml(s) { return s ? String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])) : ''; }
+function escapeHtml(s) {
+  return s ? String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])) : '';
+}
 function safeUrl(u) { return u?.startsWith('http') ? u : '#'; }
+function truncate(s, len) {
+  if (!s) return '';
+  return s.length > len ? s.substring(0, len) + '...' : s;
+}
 
+// Load data
 async function loadSubs() {
-  tableSummary.textContent = 'Loading…';
-  tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-muted">Loading…</td></tr>';
+  tableSummary.textContent = 'Loading...';
+  tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-muted">Loading fresh subs...</td></tr>';
 
   const params = new URLSearchParams();
   if (state.q) params.set('q', state.q);
@@ -180,41 +268,60 @@ async function loadSubs() {
     const maxPage = Math.max(1, Math.ceil(state.total / state.pageSize));
     pageIndicator.textContent = `Page ${state.page} of ${maxPage}`;
     const filtersActive = [state.q, state.min_subs, state.unmoderated, state.nsfw].some(Boolean);
-    tableSummary.textContent = `${formatNumber(state.total)} subreddits${filtersActive ? ' • filtered' : ''}`;
+    tableSummary.textContent = `${formatNumber(state.total)} subs${filtersActive ? ' (filtered)' : ''}`;
+
+    // Update pagination buttons
+    document.getElementById('prev-page').disabled = state.page <= 1;
+    document.getElementById('next-page').disabled = state.page >= maxPage;
   } catch (e) {
-    tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-red-300">Unable to load subreddits. Please try again.</td></tr>';
-    tableSummary.textContent = 'Error loading results.';
+    tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-red-300">Failed to load subs. Please try again.</td></tr>';
+    tableSummary.textContent = 'Error';
   }
 }
 
 function renderRows(rows) {
   if (!rows.length) {
-    tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-muted">No subreddits match the current filters.</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-12 text-muted">No subs match your filters. Try adjusting your order.</td></tr>';
     return;
   }
+
   tableBody.innerHTML = rows.map(row => {
-    const flags = [];
-    if (row.is_unmoderated) flags.push('<span class="badge badge-success">Unmoderated</span>');
-    if (row.is_nsfw) flags.push('<span class="badge badge-error">NSFW</span>');
+    const badges = [];
+    if (row.is_unmoderated) badges.push('<span class="badge badge-success text-xs">Unmoderated</span>');
+    if (row.is_nsfw) badges.push('<span class="badge badge-error text-xs">NSFW</span>');
+
     return `
       <tr>
         <td>
-          <a class="font-semibold underline decoration-dotted" href="${safeUrl(row.url)}" target="_blank" rel="noopener">${escapeHtml(row.display_name_prefixed || 'r/' + row.name)}</a>
-          <div class="mt-1 flex flex-wrap gap-1">${flags.join('')}</div>
+          <a class="font-semibold text-sub-green-light hover:text-sub-green hover:underline" href="${safeUrl(row.url)}" target="_blank" rel="noopener">
+            ${escapeHtml(row.display_name_prefixed || 'r/' + row.name)}
+          </a>
+          ${badges.length ? `<div class="mt-1 flex flex-wrap gap-1">${badges.join('')}</div>` : ''}
         </td>
         <td>
-          <p class="font-semibold">${escapeHtml(row.title) || 'r/' + escapeHtml(row.name)}</p>
-          <p class="clamp-2 text-xs text-muted">${escapeHtml(row.public_description) || 'No description provided yet.'}</p>
+          <p class="font-medium text-white">${escapeHtml(row.title) || escapeHtml('r/' + row.name)}</p>
+          <p class="text-xs text-muted mt-0.5 line-clamp-2">${escapeHtml(truncate(row.public_description, 120)) || 'No description'}</p>
         </td>
-        <td>${formatNumber(row.subscribers)}</td>
-        <td>${row.mod_count != null ? formatNumber(row.mod_count) : '—'}</td>
-        <td>${formatEpoch(row.last_mod_activity_utc)}</td>
-        <td>${formatDate(row.updated_at)}</td>
+        <td class="text-right font-semibold">${formatNumber(row.subscribers)}</td>
+        <td class="text-right">${row.mod_count != null ? formatNumber(row.mod_count) : '—'}</td>
+        <td class="text-sm text-muted">${formatEpoch(row.last_mod_activity_utc)}</td>
+        <td class="text-sm text-muted">${formatDate(row.updated_at)}</td>
       </tr>
     `;
   }).join('');
 }
 
+// Initialize
+updateSortIndicators();
 loadSubs();
 </script>
+
+<style>
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style>
 {% endblock %}

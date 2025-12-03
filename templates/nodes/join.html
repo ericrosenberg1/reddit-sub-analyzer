@@ -2,66 +2,123 @@
 {% block title %}Add a Node - Sub Search{% endblock %}
 
 {% block content %}
-<section class="panel-surface p-6 lg:p-10">
-  <div class="space-y-4">
-    <p class="section-label">Node intake</p>
-    <h1 class="font-display text-3xl sm:text-4xl">Volunteer your computer + Reddit account</h1>
-    <p class="text-sm">Share the machine you want to run queries on and we'll email you a private management link—no login needed. That link lets you update hardware details, pause when you need to, or delete the node entirely.</p>
-    <ul class="list-disc space-y-1 pl-5 text-sm text-muted">
-      <li>Before running, ensure your Reddit account can use the official API with the provided credentials.</li>
-      <li>Mark the node as "broken" if you step away; the nightly cleanup removes anything broken for 7+ days.</li>
-      <li>Want public credit? Leave the "notes" field filled and stay in the active state.</li>
-    </ul>
-  </div>
+<!-- Header -->
+<section class="panel p-8 mb-8">
+  <p class="section-label">Join the Network</p>
+  <h1 class="mt-3">Volunteer Your Machine</h1>
+  <p class="mt-4 text-lg text-gray-400 max-w-3xl">
+    Share your computer + Reddit account to help grow the subreddit database. We'll email you a private management link - no login needed.
+  </p>
 
-  <form method="post" class="mt-8 grid gap-6 card p-6 lg:grid-cols-2">
+  <div class="mt-6 grid gap-4 sm:grid-cols-3">
+    <div class="card p-4">
+      <div class="flex items-center gap-2 text-sub-green-light">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span class="text-sm font-medium">Reddit API access required</span>
+      </div>
+    </div>
+    <div class="card p-4">
+      <div class="flex items-center gap-2 text-sub-green-light">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span class="text-sm font-medium">Cloud & homelab friendly</span>
+      </div>
+    </div>
+    <div class="card p-4">
+      <div class="flex items-center gap-2 text-sub-green-light">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span class="text-sm font-medium">Auto-cleanup after 7 days</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Form -->
+<section class="panel p-6">
+  <form method="post" class="grid gap-6 lg:grid-cols-2">
     {% csrf_token %}
-    <div class="space-y-4">
+
+    <!-- Left Column -->
+    <div class="space-y-5">
       <div>
-        <label for="email">Contact email</label>
-        <input type="email" id="email" name="email" required value="{{ form_data.email }}">
-        <p class="form-help">We'll send your unique management link here.</p>
+        <label for="email">Contact Email <span class="text-red-400">*</span></label>
+        <input type="email" id="email" name="email" required value="{{ form_data.email }}" placeholder="you@example.com">
+        <p class="form-help">We'll send your private management link here</p>
       </div>
       <div>
-        <label for="reddit_username">Reddit username</label>
+        <label for="reddit_username">Reddit Username <span class="text-red-400">*</span></label>
         <input type="text" id="reddit_username" name="reddit_username" required value="{{ form_data.reddit_username }}" placeholder="u/yourname">
-        <p class="form-help">Used for coordination—please ensure it can make API calls.</p>
+        <p class="form-help">Must have Reddit API access configured</p>
       </div>
       <div>
-        <label for="location">Location / timezone</label>
+        <label for="location">Location / Timezone</label>
         <input type="text" id="location" name="location" value="{{ form_data.location }}" placeholder="e.g. Portland, OR (UTC-7)">
       </div>
       <div>
         <label for="availability">Availability</label>
-        <input type="text" id="availability" name="availability" value="{{ form_data.availability }}" placeholder="Weeknights, 7pm–midnight local">
+        <input type="text" id="availability" name="availability" value="{{ form_data.availability }}" placeholder="e.g. Weeknights, 7pm-midnight">
       </div>
     </div>
-    <div class="space-y-4">
+
+    <!-- Right Column -->
+    <div class="space-y-5">
       <div>
-        <label for="system_details">Hardware</label>
-        <textarea id="system_details" name="system_details" rows="3" placeholder="CPU, RAM, connection details">{{ form_data.system_details }}</textarea>
+        <label for="system_details">Hardware Details</label>
+        <textarea id="system_details" name="system_details" rows="3" placeholder="CPU, RAM, connection details...">{{ form_data.system_details }}</textarea>
       </div>
       <div>
         <label for="bandwidth_notes">Bandwidth</label>
         <input type="text" id="bandwidth_notes" name="bandwidth_notes" value="{{ form_data.bandwidth_notes }}" placeholder="e.g. 500 Mbps fiber, metered weekends">
       </div>
       <div>
-        <label for="notes">Notes / shout-outs</label>
-        <textarea id="notes" name="notes" rows="3" placeholder="Public blurb or anything coordinators should know">{{ form_data.notes }}</textarea>
+        <label for="notes">Notes / Public Bio</label>
+        <textarea id="notes" name="notes" rows="3" placeholder="Anything you'd like to share publicly...">{{ form_data.notes }}</textarea>
+        <p class="form-help">Shown on the public nodes list</p>
       </div>
-      <button type="submit" class="w-full">Submit node</button>
+    </div>
+
+    <!-- Submit -->
+    <div class="lg:col-span-2">
+      <button type="submit" class="btn-primary w-full py-4 text-lg">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+        </svg>
+        Submit Node
+      </button>
     </div>
   </form>
-
-  {% if manage_link %}
-  <div class="mt-8 card p-6 border-brand/30 border-dashed">
-    <p class="font-semibold">Private node link</p>
-    <p class="mt-1 text-sm text-muted">Bookmark this URL—it lets you update or delete your node without logging in.</p>
-    <a href="{{ manage_link }}" class="mt-3 inline-flex items-center gap-2 badge badge-neutral px-4 py-2 break-all">{{ manage_link }}</a>
-    {% if not email_sent %}
-    <p class="mt-3 text-xs text-red-300">Email delivery is disabled, so this link will not be mailed until SMTP settings are provided.</p>
-    {% endif %}
-  </div>
-  {% endif %}
 </section>
+
+{% if manage_link %}
+<!-- Success Message -->
+<section class="mt-6 panel p-6 border-sub-green/30">
+  <div class="flex items-start gap-4">
+    <div class="w-10 h-10 rounded-full bg-sub-green/20 flex items-center justify-center flex-shrink-0">
+      <svg class="w-6 h-6 text-sub-green-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+    </div>
+    <div class="flex-1">
+      <h3 class="text-lg font-semibold text-sub-green-light">Node Registered!</h3>
+      <p class="text-sm text-muted mt-1">Bookmark this link - it lets you update or delete your node without logging in:</p>
+      <a href="{{ manage_link }}" class="inline-block mt-3 px-4 py-2 bg-dark-700 border border-dark-500 rounded-lg text-sm break-all hover:border-sub-green/40 transition-colors">
+        {{ manage_link }}
+      </a>
+      {% if not email_sent %}
+      <p class="mt-3 text-xs text-red-300">
+        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+        Email delivery is disabled. Save this link now!
+      </p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endif %}
 {% endblock %}

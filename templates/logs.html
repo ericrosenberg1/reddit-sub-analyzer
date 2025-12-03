@@ -2,80 +2,96 @@
 {% block title %}Activity Log - Sub Search{% endblock %}
 
 {% block content %}
-<section class="panel-surface p-6 lg:p-10">
-  <div class="flex items-center justify-between gap-4">
+<!-- Header -->
+<section class="panel p-6 mb-6">
+  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
     <div>
-      <p class="section-label">Logs</p>
-      <h1 class="font-display text-3xl sm:text-4xl">Recent Sub Searches and automated refreshes</h1>
-      <p class="mt-2 max-w-3xl text-sm">This view confirms Sub Search is running: every job shows its keyword (if provided), source, start time, and how many subreddits were added to All The Subs.</p>
+      <p class="section-label">Order History</p>
+      <h1 class="mt-2">Activity Log</h1>
+      <p class="mt-2 text-gray-400">Track all searches and automated background jobs</p>
     </div>
-    <a href="{% url 'home' %}" class="nav-link">Return home</a>
+    <a href="{% url 'home' %}" class="btn-secondary">Back to Home</a>
   </div>
+</section>
 
-  <!-- Job Statistics -->
-  <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-    <div class="card p-4">
-      <p class="stat-label">Total Sub Searches</p>
-      <p class="stat-value mt-2">{{ job_stats.total|default:0 }}</p>
-    </div>
-    <div class="card p-4 border-emerald-500/20">
-      <p class="stat-label text-emerald-300/70">Completed</p>
-      <p class="stat-value mt-2 text-emerald-200">{{ job_stats.completed|default:0 }}</p>
-    </div>
-    <div class="card p-4 border-red-500/20">
-      <p class="stat-label text-red-300/70">Failed</p>
-      <p class="stat-value mt-2 text-red-200">{{ job_stats.failed|default:0 }}</p>
-    </div>
-    <div class="card p-4 border-sky-500/20">
-      <p class="stat-label text-sky-300/70">In Queue</p>
-      <p class="stat-value mt-2 text-sky-200">{{ queue_count|default:0 }}</p>
-      <p class="mt-1 text-xs text-muted">{{ job_stats.pending|default:0 }} pending/stalled</p>
-    </div>
+<!-- Stats -->
+<section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+  <div class="card p-5">
+    <p class="stat-label">Total Searches</p>
+    <p class="stat-value mt-2">{{ job_stats.total|default:0 }}</p>
   </div>
+  <div class="card p-5 border-sub-green/20">
+    <p class="stat-label text-sub-green-light">Completed</p>
+    <p class="stat-value mt-2 text-sub-green-light">{{ job_stats.completed|default:0 }}</p>
+  </div>
+  <div class="card p-5 border-red-700/20">
+    <p class="stat-label text-red-300">Failed</p>
+    <p class="stat-value mt-2 text-red-300">{{ job_stats.failed|default:0 }}</p>
+  </div>
+  <div class="card p-5 border-sub-yellow/20">
+    <p class="stat-label text-sub-yellow">In Queue</p>
+    <p class="stat-value mt-2 text-sub-yellow">{{ queue_count|default:0 }}</p>
+    <p class="text-xs text-muted mt-1">{{ job_stats.pending|default:0 }} pending</p>
+  </div>
+</section>
 
-  <!-- Jobs Table -->
-  <div class="mt-8 card overflow-hidden">
-    <div class="overflow-x-auto">
-      <table class="min-w-[720px]">
-        <thead>
-          <tr>
-            <th>When (UTC)</th>
-            <th>Keyword / Source</th>
-            <th>Subs added</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if entries %}
-          {% for entry in entries %}
-          <tr>
-            <td>{{ entry.started_display|default:'pending' }}</td>
-            <td>
-              <span class="font-semibold">{{ entry.keyword|default:'auto-run' }}</span>
-              <p class="text-xs text-muted">{{ entry.source }}</p>
-            </td>
-            <td>{{ entry.result_count|default:0 }}</td>
-            <td>
-              {% if entry.error %}
-              <span class="badge badge-error">error</span>
-              {% elif entry.completed_at %}
-              <span class="badge badge-success">complete</span>
+<!-- Jobs Table -->
+<section class="panel overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="min-w-[700px]">
+      <thead>
+        <tr>
+          <th class="w-40">When</th>
+          <th>Search Details</th>
+          <th class="w-28 text-right">Results</th>
+          <th class="w-28">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if entries %}
+        {% for entry in entries %}
+        <tr>
+          <td>
+            <p class="font-medium">{{ entry.started_display|default:'Pending' }}</p>
+          </td>
+          <td>
+            <p class="font-semibold">{{ entry.keyword|default:'All subreddits' }}</p>
+            <p class="text-xs text-muted mt-0.5">
+              {% if entry.source == 'sub_search' %}
+              <span class="text-sub-yellow">Manual</span>
               {% else %}
-              <span class="badge badge-info">running</span>
+              <span class="text-gray-500">{{ entry.source }}</span>
               {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-          {% else %}
-          <tr><td colspan="4" class="text-center py-6 text-muted">No Sub Searches yet.</td></tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </div>
-    <div class="flex items-center justify-between border-t border-white/10 px-4 py-4 text-xs">
-      <span class="text-muted">Data refreshed live.</span>
-      <a class="nav-link text-xs" href="{% url 'all_subs' %}">View All The Subs</a>
-    </div>
+            </p>
+          </td>
+          <td class="text-right">
+            <p class="font-semibold">{{ entry.result_count|default:0 }}</p>
+            <p class="text-xs text-muted">subs</p>
+          </td>
+          <td>
+            {% if entry.error %}
+            <span class="badge badge-error">Error</span>
+            {% elif entry.completed_at %}
+            <span class="badge badge-success">Complete</span>
+            {% else %}
+            <span class="badge badge-info">Running</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="4" class="text-center py-12 text-muted">
+            No searches yet. <a href="{% url 'home' %}" class="text-sub-yellow hover:underline">Start your first search!</a>
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+  <div class="flex items-center justify-between border-t border-dark-600/50 px-4 py-4">
+    <p class="text-sm text-muted">Showing recent activity</p>
+    <a href="{% url 'all_subs' %}" class="btn-ghost text-sm">View All The Subs</a>
   </div>
 </section>
 {% endblock %}

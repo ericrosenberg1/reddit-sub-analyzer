@@ -2,55 +2,178 @@
 {% block title %}Volunteer Nodes - Sub Search{% endblock %}
 
 {% block content %}
-<section class="panel-surface p-6 lg:p-10">
-  <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-    <div class="space-y-4">
-      <p class="section-label">Distributed ingestion</p>
-      <h1 class="font-display text-3xl sm:text-4xl">Help grow the Sub Search dataset</h1>
-      <p class="text-sm">Every manual search, scheduled bot run, and volunteer node keeps the directory fresh. Bring your own computer + Reddit account. Cloud and homelab friendly!</p>
-      <a href="{% url 'node_join' %}" class="btn-primary px-6 py-3 inline-flex">Add your node</a>
+<!-- Hero -->
+<section class="panel p-8 mb-8">
+  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+    <div class="max-w-2xl">
+      <p class="section-label">Distributed Kitchen</p>
+      <h1 class="mt-3">Volunteer Your Machine</h1>
+      <p class="mt-4 text-lg text-gray-400">
+        Help us build the world's largest subreddit directory. Bring your computer + Reddit account to accelerate data collection.
+      </p>
+      <a href="{% url 'node_join' %}" class="btn-primary mt-6">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+        </svg>
+        Add Your Node
+      </a>
     </div>
-    <div class="card p-6 lg:min-w-[200px]">
-      <p class="section-label">Nodes in pool</p>
-      <p class="stat-value mt-2">{{ node_stats.total|default:0 }}</p>
-      <p class="mt-1 text-xs text-muted">Active: {{ node_stats.active|default:0 }} - Pending: {{ node_stats.pending|default:0 }}</p>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-3 gap-4">
+      <div class="card p-5 text-center">
+        <p class="stat-label">Total</p>
+        <p class="stat-value text-sub-green-light">{{ node_stats.total|default:0 }}</p>
+      </div>
+      <div class="card p-5 text-center">
+        <p class="stat-label">Active</p>
+        <p class="stat-value">{{ node_stats.active|default:0 }}</p>
+      </div>
+      <div class="card p-5 text-center">
+        <p class="stat-label">Pending</p>
+        <p class="stat-value text-sub-yellow">{{ node_stats.pending|default:0 }}</p>
+      </div>
     </div>
   </div>
 </section>
 
-<section class="panel-surface mt-10 p-6">
-  <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-    <div>
-      <p class="section-label">Volunteer spotlight</p>
-      <h2>Recently active nodes</h2>
-      <p class="mt-2 text-sm">Toggle "active" on the form after your first manual search to join the public list.</p>
+<!-- How It Works -->
+<section class="panel p-6 mb-8">
+  <div class="flex items-center gap-3 mb-6">
+    <div class="w-8 h-8 rounded-lg bg-sub-green/20 flex items-center justify-center">
+      <svg class="w-5 h-5 text-sub-green-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+      </svg>
     </div>
-    <a href="{% url 'node_join' %}" class="nav-link">Join the pool →</a>
+    <h2>How Nodes Work</h2>
+  </div>
+
+  <div class="grid gap-6 md:grid-cols-3">
+    <div class="flex gap-4">
+      <div class="flex-shrink-0 w-10 h-10 rounded-full bg-sub-green flex items-center justify-center text-white font-bold">1</div>
+      <div>
+        <p class="font-semibold">Register Your Node</p>
+        <p class="text-sm text-muted mt-1">Submit your Reddit account and machine details. We'll email you a private management link.</p>
+      </div>
+    </div>
+    <div class="flex gap-4">
+      <div class="flex-shrink-0 w-10 h-10 rounded-full bg-sub-green flex items-center justify-center text-white font-bold">2</div>
+      <div>
+        <p class="font-semibold">Run Sub Search Locally</p>
+        <p class="text-sm text-muted mt-1">Install the app on your machine with PHONE_HOME enabled. Each search syncs to the main database.</p>
+      </div>
+    </div>
+    <div class="flex gap-4">
+      <div class="flex-shrink-0 w-10 h-10 rounded-full bg-sub-green flex items-center justify-center text-white font-bold">3</div>
+      <div>
+        <p class="font-semibold">Grow the Dataset</p>
+        <p class="text-sm text-muted mt-1">Your searches contribute to the shared subreddit directory for everyone to use.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Active Nodes -->
+<section class="panel p-6">
+  <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-sub-yellow/20 flex items-center justify-center">
+        <svg class="w-5 h-5 text-sub-yellow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"/>
+        </svg>
+      </div>
+      <div>
+        <h2>Active Nodes</h2>
+        <p class="text-sm text-muted">Community contributors keeping the data fresh</p>
+      </div>
+    </div>
+    <a href="{% url 'node_join' %}" class="btn-ghost text-sm">Join the network</a>
   </div>
 
   {% if volunteer_nodes %}
-  <ul class="mt-6 grid gap-4 md:grid-cols-2">
+  <div class="grid gap-4 md:grid-cols-2">
     {% for node in volunteer_nodes %}
-    <li class="card p-5">
-      <div class="flex items-center justify-between gap-3">
-        <div>
-          <p class="font-semibold">{% if node.reddit_username %}u/{{ node.reddit_username }}{% else %}Handle pending{% endif %}</p>
-          <p class="text-xs text-muted">{{ node.location|default:'Location TBD' }}</p>
+    <div class="card p-5">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-sub-green/20 flex items-center justify-center">
+            <svg class="w-5 h-5 text-sub-green-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
+          </div>
+          <div>
+            <p class="font-semibold">{% if node.reddit_username %}u/{{ node.reddit_username }}{% else %}Pending...{% endif %}</p>
+            <p class="text-xs text-muted">{{ node.location|default:'Location TBD' }}</p>
+          </div>
         </div>
-        <span class="badge badge-neutral">{{ node.health_status|default:'pending'|title }}</span>
+        <span class="badge {% if node.health_status == 'active' %}badge-success{% elif node.health_status == 'paused' %}badge-warning{% else %}badge-neutral{% endif %}">
+          {{ node.health_status|default:'pending'|title }}
+        </span>
       </div>
-      <div class="mt-3 space-y-2 text-xs text-muted">
-        {% if node.system_details %}<p><span class="text-subtle">Rig:</span> {{ node.system_details }}</p>{% endif %}
-        {% if node.availability %}<p><span class="text-subtle">Schedule:</span> {{ node.availability }}</p>{% endif %}
-        {% if node.bandwidth_notes %}<p><span class="text-subtle">Bandwidth:</span> {{ node.bandwidth_notes }}</p>{% endif %}
-        <p><span class="text-subtle">Last check-in:</span> {{ node.last_check_in_at|date:"Y-m-d H:i T"|default:'New' }}</p>
-        {% if node.notes %}<p class="text-muted">"{{ node.notes }}"</p>{% endif %}
+
+      <div class="mt-4 space-y-2 text-sm">
+        {% if node.system_details %}
+        <div class="flex gap-2">
+          <span class="text-gray-500 w-20 flex-shrink-0">Hardware:</span>
+          <span class="text-gray-300">{{ node.system_details }}</span>
+        </div>
+        {% endif %}
+        {% if node.availability %}
+        <div class="flex gap-2">
+          <span class="text-gray-500 w-20 flex-shrink-0">Schedule:</span>
+          <span class="text-gray-300">{{ node.availability }}</span>
+        </div>
+        {% endif %}
+        {% if node.bandwidth_notes %}
+        <div class="flex gap-2">
+          <span class="text-gray-500 w-20 flex-shrink-0">Bandwidth:</span>
+          <span class="text-gray-300">{{ node.bandwidth_notes }}</span>
+        </div>
+        {% endif %}
+        <div class="flex gap-2">
+          <span class="text-gray-500 w-20 flex-shrink-0">Last seen:</span>
+          <span class="text-gray-300">{{ node.last_check_in_at|date:"M d, Y H:i"|default:'New' }}</span>
+        </div>
       </div>
-    </li>
+
+      {% if node.notes %}
+      <div class="mt-4 p-3 bg-dark-600/30 rounded-lg">
+        <p class="text-sm text-gray-400 italic">"{{ node.notes }}"</p>
+      </div>
+      {% endif %}
+    </div>
     {% endfor %}
-  </ul>
+  </div>
   {% else %}
-  <p class="mt-6 text-sm text-muted">No public nodes yet. Be the first to add your machine.</p>
+  <div class="text-center py-12">
+    <div class="w-16 h-16 mx-auto rounded-full bg-dark-700 flex items-center justify-center mb-4">
+      <svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+      </svg>
+    </div>
+    <p class="text-muted">No volunteer nodes yet.</p>
+    <p class="text-sm text-gray-500 mt-1">Be the first to join the network!</p>
+    <a href="{% url 'node_join' %}" class="btn-primary mt-4">Add Your Node</a>
+  </div>
   {% endif %}
+</section>
+
+<!-- CTA -->
+<section class="mt-8 grid gap-6 md:grid-cols-2">
+  <div class="card p-6">
+    <p class="section-label mb-2">Self-Host Friendly</p>
+    <h3 class="text-lg">Run Your Own Instance</h3>
+    <p class="text-sm text-muted mt-2">
+      Clone the repo, configure your Reddit API credentials, and enable PHONE_HOME to sync your searches with the main database.
+    </p>
+    <a href="{% url 'developer_docs' %}" class="btn-ghost text-sm mt-4 -ml-2">View Setup Guide</a>
+  </div>
+  <div class="card p-6">
+    <p class="section-label mb-2">Node Cleanup</p>
+    <h3 class="text-lg">Automatic Maintenance</h3>
+    <p class="text-sm text-muted mt-2">
+      Nodes marked as "broken" are automatically removed after 7 days. Update your status via your private management link.
+    </p>
+  </div>
 </section>
 {% endblock %}

@@ -10,7 +10,7 @@
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
@@ -19,102 +19,311 @@
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Inter', 'system-ui', 'sans-serif'],
-            display: ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
+            sans: ['Archivo', 'system-ui', 'sans-serif'],
           },
           colors: {
-            brand: { light: '#FBE36B', DEFAULT: '#2BA84A', dark: '#1A5A30' },
+            // Subway-inspired palette
+            sub: {
+              green: '#00693E',
+              'green-light': '#008C15',
+              'green-dark': '#004225',
+              yellow: '#FFC300',
+              'yellow-light': '#FFD700',
+              'yellow-dark': '#E6B000',
+              cream: '#FFF8E7',
+            },
+            // Dark theme base
+            dark: {
+              900: '#0A0F0D',
+              800: '#111916',
+              700: '#1A241F',
+              600: '#243028',
+              500: '#2E3D32',
+            }
           },
         },
       },
     };
   </script>
 
-  <!-- Custom Styles -->
-  <link rel="stylesheet" href="{% static 'styles.css' %}">
-
-  <!-- CSRF Helper -->
-  <script>
-    function getCookie(name) {
-      let cookieValue = null;
-      if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-          const cookie = cookies[i].trim();
-          if (cookie.substring(0, name.length + 1) === (name + '=')) {
-            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-            break;
-          }
-        }
+  <style type="text/tailwindcss">
+    @layer base {
+      body {
+        @apply bg-dark-900 text-white antialiased;
+        background-image:
+          radial-gradient(ellipse at top left, rgba(0, 105, 62, 0.15) 0%, transparent 50%),
+          radial-gradient(ellipse at bottom right, rgba(255, 195, 0, 0.08) 0%, transparent 50%);
+        background-attachment: fixed;
       }
-      return cookieValue;
+
+      h1, h2, h3, h4, h5, h6 {
+        @apply font-bold tracking-tight text-white;
+      }
+
+      h1 { @apply text-3xl sm:text-4xl; }
+      h2 { @apply text-xl sm:text-2xl; }
+      h3 { @apply text-lg; }
+
+      a { @apply transition-colors duration-150; }
     }
-    const csrfToken = getCookie('csrftoken');
-  </script>
+
+    @layer components {
+      /* Main panel with sandwich paper texture feel */
+      .panel {
+        @apply relative bg-dark-800/80 border border-dark-600 rounded-2xl backdrop-blur-sm overflow-hidden;
+      }
+      .panel::before {
+        content: '';
+        @apply absolute inset-0 opacity-[0.02] pointer-events-none;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+
+      /* Cards */
+      .card {
+        @apply bg-dark-700/60 border border-dark-500/50 rounded-xl;
+      }
+      .card-hover {
+        @apply card hover:bg-dark-600/60 hover:border-sub-green/30 transition-all cursor-pointer;
+      }
+
+      /* Buttons */
+      .btn {
+        @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 font-semibold rounded-xl transition-all duration-200;
+      }
+      .btn-primary {
+        @apply btn bg-gradient-to-r from-sub-green to-sub-green-light text-white shadow-lg shadow-sub-green/25;
+        @apply hover:from-sub-green-light hover:to-sub-green hover:shadow-sub-green/40 hover:-translate-y-0.5;
+      }
+      .btn-secondary {
+        @apply btn bg-dark-600 border border-dark-500 text-white;
+        @apply hover:bg-dark-500 hover:border-sub-green/40;
+      }
+      .btn-ghost {
+        @apply btn text-sub-yellow hover:text-sub-yellow-light hover:bg-sub-yellow/10;
+      }
+      .btn-danger {
+        @apply btn bg-red-900/50 border border-red-700/50 text-red-200;
+        @apply hover:bg-red-800/60 hover:border-red-600/60;
+      }
+
+      /* Form elements */
+      input[type="text"],
+      input[type="email"],
+      input[type="number"],
+      input[type="date"],
+      input[type="password"],
+      textarea,
+      select {
+        @apply w-full bg-dark-700 border border-dark-500 rounded-lg px-4 py-2.5 text-white placeholder-gray-500;
+        @apply focus:outline-none focus:border-sub-green focus:ring-2 focus:ring-sub-green/20;
+        @apply transition-all duration-200;
+      }
+
+      label {
+        @apply block text-sm font-medium text-gray-300 mb-1.5;
+      }
+
+      input[type="checkbox"] {
+        @apply w-5 h-5 bg-dark-700 border-dark-500 rounded text-sub-green;
+        @apply focus:ring-sub-green focus:ring-offset-0 focus:ring-offset-dark-800;
+      }
+
+      button[type="submit"]:not(.btn):not(.btn-primary):not(.btn-secondary):not(.btn-danger) {
+        @apply btn-primary w-full;
+      }
+
+      .form-help {
+        @apply text-xs text-gray-500 mt-1;
+      }
+
+      /* Navigation */
+      .nav-link {
+        @apply text-sm font-medium text-gray-400 hover:text-sub-yellow transition-colors px-3 py-2 rounded-lg;
+      }
+      .nav-link.active {
+        @apply text-sub-yellow bg-sub-yellow/10;
+      }
+
+      /* Badges */
+      .badge {
+        @apply inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full;
+      }
+      .badge-success {
+        @apply bg-sub-green/20 text-sub-green-light border border-sub-green/30;
+      }
+      .badge-warning {
+        @apply bg-sub-yellow/20 text-sub-yellow border border-sub-yellow/30;
+      }
+      .badge-error {
+        @apply bg-red-900/40 text-red-300 border border-red-700/40;
+      }
+      .badge-info {
+        @apply bg-blue-900/40 text-blue-300 border border-blue-700/40;
+      }
+      .badge-neutral {
+        @apply bg-dark-600 text-gray-300 border border-dark-500;
+      }
+
+      /* Stats */
+      .stat-label {
+        @apply text-xs uppercase tracking-wider text-gray-500 font-medium;
+      }
+      .stat-value {
+        @apply text-2xl font-bold text-white;
+      }
+
+      /* Section label - like ingredient tags */
+      .section-label {
+        @apply inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-sub-yellow;
+      }
+      .section-label::before {
+        content: '';
+        @apply w-2 h-2 bg-sub-yellow rounded-full;
+      }
+
+      /* Tables */
+      table {
+        @apply w-full text-sm;
+      }
+      thead {
+        @apply bg-dark-700/50;
+      }
+      th {
+        @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400;
+      }
+      th[data-sort] {
+        @apply cursor-pointer hover:text-sub-yellow select-none;
+      }
+      td {
+        @apply px-4 py-3 border-t border-dark-600/50;
+      }
+      tbody tr {
+        @apply hover:bg-dark-700/30 transition-colors;
+      }
+
+      /* Code blocks */
+      pre {
+        @apply bg-dark-900 border border-dark-600 rounded-lg p-4 overflow-x-auto text-sm;
+      }
+      code {
+        @apply font-mono text-sub-green-light;
+      }
+      pre code {
+        @apply text-gray-300;
+      }
+
+      /* Loader animation */
+      .loader {
+        @apply w-5 h-5 border-2 border-sub-green/30 border-t-sub-green rounded-full animate-spin;
+      }
+
+      /* Alert boxes */
+      .alert {
+        @apply p-4 rounded-xl border;
+      }
+      .alert-warning {
+        @apply bg-sub-yellow/10 border-sub-yellow/30 text-sub-yellow;
+      }
+      .alert-success {
+        @apply bg-sub-green/10 border-sub-green/30 text-sub-green-light;
+      }
+      .alert-error {
+        @apply bg-red-900/20 border-red-700/30 text-red-300;
+      }
+      .alert-info {
+        @apply bg-blue-900/20 border-blue-700/30 text-blue-300;
+      }
+
+      /* Sandwich stripe accent */
+      .stripe-accent {
+        @apply relative;
+      }
+      .stripe-accent::after {
+        content: '';
+        @apply absolute left-0 right-0 h-1 bg-gradient-to-r from-sub-green via-sub-yellow to-sub-green;
+      }
+    }
+
+    @layer utilities {
+      .text-muted { @apply text-gray-400; }
+      .text-subtle { @apply text-gray-500; }
+      .glow-green { box-shadow: 0 0 20px rgba(0, 140, 21, 0.3); }
+      .glow-yellow { box-shadow: 0 0 20px rgba(255, 195, 0, 0.2); }
+    }
+  </style>
 
   {% block head_extra %}{% endblock %}
 </head>
 
 <body class="min-h-screen flex flex-col">
-  <!-- Background gradient overlay -->
-  <div class="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_top_left,_rgba(43,168,74,0.2),_transparent_50%),_radial-gradient(circle_at_bottom_right,_rgba(251,227,107,0.12),_transparent_55%)]"></div>
-
-  <div class="relative z-10 flex min-h-screen flex-col">
-    <!-- Header -->
-    <header class="sticky top-0 z-20 border-b border-white/10 bg-slate-950/80 backdrop-blur">
-      <div class="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4">
-        <a href="{% url 'home' %}" class="flex items-center gap-3">
-          <img src="{% static 'img/sub-sando-badge.svg' %}" alt="Sub Search" class="h-12 w-12 rounded-2xl bg-black/20 p-1 hero-art">
-          <div class="flex flex-col leading-tight">
-            <span class="font-display text-xl text-white">Sub Search</span>
-            <span class="text-xs text-white/50">Reddit Discovery Tool</span>
+  <!-- Header -->
+  <header class="sticky top-0 z-50 border-b border-dark-600/50 bg-dark-900/90 backdrop-blur-md">
+    <div class="mx-auto max-w-6xl px-4">
+      <div class="flex items-center justify-between h-16">
+        <!-- Logo -->
+        <a href="{% url 'home' %}" class="flex items-center gap-3 group">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sub-green to-sub-green-light flex items-center justify-center shadow-lg shadow-sub-green/20 group-hover:shadow-sub-green/40 transition-shadow">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-lg font-bold text-white leading-tight">Sub Search</span>
+            <span class="text-[10px] uppercase tracking-widest text-sub-yellow font-medium">Fresh Subs Daily</span>
           </div>
         </a>
-        <nav class="flex items-center gap-2">
+
+        <!-- Navigation -->
+        <nav class="flex items-center gap-1">
           <a href="{% url 'home' %}" class="nav-link{% if nav_active == 'home' %} active{% endif %}">Home</a>
           <a href="{% url 'nodes_home' %}" class="nav-link{% if nav_active == 'nodes' %} active{% endif %}">Nodes</a>
           <a href="{% url 'all_subs' %}" class="nav-link{% if nav_active == 'allsubs' %} active{% endif %}">All The Subs</a>
         </nav>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <!-- Main Content -->
-    <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-10">
-      {% if config_warnings %}
-      <div class="alert alert-warning mb-6">
-        <p class="font-semibold">Heads up: review your deployment settings.</p>
-        <ul class="mt-2 list-disc pl-5">
-          {% for warning in config_warnings %}<li>{{ warning }}</li>{% endfor %}
-        </ul>
+  <!-- Main Content -->
+  <main class="flex-1 mx-auto w-full max-w-6xl px-4 py-8">
+    {% if config_warnings %}
+    <div class="alert alert-warning mb-6">
+      <p class="font-semibold">Configuration Notice</p>
+      <ul class="mt-2 list-disc pl-5 text-sm">
+        {% for warning in config_warnings %}<li>{{ warning }}</li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if messages %}
+    <div class="mb-6 space-y-3">
+      {% for message in messages %}
+      <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% else %}alert-info{% endif %}">
+        {{ message }}
       </div>
-      {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
 
-      {% if messages %}
-      <div class="mb-6 space-y-3">
-        {% for message in messages %}
-        <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% else %}alert-info{% endif %}">
-          {{ message }}
-        </div>
-        {% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-dark-600/50 bg-dark-900/50">
+    <div class="mx-auto max-w-6xl px-4 py-6">
+      <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-gray-500">
+        <a href="{% url 'all_subs' %}" class="hover:text-sub-yellow transition-colors">Browse All The Subs</a>
+        <span class="text-dark-600">|</span>
+        <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" rel="noopener" class="hover:text-sub-yellow transition-colors">GitHub</a>
+        <span class="text-dark-600">|</span>
+        <a href="{% url 'help' %}" class="hover:text-sub-yellow transition-colors">Help</a>
+        <span class="text-dark-600">|</span>
+        <a href="{% url 'developer_docs' %}" class="hover:text-sub-yellow transition-colors">Docs</a>
       </div>
-      {% endif %}
-
-      {% block content %}{% endblock %}
-    </main>
-
-    <!-- Footer -->
-    <footer class="border-t border-white/5 bg-slate-950/70">
-      <div class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-4 px-4 py-6 text-xs text-white/60">
-        <a href="{% url 'all_subs' %}" class="underline decoration-dotted hover:text-white">Browse All The Subs</a>
-        <span>•</span>
-        <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" rel="noopener" class="underline decoration-dotted hover:text-white">GitHub</a>
-        <span>•</span>
-        <a href="{% url 'help' %}" class="underline decoration-dotted hover:text-white">Help</a>
-        <span>•</span>
-        <a href="{% url 'developer_docs' %}" class="underline decoration-dotted hover:text-white">Docs</a>
-      </div>
-    </footer>
-  </div>
+      <p class="mt-3 text-center text-xs text-gray-600">
+        Built by <a href="https://ericrosenberg.com" class="text-sub-green hover:text-sub-green-light" target="_blank">Eric Rosenberg</a>
+      </p>
+    </div>
+  </footer>
 
   {% block scripts %}{% endblock %}
 </body>
