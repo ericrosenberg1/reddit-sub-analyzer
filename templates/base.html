@@ -105,7 +105,9 @@
     <!-- Footer -->
     <footer class="border-t border-white/5 bg-slate-950/70">
       <div class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-4 px-4 py-6 text-xs text-white/60">
-        <span>Open source on <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" rel="noopener" class="underline decoration-dotted hover:text-white">GitHub</a></span>
+        <a href="{% url 'all_subs' %}" class="underline decoration-dotted hover:text-white">Browse All The Subs</a>
+        <span>•</span>
+        <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" rel="noopener" class="underline decoration-dotted hover:text-white">GitHub</a>
         <span>•</span>
         <a href="{% url 'help' %}" class="underline decoration-dotted hover:text-white">Help</a>
         <span>•</span>
