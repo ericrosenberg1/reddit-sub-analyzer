@@ -53,10 +53,16 @@ def home(request):
     node_stats = VolunteerNode.get_stats()
     volunteer_nodes = list(VolunteerNode.get_active_nodes(limit=6))
 
-    # Queue count
-    queue_count = QueryRun.objects.filter(
-        state__in=[QueryRun.State.PENDING, QueryRun.State.QUEUED]
-    ).count()
+    # Queue count and queued runs
+    queued_runs = list(
+        QueryRun.objects.filter(
+            state__in=[QueryRun.State.PENDING, QueryRun.State.QUEUED]
+        ).order_by('started_at')[:5]
+    )
+    queue_count = len(queued_runs)
+
+    # Random search interval from settings
+    random_search_interval = getattr(settings, 'AUTO_RANDOM_SEARCH_INTERVAL_MINUTES', 30)
 
     return render(request, 'home.html', {
         'stats': stats,
@@ -65,6 +71,8 @@ def home(request):
         'node_stats': node_stats,
         'volunteer_nodes': volunteer_nodes,
         'queue_count': queue_count,
+        'queued_runs': queued_runs,
+        'random_search_interval': random_search_interval,
         'job_id': job_id,
         'nav_active': 'home',
     })
