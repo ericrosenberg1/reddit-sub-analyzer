@@ -470,10 +470,10 @@ def api_subreddits(request):
     unmoderated = _parse_bool(request.GET.get('unmoderated'))
     nsfw = _parse_bool(request.GET.get('nsfw'))
     min_subs = InputSanitizer.sanitize_integer(
-        request.GET.get('min_subs'), min_val=0, max_val=100_000_000
+        request.GET.get('min_subs'), min_val=0, max_val=100_000_000, default=None
     )
     max_subs = InputSanitizer.sanitize_integer(
-        request.GET.get('max_subs'), min_val=0, max_val=100_000_000
+        request.GET.get('max_subs'), min_val=0, max_val=100_000_000, default=None
     )
     page = max(InputSanitizer.sanitize_integer(request.GET.get('page'), default=1), 1)
     page_size = min(max(InputSanitizer.sanitize_integer(
