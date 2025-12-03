@@ -10,6 +10,8 @@ urlpatterns = [
     path('job/<str:job_id>/', views.home_with_job, name='home_with_job'),
     path('logs/', views.logs, name='logs'),
     path('all-the-subs/', views.all_subs, name='all_subs'),
+    path('help/', views.help_page, name='help'),
+    path('docs/', views.developer_docs, name='developer_docs'),
 
     # API endpoints
     path('status/<str:job_id>/', views.status, name='status'),

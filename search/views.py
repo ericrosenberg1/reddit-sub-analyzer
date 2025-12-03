@@ -182,6 +182,16 @@ def _get_summary_stats():
     return stats
 
 
+def help_page(request):
+    """Help page."""
+    return render(request, 'help.html')
+
+
+def developer_docs(request):
+    """Developer documentation page."""
+    return render(request, 'developer_docs.html')
+
+
 def logs(request):
     """View search history logs."""
     entries = list(QueryRun.objects.order_by('-started_at')[:30])
