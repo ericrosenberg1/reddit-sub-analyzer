@@ -36,3 +36,6 @@ logs/
 .vscode/
 .DS_Store
 .ds_store
+.bash_history
+.ssh/
+*.pyc
