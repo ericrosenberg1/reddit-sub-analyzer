@@ -5,104 +5,105 @@
 {% block content %}
 <!-- Hero Section -->
 <section class="panel-surface p-6 lg:p-10">
-  <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-    <div class="max-w-3xl space-y-4">
+  <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+    <div class="max-w-2xl space-y-4">
       <p class="section-label">An <a href="https://ericrosenberg.com" class="hover:text-white">Eric Rosenberg</a> project</p>
       <h1 class="font-display text-4xl sm:text-5xl">Sub Search + All The Subs</h1>
-      <p class="text-lg">Sub Search keeps a living index of subreddit names, descriptions, moderator counts, and last human moderator activity so you can analyze communities and export targeted lists. With more than 3 million subs, this is a community-driven effort to maintain an updated database.</p>
+      <p class="text-lg">Sub Search keeps a living index of subreddit names, descriptions, moderator counts, and last human moderator activity so you can analyze communities and export targeted lists.</p>
       <div class="flex flex-wrap gap-3 pt-2">
         <a href="{% url 'all_subs' %}" class="nav-link">Browse All The Subs</a>
         <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" rel="noopener" class="nav-link">View on GitHub</a>
       </div>
     </div>
-    <div class="flex flex-col gap-4 lg:max-w-sm">
-      <img src="{% static 'img/sub-sando-hero.svg' %}" alt="Sub Search" class="hero-art w-full rounded-3xl border border-white/10 bg-slate-900/40 p-3">
-      <div class="card p-6">
-        <p class="section-label">Data health</p>
-        <ul class="mt-4 space-y-3 text-sm">
-          <li class="flex items-center justify-between">
-            <span class="text-muted">Total subreddits indexed</span>
-            <span class="stat-value text-lg">{{ stats.total_subreddits|default:0 }}</span>
-          </li>
-          <li class="flex items-center justify-between">
-            <span class="text-muted">Total Sub Searches</span>
-            <span class="stat-value text-lg">{{ stats.total_runs|default:0 }}</span>
-          </li>
-          <li class="flex items-center justify-between">
-            <span class="text-muted">Searches in queue</span>
-            <span class="text-lg font-semibold text-sky-300">{{ queue_count|default:0 }}</span>
-          </li>
-          <li class="flex flex-col gap-1">
-            <span class="text-muted">Last indexed</span>
-            <span class="local-time text-sm" data-ts="{{ stats.last_indexed|date:'c' }}">{{ stats.last_indexed|date:"Y-m-d H:i T"|default:"pending" }}</span>
-          </li>
-          <li class="flex flex-col gap-1">
-            <span class="text-muted">Last search started</span>
-            <span class="local-time text-sm" data-ts="{{ stats.last_run_started|date:'c' }}">{{ stats.last_run_started|date:"Y-m-d H:i T"|default:"pending" }}</span>
-          </li>
-        </ul>
-      </div>
+    <div class="flex flex-col gap-4 lg:w-80">
+      <img src="{% static 'img/sub-sando-hero.svg' %}" alt="Sub Search" class="hero-art w-full max-w-[200px] mx-auto rounded-3xl border border-white/10 bg-slate-900/40 p-3">
     </div>
+  </div>
+</section>
+
+<!-- Stats Bar -->
+<section class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  <div class="card p-4">
+    <p class="section-label">Total indexed</p>
+    <p class="stat-value">{{ stats.total_subreddits|default:0 }}</p>
+  </div>
+  <div class="card p-4">
+    <p class="section-label">Total searches</p>
+    <p class="stat-value">{{ stats.total_runs|default:0 }}</p>
+  </div>
+  <div class="card p-4">
+    <p class="section-label">In queue</p>
+    <p class="stat-value text-sky-300">{{ queue_count|default:0 }}</p>
+  </div>
+  <div class="card p-4">
+    <p class="section-label">Last indexed</p>
+    <p class="local-time text-lg font-semibold" data-ts="{{ stats.last_indexed|date:'c' }}">{{ stats.last_indexed|date:"M d, Y"|default:"pending" }}</p>
   </div>
 </section>
 
 <!-- Search Form -->
 <section class="panel-surface mt-10 p-6 lg:p-10">
   <h2 class="mb-6">Sub Search</h2>
-  <form method="post" action="{% url 'home' %}" id="run-form" class="grid gap-6 lg:grid-cols-2">
+  <form method="post" action="{% url 'home' %}" id="run-form">
     {% csrf_token %}
-    <div class="space-y-4">
-      <div>
-        <label for="keyword">Subreddit name contains</label>
-        <input type="text" id="keyword" name="keyword" placeholder="e.g. fintech, outdoor, language" maxlength="64" pattern="[A-Za-z0-9 _\-]*">
-      </div>
-      <div>
-        <label for="limit">Max subreddits to check</label>
-        <input type="text" id="limit" name="limit" inputmode="numeric" pattern="[0-9,]*" value="1,000">
-      </div>
-      <div>
-        <label for="min_subs">Minimum subscribers</label>
-        <input type="text" id="min_subs" name="min_subs" inputmode="numeric" pattern="[0-9,]*" value="0">
-      </div>
-      <div>
-        <label for="notification_email">Email me when done (optional)</label>
-        <input type="email" id="notification_email" name="notification_email" placeholder="you@example.com">
-        <p class="form-help">Get notified with a link to your results</p>
-      </div>
-    </div>
-    <div class="space-y-4">
-      <div class="card p-4">
-        <label class="flex items-center gap-3 cursor-pointer mb-0">
-          <input type="checkbox" id="unmoderated_only" name="unmoderated_only" class="rounded">
-          Only show unmoderated subreddits
-        </label>
-        <label class="flex items-center gap-3 cursor-pointer mt-3 mb-0">
-          <input type="checkbox" id="exclude_nsfw" name="exclude_nsfw" class="rounded">
-          Exclude NSFW subreddits
-        </label>
-      </div>
-      <div class="card p-4">
-        <label class="flex items-center gap-3 cursor-pointer mb-3">
-          <input type="checkbox" id="activity_enabled" name="activity_enabled" class="rounded">
-          Enable activity filter
-        </label>
-        <div class="grid gap-3 sm:grid-cols-2">
+    <div class="grid gap-6 lg:grid-cols-2">
+      <!-- Left Column: Main Inputs -->
+      <div class="space-y-4">
+        <div>
+          <label for="keyword">Subreddit name contains</label>
+          <input type="text" id="keyword" name="keyword" placeholder="e.g. fintech, outdoor, language" maxlength="64" pattern="[A-Za-z0-9 _\-]*">
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2">
           <div>
-            <label for="activity_mode" class="text-xs">Mode</label>
-            <select id="activity_mode" name="activity_mode" disabled>
-              <option value="any">Any activity</option>
-              <option value="active_after">Active since date</option>
-              <option value="inactive_before">Inactive since date</option>
-            </select>
+            <label for="limit">Max subs to check</label>
+            <input type="text" id="limit" name="limit" inputmode="numeric" pattern="[0-9,]*" value="1,000">
           </div>
           <div>
-            <label for="activity_date" class="text-xs">Date</label>
-            <input type="date" id="activity_date" name="activity_date" disabled>
+            <label for="min_subs">Min subscribers</label>
+            <input type="text" id="min_subs" name="min_subs" inputmode="numeric" pattern="[0-9,]*" value="0">
+          </div>
+        </div>
+        <div>
+          <label for="notification_email">Email me when done (optional)</label>
+          <input type="email" id="notification_email" name="notification_email" placeholder="you@example.com">
+        </div>
+      </div>
+      <!-- Right Column: Options -->
+      <div class="space-y-4">
+        <div class="card p-4">
+          <p class="section-label mb-3">Filter options</p>
+          <label class="flex items-center gap-3 cursor-pointer mb-3">
+            <input type="checkbox" id="unmoderated_only" name="unmoderated_only" class="rounded">
+            <span>Only show unmoderated subreddits</span>
+          </label>
+          <label class="flex items-center gap-3 cursor-pointer mb-0">
+            <input type="checkbox" id="exclude_nsfw" name="exclude_nsfw" class="rounded">
+            <span>Exclude NSFW subreddits</span>
+          </label>
+        </div>
+        <div class="card p-4">
+          <label class="flex items-center gap-3 cursor-pointer mb-3">
+            <input type="checkbox" id="activity_enabled" name="activity_enabled" class="rounded">
+            <span class="font-semibold">Enable activity filter</span>
+          </label>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label for="activity_mode" class="text-xs">Mode</label>
+              <select id="activity_mode" name="activity_mode" disabled>
+                <option value="any">Any activity</option>
+                <option value="active_after">Active since date</option>
+                <option value="inactive_before">Inactive since date</option>
+              </select>
+            </div>
+            <div>
+              <label for="activity_date" class="text-xs">Date</label>
+              <input type="date" id="activity_date" name="activity_date" disabled>
+            </div>
           </div>
         </div>
       </div>
     </div>
-    <div class="lg:col-span-2">
+    <div class="mt-6">
       <button type="submit" class="w-full text-lg py-4">Find Your Subs</button>
     </div>
   </form>
@@ -110,35 +111,30 @@
   <!-- Job Status Panel -->
   <div id="run-state" class="mt-6 card p-6 {% if not job_id %}hidden{% endif %}">
     <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-      <div class="flex flex-col gap-3">
-        <div class="flex items-center gap-4">
-          <div class="loader" id="status-loader"></div>
-          <div>
-            <p id="status-title" class="text-lg font-semibold">Waiting for the sandwich counter...</p>
-            <p id="status-sub" class="text-sm text-muted">—</p>
-          </div>
+      <div class="flex items-center gap-4">
+        <div class="loader" id="status-loader"></div>
+        <div>
+          <p id="status-title" class="text-lg font-semibold">Waiting for the sandwich counter...</p>
+          <p id="status-sub" class="text-sm text-muted">-</p>
         </div>
-        <p id="queue-orders" class="hidden text-sm text-muted">Orders ahead: 0</p>
-        <p id="queue-eta" class="hidden text-sm text-subtle">—</p>
-        <span id="queue-chip" class="hidden data-chip w-fit"></span>
       </div>
-      <div class="flex flex-col items-end gap-3">
-        <div class="grid grid-cols-3 gap-4 card p-4 text-center">
-          <div>
-            <p class="stat-label">Checked</p>
-            <p id="checked" class="stat-value">0</p>
-          </div>
-          <div>
-            <p class="stat-label">Found</p>
-            <p id="found" class="stat-value text-brand">0</p>
-          </div>
-          <div>
-            <p class="stat-label">Limit</p>
-            <p id="limit_count" class="stat-value text-muted">0</p>
-          </div>
+      <div class="grid grid-cols-3 gap-6 text-center">
+        <div>
+          <p class="stat-label">Checked</p>
+          <p id="checked" class="stat-value text-2xl">0</p>
         </div>
-        <button id="stopBtn" class="btn-danger px-4 py-2 text-sm rounded-xl">Stop Search</button>
+        <div>
+          <p class="stat-label">Found</p>
+          <p id="found" class="stat-value text-2xl text-brand">0</p>
+        </div>
+        <div>
+          <p class="stat-label">Limit</p>
+          <p id="limit_count" class="stat-value text-2xl text-muted">0</p>
+        </div>
       </div>
+    </div>
+    <div class="mt-4 flex justify-end">
+      <button id="stopBtn" class="btn-danger px-4 py-2 text-sm rounded-xl">Stop Search</button>
     </div>
   </div>
 
@@ -147,70 +143,110 @@
     <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
       <div>
         <h3 id="results-title">Results</h3>
-        <p id="results-subtitle" class="text-sm text-muted">—</p>
+        <p id="results-subtitle" class="text-sm text-muted">-</p>
       </div>
       <div class="flex gap-3">
         <a id="download-btn" href="#" class="btn-secondary px-4 py-2 text-sm rounded-xl pointer-events-none opacity-50">Download CSV</a>
         <a id="view-all-btn" href="#" class="btn-secondary px-4 py-2 text-sm rounded-xl pointer-events-none opacity-50">View in All The Subs</a>
       </div>
     </div>
-    <div class="overflow-x-auto">
-      <table id="results-table">
-        <thead>
-          <tr>
-            <th data-sort="name">Subreddit ↕</th>
-            <th data-sort="subscribers">Subscribers ↕</th>
-            <th data-sort="created_utc">Created ↕</th>
-            <th data-sort="last_human_mod_activity_utc">Last Mod Activity ↕</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
   </div>
 </section>
+
+<!-- Queue + Activity Row -->
+<div class="mt-10 grid gap-6 lg:grid-cols-2">
+  <!-- Queue Status -->
+  <section class="panel-surface p-6" id="queue-status-section" style="display: none;">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <p class="section-label">Search Queue</p>
+        <h2>Upcoming searches</h2>
+      </div>
+      <span class="text-sm text-muted"><span id="total-queued">0</span> queued</span>
+    </div>
+    <div class="card overflow-hidden">
+      <table class="w-full text-sm" id="queue-table">
+        <thead>
+          <tr>
+            <th class="w-12">#</th>
+            <th>Keyword</th>
+            <th class="text-right">Limit</th>
+            <th class="text-center">Type</th>
+            <th class="text-right">ETA</th>
+          </tr>
+        </thead>
+        <tbody id="queue-list"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Recent Searches -->
+  <section class="panel-surface p-6">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <p class="section-label">Activity</p>
+        <h2>Recent searches</h2>
+      </div>
+      <a href="{% url 'logs' %}" class="nav-link text-sm">View all</a>
+    </div>
+    <div class="card overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr>
+            <th>Keyword</th>
+            <th class="text-right">Results</th>
+            <th class="text-center">Status</th>
+            <th>When</th>
+          </tr>
+        </thead>
+        <tbody id="recent-searches-list">
+          {% if recent_user_runs %}
+          {% for run in recent_user_runs %}
+          <tr data-run-id="{{ run.job_id }}">
+            <td class="font-semibold">{{ run.keyword|default:"All subs"|truncatechars:20 }}</td>
+            <td class="text-right result-count tabular-nums">{{ run.result_count|default:0 }}</td>
+            <td class="text-center">
+              <span class="status-badge badge {% if run.completed_at %}badge-success{% elif run.error %}badge-error{% else %}badge-info{% endif %}">
+                {% if run.completed_at %}done{% elif run.error %}error{% else %}running{% endif %}
+              </span>
+            </td>
+            <td class="local-time whitespace-nowrap" data-ts="{{ run.started_at|date:'c' }}">{{ run.started_at|date:"M d"|default:"-" }}</td>
+          </tr>
+          {% endfor %}
+          {% else %}
+          <tr><td colspan="4" class="text-center text-muted py-4">No searches yet</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
 
 <!-- Auto Search Bot Section -->
 <section class="panel-surface mt-10 p-6">
   <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
     <div>
-      <p class="section-label">Always Preparing Fresh Ingredients</p>
+      <p class="section-label">Always growing</p>
       <h2>The Sub Builder Bot</h2>
       {% if random_run %}
       <p class="mt-2 text-sm">
-        Keyword <span class="font-semibold text-white">{{ random_run.keyword|default:"—" }}</span> • Limit {{ random_run.limit_value|default:"2000" }}
-        • <span class="local-time" data-ts="{{ random_run.started_at|date:'c' }}"></span>
+        Currently searching <span class="font-semibold text-white">"{{ random_run.keyword|default:"random" }}"</span>
+        with limit {{ random_run.limit_value|default:"2000" }}
       </p>
-      <p class="mt-1 text-xs text-muted">{{ random_run.result_count|default:0 }} total subs collected</p>
-      {% if random_run.error %}<p class="text-xs text-red-300">Error: {{ random_run.error }}</p>{% endif %}
-      {% if random_run.job_id %}
-      <a class="nav-link text-xs mt-3 inline-flex" href="{% url 'all_subs' %}?job_id={{ random_run.job_id }}">View in All The Subs</a>
-      {% endif %}
+      <p class="mt-1 text-xs text-muted">{{ random_run.result_count|default:0 }} subs collected so far</p>
       {% else %}
-      <p class="mt-2 text-sm">Searching for subs...</p>
+      <p class="mt-2 text-sm text-muted">Bot is idle</p>
       {% endif %}
     </div>
-    <div class="text-xs text-muted uppercase tracking-widest">
-      This bot is hungry.<br>New Sub Search every {{ random_search_interval }} minutes
+    <div class="text-right">
+      <p class="text-xs text-muted uppercase tracking-widest">Auto-search interval</p>
+      <p class="text-lg font-semibold">{{ random_search_interval }} min</p>
     </div>
   </div>
 </section>
 
-<!-- Queue Status Section -->
-<div class="panel-surface mt-10 p-6" id="queue-status-section" style="display: none;">
-  <div class="flex items-center justify-between">
-    <div>
-      <p class="section-label">Search Queue</p>
-      <h2>Next <span id="queue-count-display">10</span> Searches</h2>
-    </div>
-    <span class="text-sm text-muted"><span id="total-queued">0</span> queued • <span id="running-count">0</span> running</span>
-  </div>
-  <div class="mt-6 space-y-3" id="queue-list"></div>
-  <p class="mt-4 text-xs text-muted">Manual user searches are prioritized above automated searches</p>
-</div>
-
 <!-- Features Grid -->
-<div class="mt-10 grid gap-4 md:grid-cols-3">
+<section class="mt-10 grid gap-4 md:grid-cols-3">
   <article class="card p-5">
     <p class="section-label">Always growing</p>
     <h3 class="mt-2">Automatic database expansion</h3>
@@ -226,80 +262,6 @@
     <h3 class="mt-2">Queued search processing</h3>
     <p class="mt-2 text-sm">Only one search runs at a time to protect Reddit's API limits. Others wait in queue with real-time ETA updates.</p>
   </article>
-</div>
-
-<!-- Activity Section -->
-<section class="mt-10 grid gap-8 lg:grid-cols-2">
-  <div class="panel-surface p-6">
-    <div class="flex items-center justify-between">
-      <div>
-        <p class="section-label">Activity</p>
-        <h2>Recent Sub Searches</h2>
-      </div>
-      <a href="{% url 'home' %}" class="nav-link text-sm">Find Your Subs →</a>
-    </div>
-    <ul class="mt-6 space-y-4" id="recent-searches-list">
-      {% if recent_user_runs %}
-      {% for run in recent_user_runs %}
-      <li class="card p-4" data-run-id="{{ run.job_id }}">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div class="flex flex-col">
-            <span class="font-semibold">{{ run.keyword|default:"All subreddits" }}</span>
-            <span class="local-time text-xs text-muted" data-ts="{{ run.started_at|date:'c' }}">{{ run.started_at|date:"Y-m-d H:i T"|default:"—" }}</span>
-          </div>
-          <span class="status-badge badge {% if run.completed_at %}badge-success{% elif run.error %}badge-error{% else %}badge-info{% endif %}">
-            {% if run.completed_at %}complete{% elif run.error %}error{% else %}running{% endif %}
-          </span>
-        </div>
-        <div class="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted">
-          <span class="result-count">{{ run.result_count|default:0 }} subs</span>
-          <span>Source: {{ run.source }}</span>
-          {% if run.error %}<span class="text-red-300">Error: {{ run.error }}</span>{% endif %}
-        </div>
-      </li>
-      {% endfor %}
-      {% else %}
-      <p class="text-muted">No Sub Searches logged yet. Be the first to generate data!</p>
-      {% endif %}
-    </ul>
-  </div>
-
-  <div class="panel-surface p-6">
-    <p class="section-label">Pipeline</p>
-    <h2>How the sandwich is made</h2>
-    <ol class="mt-4 space-y-4 text-sm">
-      <li class="flex gap-3">
-        <span class="badge badge-success px-3 py-1">1</span>
-        <div>
-          <p class="font-semibold text-white">Manual Sub Searches</p>
-          <p class="text-muted">Every time you run Sub Search, we capture names, descriptions, moderator counts, and last mod activity for anything that matches your filters.</p>
-        </div>
-      </li>
-      <li class="flex gap-3">
-        <span class="badge badge-success px-3 py-1">2</span>
-        <div>
-          <p class="font-semibold text-white">Auto-ingest bot + volunteer nodes</p>
-          <p class="text-muted">A paced background bot—and now opt-in community nodes—sweep scheduled keywords so fresh subs show up even when nobody is at the keyboard.</p>
-        </div>
-      </li>
-      <li class="flex gap-3">
-        <span class="badge badge-success px-3 py-1">3</span>
-        <div>
-          <p class="font-semibold text-white">Shared dataset</p>
-          <p class="text-muted">Results flow into the same directory that powers Sub Search exports and All The Subs, keeping everything in sync without extra clicks.</p>
-        </div>
-      </li>
-    </ol>
-    <div class="mt-6 card p-4">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p class="font-semibold">Search History</p>
-          <p class="text-xs text-muted">View detailed logs of all searches and background jobs</p>
-        </div>
-        <a href="{% url 'logs' %}" class="btn-secondary px-4 py-2 text-sm rounded-xl">View Logs →</a>
-      </div>
-    </div>
-  </div>
 </section>
 
 <!-- Nodes CTA Section -->
@@ -307,62 +269,29 @@
   <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
     <div>
       <p class="section-label">Distributed help</p>
-      <h2>Bring your machine + Reddit account</h2>
-      <p class="mt-2 text-sm">Volunteer nodes get a private link via email—no login—to update or delete their entry anytime. Mark a node "broken" if it goes offline; anything broken for 7+ days is automatically removed during the nightly cleanup.</p>
+      <h2>Run a volunteer node</h2>
+      <p class="mt-2 text-sm">Bring your machine + Reddit account to help grow the dataset faster.</p>
     </div>
-    <a href="{% url 'node_join' %}" class="btn-primary px-6 py-3 whitespace-nowrap">Add a node</a>
-  </div>
-  <div class="mt-6 grid gap-4 md:grid-cols-2">
-    <div class="card p-4">
-      <p class="section-label">Nodes in pool</p>
-      <p class="stat-value mt-2">{{ node_stats.total|default:0 }}</p>
-      <p class="mt-1 text-xs text-muted">Active {{ node_stats.active|default:0 }} • Pending {{ node_stats.pending|default:0 }}</p>
-    </div>
-    <div class="card p-4">
-      <p class="section-label">Open source & contributor friendly</p>
-      <p class="mt-2 font-semibold">Help build the largest trustworthy subreddit index</p>
-      <div class="mt-3 flex gap-3">
-        <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer/issues" target="_blank" rel="noopener" class="nav-link text-xs">File an issue</a>
-        <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer/pulls" target="_blank" rel="noopener" class="nav-link text-xs">Submit PR</a>
+    <div class="flex items-center gap-6">
+      <div class="text-center">
+        <p class="stat-value">{{ node_stats.total|default:0 }}</p>
+        <p class="text-xs text-muted">Nodes</p>
       </div>
+      <a href="{% url 'node_join' %}" class="btn-primary px-6 py-3 whitespace-nowrap">Add a node</a>
     </div>
   </div>
-  {% if volunteer_nodes %}
-  <ul class="mt-6 grid gap-4 lg:grid-cols-3">
-    {% for node in volunteer_nodes %}
-    <li class="card p-4">
-      <div class="flex items-center justify-between gap-3">
-        <div>
-          <p class="font-semibold">{% if node.reddit_username %}u/{{ node.reddit_username }}{% else %}Handle pending{% endif %}</p>
-          <p class="text-xs text-muted">{{ node.location|default:'Location TBD' }}</p>
-        </div>
-        <span class="badge badge-neutral">{{ node.health_status|default:'pending'|title }}</span>
-      </div>
-      <p class="mt-3 text-xs text-muted">Last check-in: {{ node.last_check_in_at|date:"Y-m-d H:i T"|default:'New' }}</p>
-      {% if node.notes %}<p class="mt-2 text-sm text-muted">"{{ node.notes }}"</p>{% endif %}
-    </li>
-    {% endfor %}
-  </ul>
-  {% else %}
-  <p class="mt-6 text-sm text-muted">No volunteer nodes yet—add yours to speed things up.</p>
-  {% endif %}
 </section>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// CSRF token for AJAX requests
 const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
 
-// Utility functions
 function formatLocalTime(ts) {
-  if (!ts) return '—';
+  if (!ts) return '-';
   const date = new Date(ts);
-  if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString('en-US', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: 'numeric', minute: '2-digit', hour12: true, timeZoneName: 'short'
-  });
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function formatETA(seconds) {
@@ -378,7 +307,6 @@ function refreshLocalTimeElements() {
   });
 }
 
-// Queue status refresh
 async function refreshQueueStatus() {
   try {
     const response = await fetch('/api/queue?limit=10');
@@ -389,27 +317,17 @@ async function refreshQueueStatus() {
     const section = document.getElementById('queue-status-section');
     const queueList = document.getElementById('queue-list');
     document.getElementById('total-queued').textContent = data.total_queued || 0;
-    document.getElementById('running-count').textContent = data.running_count || 0;
 
     if (data.queue?.length > 0) {
       section.style.display = 'block';
       queueList.innerHTML = data.queue.map(item => `
-        <div class="card p-4">
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <div class="flex items-center gap-3">
-              <span class="text-lg font-bold text-subtle">#${item.position}</span>
-              <div>
-                <span class="font-semibold">${item.keyword}</span>
-                <span class="text-xs text-muted block">Limit: ${item.limit}</span>
-              </div>
-            </div>
-            <span class="badge ${item.is_manual ? 'badge-success' : 'badge-neutral'}">${item.is_manual ? 'User' : 'Auto'}</span>
-          </div>
-          <div class="mt-3 flex flex-wrap items-center gap-4 text-xs text-muted">
-            <span>Start in: <strong class="text-sky-300">${item.eta_start_seconds > 0 ? formatETA(item.eta_start_seconds) : 'Now'}</strong></span>
-            <span>Done in: <strong class="text-emerald-300">${formatETA(item.eta_completion_seconds)}</strong></span>
-          </div>
-        </div>
+        <tr>
+          <td class="text-center font-bold text-subtle">${item.position}</td>
+          <td class="font-semibold">${item.keyword}</td>
+          <td class="text-right tabular-nums">${Number(item.limit).toLocaleString()}</td>
+          <td class="text-center"><span class="badge ${item.is_manual ? 'badge-success' : 'badge-neutral'}">${item.is_manual ? 'User' : 'Auto'}</span></td>
+          <td class="text-right whitespace-nowrap">${formatETA(item.eta_completion_seconds)}</td>
+        </tr>
       `).join('');
     } else {
       section.style.display = 'none';
@@ -417,7 +335,6 @@ async function refreshQueueStatus() {
   } catch (e) { console.error('Queue refresh failed:', e); }
 }
 
-// Recent searches refresh
 async function refreshRecentSearches() {
   try {
     const response = await fetch('/api/recent-runs?limit=5');
@@ -428,26 +345,20 @@ async function refreshRecentSearches() {
     const listEl = document.getElementById('recent-searches-list');
     data.runs.forEach((run, i) => {
       let item = listEl.querySelector(`[data-run-id="${run.job_id}"]`);
-      if (!item && i < listEl.children.length) {
-        item = listEl.children[i];
-        item?.setAttribute('data-run-id', run.job_id);
-      }
       if (item) {
         const badge = item.querySelector('.status-badge');
-        const status = run.completed_at ? 'complete' : (run.error ? 'error' : 'running');
+        const status = run.completed_at ? 'done' : (run.error ? 'error' : 'running');
         if (badge) {
-          badge.className = `status-badge badge badge-${status === 'complete' ? 'success' : status === 'error' ? 'error' : 'info'}`;
+          badge.className = `status-badge badge badge-${status === 'done' ? 'success' : status === 'error' ? 'error' : 'info'}`;
           badge.textContent = status;
         }
         const count = item.querySelector('.result-count');
-        if (count) count.textContent = `${run.result_count || 0} subs`;
+        if (count) count.textContent = run.result_count || 0;
       }
     });
-    refreshLocalTimeElements();
   } catch (e) { console.error('Recent searches refresh failed:', e); }
 }
 
-// Job polling
 const jobIdFromServer = {% if job_id %}"{{ job_id }}"{% else %}null{% endif %};
 let pollTimer = null;
 let activeJobId = jobIdFromServer;
@@ -510,7 +421,6 @@ function updateStatusUi(data) {
   }
 }
 
-// Activity filter toggle
 document.getElementById('activity_enabled')?.addEventListener('change', function() {
   const mode = document.getElementById('activity_mode');
   const date = document.getElementById('activity_date');
@@ -519,7 +429,6 @@ document.getElementById('activity_enabled')?.addEventListener('change', function
   if (!this.checked) { mode.value = 'any'; date.value = ''; }
 });
 
-// Stop button
 document.getElementById('stopBtn')?.addEventListener('click', async function() {
   if (!activeJobId) return;
   try {
@@ -534,7 +443,6 @@ document.getElementById('stopBtn')?.addEventListener('click', async function() {
   } catch (e) { console.error(e); }
 });
 
-// Initialize
 document.addEventListener('DOMContentLoaded', () => {
   refreshLocalTimeElements();
   refreshRecentSearches();

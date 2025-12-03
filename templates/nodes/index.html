@@ -2,55 +2,190 @@
 {% block title %}Volunteer Nodes - Sub Search{% endblock %}
 
 {% block content %}
+<!-- Hero Section -->
 <section class="panel-surface p-6 lg:p-10">
-  <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-    <div class="space-y-4">
+  <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+    <div class="space-y-4 max-w-2xl">
       <p class="section-label">Distributed ingestion</p>
       <h1 class="font-display text-3xl sm:text-4xl">Help grow the Sub Search dataset</h1>
       <p class="text-sm">Every manual search, scheduled bot run, and volunteer node keeps the directory fresh. Bring your own computer + Reddit account. Cloud and homelab friendly!</p>
       <a href="{% url 'node_join' %}" class="btn-primary px-6 py-3 inline-flex">Add your node</a>
     </div>
-    <div class="card p-6 lg:min-w-[200px]">
-      <p class="section-label">Nodes in pool</p>
-      <p class="stat-value mt-2">{{ node_stats.total|default:0 }}</p>
-      <p class="mt-1 text-xs text-muted">Active: {{ node_stats.active|default:0 }} - Pending: {{ node_stats.pending|default:0 }}</p>
+    <!-- Stats Cards -->
+    <div class="grid gap-4 sm:grid-cols-3 lg:grid-cols-1 lg:w-64">
+      <div class="card p-4">
+        <p class="section-label">Total nodes</p>
+        <p class="stat-value mt-1">{{ node_stats.total|default:0 }}</p>
+      </div>
+      <div class="card p-4">
+        <p class="section-label">Active</p>
+        <p class="stat-value mt-1 text-emerald-400">{{ node_stats.active|default:0 }}</p>
+      </div>
+      <div class="card p-4">
+        <p class="section-label">Pending</p>
+        <p class="stat-value mt-1 text-amber-400">{{ node_stats.pending|default:0 }}</p>
+      </div>
     </div>
   </div>
 </section>
 
+<!-- How it Works -->
 <section class="panel-surface mt-10 p-6">
-  <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+  <p class="section-label">How it works</p>
+  <h2 class="mb-6">Run your own node in 3 steps</h2>
+  <div class="grid gap-6 md:grid-cols-3">
+    <div class="card p-5">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="badge badge-success px-3 py-2 text-lg">1</span>
+        <h3 class="text-lg mb-0">Register</h3>
+      </div>
+      <p class="text-sm text-muted">Fill out the form with your Reddit username and system details. You'll get a private management link via email.</p>
+    </div>
+    <div class="card p-5">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="badge badge-success px-3 py-2 text-lg">2</span>
+        <h3 class="text-lg mb-0">Configure</h3>
+      </div>
+      <p class="text-sm text-muted">Set up the node software with your Reddit API credentials. Runs on any machine with Python.</p>
+    </div>
+    <div class="card p-5">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="badge badge-success px-3 py-2 text-lg">3</span>
+        <h3 class="text-lg mb-0">Contribute</h3>
+      </div>
+      <p class="text-sm text-muted">Your node automatically processes searches and feeds results back to the main database.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Nodes Table -->
+<section class="panel-surface mt-10 p-6">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
     <div>
       <p class="section-label">Volunteer spotlight</p>
-      <h2>Recently active nodes</h2>
-      <p class="mt-2 text-sm">Toggle "active" on the form after your first manual search to join the public list.</p>
+      <h2>Active nodes</h2>
+      <p class="mt-2 text-sm text-muted">Toggle "active" on the form after your first manual search to join the public list.</p>
     </div>
-    <a href="{% url 'node_join' %}" class="nav-link">Join the pool →</a>
+    <a href="{% url 'node_join' %}" class="nav-link active">Join the pool</a>
   </div>
 
   {% if volunteer_nodes %}
-  <ul class="mt-6 grid gap-4 md:grid-cols-2">
-    {% for node in volunteer_nodes %}
-    <li class="card p-5">
-      <div class="flex items-center justify-between gap-3">
-        <div>
-          <p class="font-semibold">{% if node.reddit_username %}u/{{ node.reddit_username }}{% else %}Handle pending{% endif %}</p>
-          <p class="text-xs text-muted">{{ node.location|default:'Location TBD' }}</p>
-        </div>
-        <span class="badge badge-neutral">{{ node.health_status|default:'pending'|title }}</span>
-      </div>
-      <div class="mt-3 space-y-2 text-xs text-muted">
-        {% if node.system_details %}<p><span class="text-subtle">Rig:</span> {{ node.system_details }}</p>{% endif %}
-        {% if node.availability %}<p><span class="text-subtle">Schedule:</span> {{ node.availability }}</p>{% endif %}
-        {% if node.bandwidth_notes %}<p><span class="text-subtle">Bandwidth:</span> {{ node.bandwidth_notes }}</p>{% endif %}
-        <p><span class="text-subtle">Last check-in:</span> {{ node.last_check_in_at|date:"Y-m-d H:i T"|default:'New' }}</p>
-        {% if node.notes %}<p class="text-muted">"{{ node.notes }}"</p>{% endif %}
-      </div>
-    </li>
-    {% endfor %}
-  </ul>
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full">
+        <thead>
+          <tr>
+            <th>Operator</th>
+            <th>Location</th>
+            <th>System</th>
+            <th>Availability</th>
+            <th>Status</th>
+            <th>Last check-in</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for node in volunteer_nodes %}
+          <tr>
+            <td>
+              <span class="font-semibold">{% if node.reddit_username %}u/{{ node.reddit_username }}{% else %}Pending{% endif %}</span>
+            </td>
+            <td>{{ node.location|default:'TBD' }}</td>
+            <td class="max-w-xs">
+              <p class="clamp-2 text-sm">{{ node.system_details|default:'Not specified' }}</p>
+            </td>
+            <td>{{ node.availability|default:'Not specified' }}</td>
+            <td>
+              <span class="badge {% if node.health_status == 'active' %}badge-success{% elif node.health_status == 'broken' %}badge-error{% else %}badge-neutral{% endif %}">
+                {{ node.health_status|default:'pending'|title }}
+              </span>
+            </td>
+            <td class="whitespace-nowrap">
+              <span class="local-time text-sm" data-ts="{{ node.last_check_in_at|date:'c' }}">{{ node.last_check_in_at|date:"M d, Y"|default:'New' }}</span>
+            </td>
+          </tr>
+          {% if node.notes %}
+          <tr class="border-t-0">
+            <td colspan="6" class="pt-0 pb-3">
+              <p class="text-xs text-muted italic">"{{ node.notes }}"</p>
+            </td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
   {% else %}
-  <p class="mt-6 text-sm text-muted">No public nodes yet. Be the first to add your machine.</p>
+  <div class="card p-8 text-center">
+    <p class="text-muted mb-4">No public nodes yet. Be the first to add your machine!</p>
+    <a href="{% url 'node_join' %}" class="btn-primary px-6 py-3 inline-flex">Add your node</a>
+  </div>
   {% endif %}
 </section>
+
+<!-- Benefits Section -->
+<section class="mt-10 grid gap-6 md:grid-cols-2">
+  <div class="card p-6">
+    <p class="section-label">Why run a node?</p>
+    <h3 class="mb-4">Benefits of contributing</h3>
+    <ul class="space-y-3 text-sm">
+      <li class="flex gap-2">
+        <span class="text-emerald-400">&#10003;</span>
+        <span>Help build the largest open subreddit directory</span>
+      </li>
+      <li class="flex gap-2">
+        <span class="text-emerald-400">&#10003;</span>
+        <span>Spread API load across multiple accounts</span>
+      </li>
+      <li class="flex gap-2">
+        <span class="text-emerald-400">&#10003;</span>
+        <span>Get public credit on the nodes page</span>
+      </li>
+      <li class="flex gap-2">
+        <span class="text-emerald-400">&#10003;</span>
+        <span>Easy setup - works on any Python environment</span>
+      </li>
+    </ul>
+  </div>
+  <div class="card p-6">
+    <p class="section-label">Requirements</p>
+    <h3 class="mb-4">What you need</h3>
+    <ul class="space-y-3 text-sm">
+      <li class="flex gap-2">
+        <span class="text-sky-400">&#8226;</span>
+        <span>A Reddit account with API credentials</span>
+      </li>
+      <li class="flex gap-2">
+        <span class="text-sky-400">&#8226;</span>
+        <span>Python 3.9+ environment</span>
+      </li>
+      <li class="flex gap-2">
+        <span class="text-sky-400">&#8226;</span>
+        <span>Stable internet connection</span>
+      </li>
+      <li class="flex gap-2">
+        <span class="text-sky-400">&#8226;</span>
+        <span>~100MB RAM, minimal CPU usage</span>
+      </li>
+    </ul>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.local-time').forEach(el => {
+    const ts = el.getAttribute('data-ts');
+    if (ts) {
+      const date = new Date(ts);
+      if (!isNaN(date.getTime())) {
+        el.textContent = date.toLocaleDateString('en-US', {
+          year: 'numeric', month: 'short', day: 'numeric'
+        });
+      }
+    }
+  });
+});
+</script>
 {% endblock %}

@@ -18,35 +18,47 @@
   </div>
 
   <!-- Filters -->
-  <div class="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-    <div class="card p-4">
-      <p class="section-label">Filter</p>
-      <input type="text" id="filter-q" placeholder="Keyword" class="mt-2 text-sm">
+  <div class="mt-8 card p-4 lg:p-6">
+    <p class="section-label mb-4">Filter & Sort</p>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div>
+        <label for="filter-q" class="text-xs">Keyword</label>
+        <input type="text" id="filter-q" placeholder="Search names & descriptions" class="text-sm">
+      </div>
+      <div>
+        <label for="filter-min-subs" class="text-xs">Min subscribers</label>
+        <input type="number" id="filter-min-subs" min="0" step="100" placeholder="0" class="text-sm">
+      </div>
+      <div>
+        <label for="filter-unmoderated" class="text-xs">Moderation</label>
+        <select id="filter-unmoderated" class="text-sm">
+          <option value="">All subs</option>
+          <option value="true">Unmoderated only</option>
+          <option value="false">Moderated only</option>
+        </select>
+      </div>
+      <div>
+        <label for="filter-nsfw" class="text-xs">NSFW</label>
+        <select id="filter-nsfw" class="text-sm">
+          <option value="">All</option>
+          <option value="false">Exclude NSFW</option>
+          <option value="true">Only NSFW</option>
+        </select>
+      </div>
+      <div>
+        <label for="page-size" class="text-xs">Show per page</label>
+        <select id="page-size" class="text-sm">
+          <option value="10">10</option>
+          <option value="25">25</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+        </select>
+      </div>
     </div>
-    <div class="card p-4">
-      <p class="section-label">Min subscribers</p>
-      <input type="number" id="filter-min-subs" min="0" step="100" placeholder="0" class="mt-2 text-sm">
+    <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+      <button type="button" id="reset-filters" class="nav-link text-xs">Reset filters</button>
+      <span id="table-summary" class="text-muted">Loading...</span>
     </div>
-    <div class="card p-4">
-      <p class="section-label">Moderated</p>
-      <select id="filter-unmoderated" class="mt-2 text-sm">
-        <option value="">All subs</option>
-        <option value="true">Unmoderated only</option>
-        <option value="false">Moderated included</option>
-      </select>
-    </div>
-    <div class="card p-4">
-      <p class="section-label">NSFW</p>
-      <select id="filter-nsfw" class="mt-2 text-sm">
-        <option value="">All</option>
-        <option value="false">Exclude NSFW</option>
-        <option value="true">Only NSFW</option>
-      </select>
-    </div>
-  </div>
-  <div class="mt-3 flex flex-wrap items-center gap-3 text-xs">
-    <button type="button" id="reset-filters" class="nav-link text-xs">Reset filters</button>
-    <span id="table-summary" class="text-muted">Loading…</span>
   </div>
 
   <!-- Table -->
@@ -55,23 +67,44 @@
       <table class="min-w-[720px]" id="subs-table">
         <thead>
           <tr>
-            <th data-sort="name">Subreddit</th>
+            <th data-sort="name" class="cursor-pointer hover:text-white">
+              <span class="flex items-center gap-1">Subreddit <span class="sort-icon text-xs"></span></span>
+            </th>
             <th>Title & description</th>
-            <th data-sort="subscribers">Subscribers</th>
-            <th data-sort="mod_count">Moderators</th>
-            <th data-sort="mod_activity">Last mod activity</th>
-            <th data-sort="updated_at">Last indexed</th>
+            <th data-sort="subscribers" class="cursor-pointer hover:text-white">
+              <span class="flex items-center gap-1">Subscribers <span class="sort-icon text-xs"></span></span>
+            </th>
+            <th data-sort="mod_count" class="cursor-pointer hover:text-white">
+              <span class="flex items-center gap-1">Mods <span class="sort-icon text-xs"></span></span>
+            </th>
+            <th data-sort="mod_activity" class="cursor-pointer hover:text-white">
+              <span class="flex items-center gap-1">Last mod activity <span class="sort-icon text-xs"></span></span>
+            </th>
+            <th data-sort="updated_at" class="cursor-pointer hover:text-white">
+              <span class="flex items-center gap-1">Last indexed <span class="sort-icon text-xs"></span></span>
+            </th>
           </tr>
         </thead>
         <tbody>
-          <tr><td colspan="6" class="text-center py-6 text-muted">Loading…</td></tr>
+          <tr><td colspan="6" class="text-center py-6 text-muted">Loading...</td></tr>
         </tbody>
       </table>
     </div>
-    <div class="flex items-center justify-between border-t border-white/10 px-4 py-4 text-xs">
-      <button type="button" id="prev-page" class="nav-link text-xs">← Prev</button>
-      <span id="page-indicator" class="text-muted">Page 1</span>
-      <button type="button" id="next-page" class="nav-link text-xs">Next →</button>
+    <!-- Pagination -->
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/10 px-4 py-4 text-sm">
+      <div class="flex items-center gap-2">
+        <button type="button" id="first-page" class="nav-link text-xs px-2" title="First page">&laquo;</button>
+        <button type="button" id="prev-page" class="nav-link text-xs">&larr; Prev</button>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-muted">Page</span>
+        <input type="number" id="page-input" min="1" class="w-16 text-center text-sm py-1 px-2" value="1">
+        <span class="text-muted">of <span id="total-pages">1</span></span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" id="next-page" class="nav-link text-xs">Next &rarr;</button>
+        <button type="button" id="last-page" class="nav-link text-xs px-2" title="Last page">&raquo;</button>
+      </div>
     </div>
   </div>
 </section>
@@ -98,14 +131,18 @@ const qInput = document.getElementById('filter-q');
 const minSubsInput = document.getElementById('filter-min-subs');
 const unmodSelect = document.getElementById('filter-unmoderated');
 const nsfwSelect = document.getElementById('filter-nsfw');
+const pageSizeSelect = document.getElementById('page-size');
 const tableBody = document.querySelector('#subs-table tbody');
 const tableSummary = document.getElementById('table-summary');
-const pageIndicator = document.getElementById('page-indicator');
+const totalPagesEl = document.getElementById('total-pages');
+const pageInput = document.getElementById('page-input');
 
+// Initialize inputs
 qInput.value = state.q;
 minSubsInput.value = state.min_subs;
 if (state.unmoderated) unmodSelect.value = state.unmoderated;
 if (state.nsfw) nsfwSelect.value = state.nsfw;
+pageSizeSelect.value = state.pageSize;
 
 let debounceTimer = null;
 const debouncedUpdate = () => {
@@ -117,6 +154,11 @@ qInput.addEventListener('input', () => { state.q = qInput.value.trim(); debounce
 minSubsInput.addEventListener('input', () => { state.min_subs = minSubsInput.value; debouncedUpdate(); });
 unmodSelect.addEventListener('change', () => { state.unmoderated = unmodSelect.value; state.page = 1; loadSubs(); });
 nsfwSelect.addEventListener('change', () => { state.nsfw = nsfwSelect.value; state.page = 1; loadSubs(); });
+pageSizeSelect.addEventListener('change', () => {
+  state.pageSize = parseInt(pageSizeSelect.value);
+  state.page = 1;
+  loadSubs();
+});
 
 document.getElementById('reset-filters').addEventListener('click', () => {
   state.q = ''; state.min_subs = ''; state.unmoderated = ''; state.nsfw = '';
@@ -124,6 +166,10 @@ document.getElementById('reset-filters').addEventListener('click', () => {
   state.page = 1; loadSubs();
 });
 
+// Pagination controls
+document.getElementById('first-page').addEventListener('click', () => {
+  if (state.page > 1) { state.page = 1; loadSubs(); }
+});
 document.getElementById('prev-page').addEventListener('click', () => {
   if (state.page > 1) { state.page -= 1; loadSubs(); }
 });
@@ -131,7 +177,27 @@ document.getElementById('next-page').addEventListener('click', () => {
   const maxPage = Math.ceil(state.total / state.pageSize) || 1;
   if (state.page < maxPage) { state.page += 1; loadSubs(); }
 });
+document.getElementById('last-page').addEventListener('click', () => {
+  const maxPage = Math.ceil(state.total / state.pageSize) || 1;
+  if (state.page < maxPage) { state.page = maxPage; loadSubs(); }
+});
 
+pageInput.addEventListener('change', () => {
+  const maxPage = Math.ceil(state.total / state.pageSize) || 1;
+  let newPage = parseInt(pageInput.value) || 1;
+  newPage = Math.max(1, Math.min(newPage, maxPage));
+  if (newPage !== state.page) { state.page = newPage; loadSubs(); }
+  pageInput.value = state.page;
+});
+
+pageInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    pageInput.dispatchEvent(new Event('change'));
+  }
+});
+
+// Sorting
 document.querySelectorAll('#subs-table th[data-sort]').forEach(th => {
   th.addEventListener('click', () => {
     const key = th.getAttribute('data-sort');
@@ -141,24 +207,42 @@ document.querySelectorAll('#subs-table th[data-sort]').forEach(th => {
       state.sort = key;
       state.order = key === 'name' ? 'asc' : 'desc';
     }
-    state.page = 1; loadSubs();
+    state.page = 1;
+    loadSubs();
   });
 });
 
+function updateSortIndicators() {
+  document.querySelectorAll('#subs-table th[data-sort]').forEach(th => {
+    const icon = th.querySelector('.sort-icon');
+    const key = th.getAttribute('data-sort');
+    if (key === state.sort) {
+      icon.textContent = state.order === 'asc' ? '▲' : '▼';
+    } else {
+      icon.textContent = '';
+    }
+  });
+}
+
 function formatNumber(v) { return v == null ? '—' : Number(v).toLocaleString(); }
-function formatDate(v) { return v ? v.replace('T', ' ').replace('+00:00', ' UTC') : '—'; }
+function formatDate(v) {
+  if (!v) return '—';
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
 function formatEpoch(v) {
   if (v == null) return '—';
   const n = Number(v);
   if (!Number.isFinite(n) || n <= 0) return '—';
-  return new Date(n * 1000).toISOString().replace('T', ' ').replace('Z', ' UTC');
+  return new Date(n * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 function escapeHtml(s) { return s ? String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])) : ''; }
 function safeUrl(u) { return u?.startsWith('http') ? u : '#'; }
 
 async function loadSubs() {
-  tableSummary.textContent = 'Loading…';
-  tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-muted">Loading…</td></tr>';
+  tableSummary.textContent = 'Loading...';
+  tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-muted">Loading...</td></tr>';
 
   const params = new URLSearchParams();
   if (state.q) params.set('q', state.q);
@@ -177,10 +261,24 @@ async function loadSubs() {
     const data = await res.json();
     state.total = data.total || 0;
     renderRows(data.rows || []);
+
     const maxPage = Math.max(1, Math.ceil(state.total / state.pageSize));
-    pageIndicator.textContent = `Page ${state.page} of ${maxPage}`;
+    totalPagesEl.textContent = maxPage;
+    pageInput.value = state.page;
+    pageInput.max = maxPage;
+
+    // Update pagination button states
+    document.getElementById('first-page').disabled = state.page <= 1;
+    document.getElementById('prev-page').disabled = state.page <= 1;
+    document.getElementById('next-page').disabled = state.page >= maxPage;
+    document.getElementById('last-page').disabled = state.page >= maxPage;
+
     const filtersActive = [state.q, state.min_subs, state.unmoderated, state.nsfw].some(Boolean);
-    tableSummary.textContent = `${formatNumber(state.total)} subreddits${filtersActive ? ' • filtered' : ''}`;
+    const startRow = (state.page - 1) * state.pageSize + 1;
+    const endRow = Math.min(state.page * state.pageSize, state.total);
+    tableSummary.textContent = `Showing ${startRow.toLocaleString()}-${endRow.toLocaleString()} of ${formatNumber(state.total)} subreddits${filtersActive ? ' (filtered)' : ''}`;
+
+    updateSortIndicators();
   } catch (e) {
     tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-red-300">Unable to load subreddits. Please try again.</td></tr>';
     tableSummary.textContent = 'Error loading results.';
@@ -194,22 +292,22 @@ function renderRows(rows) {
   }
   tableBody.innerHTML = rows.map(row => {
     const flags = [];
-    if (row.is_unmoderated) flags.push('<span class="badge badge-success">Unmoderated</span>');
+    if (row.is_unmoderated) flags.push('<span class="badge badge-success">Unmod</span>');
     if (row.is_nsfw) flags.push('<span class="badge badge-error">NSFW</span>');
     return `
       <tr>
-        <td>
-          <a class="font-semibold underline decoration-dotted" href="${safeUrl(row.url)}" target="_blank" rel="noopener">${escapeHtml(row.display_name_prefixed || 'r/' + row.name)}</a>
-          <div class="mt-1 flex flex-wrap gap-1">${flags.join('')}</div>
+        <td class="whitespace-nowrap">
+          <a class="font-semibold underline decoration-dotted hover:text-white" href="${safeUrl(row.url)}" target="_blank" rel="noopener">${escapeHtml(row.display_name_prefixed || 'r/' + row.name)}</a>
+          ${flags.length ? `<div class="mt-1 flex flex-wrap gap-1">${flags.join('')}</div>` : ''}
         </td>
-        <td>
-          <p class="font-semibold">${escapeHtml(row.title) || 'r/' + escapeHtml(row.name)}</p>
-          <p class="clamp-2 text-xs text-muted">${escapeHtml(row.public_description) || 'No description provided yet.'}</p>
+        <td class="max-w-xs">
+          <p class="font-semibold clamp-1">${escapeHtml(row.title) || 'r/' + escapeHtml(row.name)}</p>
+          <p class="clamp-2 text-xs text-muted mt-1">${escapeHtml(row.public_description) || 'No description'}</p>
         </td>
-        <td>${formatNumber(row.subscribers)}</td>
-        <td>${row.mod_count != null ? formatNumber(row.mod_count) : '—'}</td>
-        <td>${formatEpoch(row.last_mod_activity_utc)}</td>
-        <td>${formatDate(row.updated_at)}</td>
+        <td class="whitespace-nowrap text-right tabular-nums">${formatNumber(row.subscribers)}</td>
+        <td class="whitespace-nowrap text-center">${row.mod_count != null ? formatNumber(row.mod_count) : '—'}</td>
+        <td class="whitespace-nowrap">${formatEpoch(row.last_mod_activity_utc)}</td>
+        <td class="whitespace-nowrap">${formatDate(row.updated_at)}</td>
       </tr>
     `;
   }).join('');
