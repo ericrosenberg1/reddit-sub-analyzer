@@ -39,3 +39,4 @@ logs/
 .bash_history
 .ssh/
 *.pyc
+staticfiles/

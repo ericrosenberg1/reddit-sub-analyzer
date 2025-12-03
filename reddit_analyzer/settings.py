@@ -353,7 +353,6 @@ if REDIS_URL:
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
             'LOCATION': REDIS_URL,
             'OPTIONS': {
-                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
             },
             'KEY_PREFIX': 'subsearch',
             'TIMEOUT': 300,  # 5 minutes default
@@ -437,3 +436,38 @@ LOGGING = {
         },
     },
 }
+
+# =============================================================================
+# =============================================================================
+REDIS_URL = os.environ.get("REDIS_URL", "")
+
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "KEY_PREFIX": "subsearch",
+            "TIMEOUT": 300,
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "unique-subsearch",
+            "TIMEOUT": 300,
+        }
+    }
+
+\n
+# =============================================================================
+# FINAL cache override for docker-compose-apps (no Redis cache)
+# =============================================================================
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "unique-subsearch",
+        "TIMEOUT": 300,
+    }
+}
+\n
