@@ -3,203 +3,231 @@
 
 {% block content %}
 <!-- Header -->
-<section class="panel p-8 mb-8">
-  <p class="section-label">Developer Documentation</p>
-  <h1 class="mt-3">Build & Deploy Sub Search</h1>
-  <p class="mt-4 text-lg text-gray-400 max-w-3xl">
-    Clone the repo, configure your environment, and start contributing to the subreddit directory. These docs assume you're comfortable with a terminal.
-  </p>
-</section>
+<div class="card mb-4">
+  <div class="card-body p-4">
+    <p class="stat-label mb-2">Developer Documentation</p>
+    <h1 class="h2 mb-3">Build & Deploy Sub Search</h1>
+    <p class="text-muted mb-0" style="max-width: 700px;">
+      Clone the repo, configure your environment, and start contributing to the subreddit directory. These docs assume you're comfortable with a terminal.
+    </p>
+  </div>
+</div>
 
 <!-- Installation -->
-<section class="panel p-6 mb-6">
-  <div class="flex items-center gap-3 mb-6">
-    <div class="w-8 h-8 rounded-lg bg-sub-green/20 flex items-center justify-center">
-      <span class="text-sub-green-light font-bold">1</span>
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <div class="rounded d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background-color: rgba(70, 209, 96, 0.2);">
+        <span class="text-success fw-bold">1</span>
+      </div>
+      <h4 class="mb-0">Clone & Install</h4>
     </div>
-    <h2>Clone & Install</h2>
-  </div>
 
-  <ol class="space-y-4 text-sm">
-    <li class="flex gap-3">
-      <span class="text-sub-yellow font-semibold">1.</span>
-      <span>Install Python 3.10+ and git</span>
-    </li>
-    <li class="flex gap-3">
-      <span class="text-sub-yellow font-semibold">2.</span>
-      <div class="flex-1">
-        <span>Clone and set up virtual environment:</span>
-        <pre class="mt-2"><code>git clone https://github.com/ericrosenberg1/reddit-sub-analyzer.git
+    <ol class="list-unstyled mb-0">
+      <li class="d-flex gap-3 mb-3">
+        <span class="text-warning fw-semibold">1.</span>
+        <span>Install Python 3.10+ and git</span>
+      </li>
+      <li class="d-flex gap-3 mb-3">
+        <span class="text-warning fw-semibold">2.</span>
+        <div class="flex-grow-1">
+          <span>Clone and set up virtual environment:</span>
+          <pre class="mt-2 p-3 rounded" style="background-color: var(--ss-bg-page);"><code>git clone https://github.com/ericrosenberg1/reddit-sub-analyzer.git
 cd reddit-sub-analyzer
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt</code></pre>
-      </div>
-    </li>
-    <li class="flex gap-3">
-      <span class="text-sub-yellow font-semibold">3.</span>
-      <div class="flex-1">
-        <span>Set up PostgreSQL and Redis:</span>
-        <pre class="mt-2"><code># PostgreSQL
+        </div>
+      </li>
+      <li class="d-flex gap-3 mb-3">
+        <span class="text-warning fw-semibold">3.</span>
+        <div class="flex-grow-1">
+          <span>Set up PostgreSQL and Redis:</span>
+          <pre class="mt-2 p-3 rounded" style="background-color: var(--ss-bg-page);"><code># PostgreSQL
 createdb subsearch
 
 # Redis (via Docker)
 docker run -d --name redis -p 6379:6379 redis:alpine</code></pre>
-      </div>
-    </li>
-    <li class="flex gap-3">
-      <span class="text-sub-yellow font-semibold">4.</span>
-      <div class="flex-1">
-        <span>Run migrations and start the server:</span>
-        <pre class="mt-2"><code>python manage.py migrate
+        </div>
+      </li>
+      <li class="d-flex gap-3 mb-3">
+        <span class="text-warning fw-semibold">4.</span>
+        <div class="flex-grow-1">
+          <span>Run migrations and start the server:</span>
+          <pre class="mt-2 p-3 rounded" style="background-color: var(--ss-bg-page);"><code>python manage.py migrate
 python manage.py runserver  # http://localhost:8000</code></pre>
-      </div>
-    </li>
-    <li class="flex gap-3">
-      <span class="text-sub-yellow font-semibold">5.</span>
-      <div class="flex-1">
-        <span>Start Celery workers (separate terminal):</span>
-        <pre class="mt-2"><code>celery -A reddit_analyzer worker --loglevel=info</code></pre>
-      </div>
-    </li>
-  </ol>
-</section>
+        </div>
+      </li>
+      <li class="d-flex gap-3">
+        <span class="text-warning fw-semibold">5.</span>
+        <div class="flex-grow-1">
+          <span>Start Celery workers (separate terminal):</span>
+          <pre class="mt-2 p-3 rounded" style="background-color: var(--ss-bg-page);"><code>celery -A reddit_analyzer worker --loglevel=info</code></pre>
+        </div>
+      </li>
+    </ol>
+  </div>
+</div>
 
 <!-- Configuration -->
-<section class="panel p-6 mb-6">
-  <div class="flex items-center gap-3 mb-6">
-    <div class="w-8 h-8 rounded-lg bg-sub-green/20 flex items-center justify-center">
-      <span class="text-sub-green-light font-bold">2</span>
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <div class="rounded d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background-color: rgba(70, 209, 96, 0.2);">
+        <span class="text-success fw-bold">2</span>
+      </div>
+      <h4 class="mb-0">Configure Your .env</h4>
     </div>
-    <h2>Configure Your .env</h2>
-  </div>
 
-  <p class="text-sm text-muted mb-4">Copy <code>.env.example</code> to <code>.env</code> and fill in these values:</p>
+    <p class="small text-muted mb-4">Copy <code>.env.example</code> to <code>.env</code> and fill in these values:</p>
 
-  <div class="grid gap-4 md:grid-cols-2">
-    <div class="card p-4">
-      <h3 class="font-semibold text-sub-yellow mb-2">Reddit API</h3>
-      <ul class="text-sm text-muted space-y-1">
-        <li><code>REDDIT_CLIENT_ID</code></li>
-        <li><code>REDDIT_CLIENT_SECRET</code></li>
-        <li><code>REDDIT_USERNAME</code></li>
-        <li><code>REDDIT_PASSWORD</code></li>
-        <li><code>REDDIT_USER_AGENT</code></li>
-      </ul>
-    </div>
-    <div class="card p-4">
-      <h3 class="font-semibold text-sub-yellow mb-2">Django</h3>
-      <ul class="text-sm text-muted space-y-1">
-        <li><code>SECRET_KEY</code></li>
-        <li><code>DEBUG</code></li>
-        <li><code>ALLOWED_HOSTS</code></li>
-      </ul>
-    </div>
-    <div class="card p-4">
-      <h3 class="font-semibold text-sub-yellow mb-2">Database</h3>
-      <ul class="text-sm text-muted space-y-1">
-        <li><code>DATABASE_URL</code> (PostgreSQL)</li>
-      </ul>
-    </div>
-    <div class="card p-4">
-      <h3 class="font-semibold text-sub-yellow mb-2">Redis</h3>
-      <ul class="text-sm text-muted space-y-1">
-        <li><code>REDIS_URL</code></li>
-        <li><code>CELERY_BROKER_URL</code></li>
-      </ul>
+    <div class="row g-3">
+      <div class="col-md-6 col-lg-3">
+        <div class="bg-input rounded p-3 h-100">
+          <h6 class="text-warning mb-2">Reddit API</h6>
+          <ul class="list-unstyled small text-muted mb-0">
+            <li><code>REDDIT_CLIENT_ID</code></li>
+            <li><code>REDDIT_CLIENT_SECRET</code></li>
+            <li><code>REDDIT_USERNAME</code></li>
+            <li><code>REDDIT_PASSWORD</code></li>
+            <li><code>REDDIT_USER_AGENT</code></li>
+          </ul>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="bg-input rounded p-3 h-100">
+          <h6 class="text-warning mb-2">Django</h6>
+          <ul class="list-unstyled small text-muted mb-0">
+            <li><code>SECRET_KEY</code></li>
+            <li><code>DEBUG</code></li>
+            <li><code>ALLOWED_HOSTS</code></li>
+          </ul>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="bg-input rounded p-3 h-100">
+          <h6 class="text-warning mb-2">Database</h6>
+          <ul class="list-unstyled small text-muted mb-0">
+            <li><code>DATABASE_URL</code> (PostgreSQL)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="bg-input rounded p-3 h-100">
+          <h6 class="text-warning mb-2">Redis</h6>
+          <ul class="list-unstyled small text-muted mb-0">
+            <li><code>REDIS_URL</code></li>
+            <li><code>CELERY_BROKER_URL</code></li>
+          </ul>
+        </div>
+      </div>
     </div>
   </div>
-</section>
+</div>
 
 <!-- Deployment -->
-<section class="panel p-6 mb-6">
-  <div class="flex items-center gap-3 mb-6">
-    <div class="w-8 h-8 rounded-lg bg-sub-green/20 flex items-center justify-center">
-      <span class="text-sub-green-light font-bold">3</span>
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <div class="rounded d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background-color: rgba(70, 209, 96, 0.2);">
+        <span class="text-success fw-bold">3</span>
+      </div>
+      <h4 class="mb-0">Deploy to Production</h4>
     </div>
-    <h2>Deploy to Production</h2>
-  </div>
 
-  <p class="text-sm text-muted mb-4">For production, use Gunicorn with your preferred process manager:</p>
-  <pre><code>pip install gunicorn
+    <p class="small text-muted mb-3">For production, use Gunicorn with your preferred process manager:</p>
+    <pre class="p-3 rounded" style="background-color: var(--ss-bg-page);"><code>pip install gunicorn
 gunicorn reddit_analyzer.wsgi:application --bind 0.0.0.0:8000 --workers 4</code></pre>
 
-  <p class="text-sm text-muted mt-4">Use systemd, supervisor, or Docker to manage the Django app and Celery workers.</p>
-</section>
+    <p class="small text-muted mt-3 mb-0">Use systemd, supervisor, or Docker to manage the Django app and Celery workers.</p>
+  </div>
+</div>
 
 <!-- Phone Home -->
-<section class="panel p-6 mb-6">
-  <div class="flex items-center gap-3 mb-6">
-    <div class="w-8 h-8 rounded-lg bg-sub-green/20 flex items-center justify-center">
-      <span class="text-sub-green-light font-bold">4</span>
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <div class="rounded d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background-color: rgba(70, 209, 96, 0.2);">
+        <span class="text-success fw-bold">4</span>
+      </div>
+      <h4 class="mb-0">Stream Data with PHONE_HOME</h4>
     </div>
-    <h2>Stream Data with PHONE_HOME</h2>
-  </div>
 
-  <ol class="space-y-3 text-sm">
-    <li class="flex gap-3">
-      <span class="text-sub-yellow font-semibold">1.</span>
-      <span>Set <code>PHONE_HOME=true</code> in your <code>.env</code></span>
-    </li>
-    <li class="flex gap-3">
-      <span class="text-sub-yellow font-semibold">2.</span>
-      <span>Point <code>PHONE_HOME_ENDPOINT</code> at the main collector</span>
-    </li>
-    <li class="flex gap-3">
-      <span class="text-sub-yellow font-semibold">3.</span>
-      <span>Add <code>PHONE_HOME_TOKEN</code> if you have one (Bearer auth)</span>
-    </li>
-    <li class="flex gap-3">
-      <span class="text-sub-yellow font-semibold">4.</span>
-      <span>Set <code>PHONE_HOME_SOURCE</code> to label your node</span>
-    </li>
-    <li class="flex gap-3">
-      <span class="text-sub-yellow font-semibold">5.</span>
-      <span>Run Sub Search as usual - data syncs automatically!</span>
-    </li>
-  </ol>
-</section>
+    <ol class="list-unstyled mb-0 small">
+      <li class="d-flex gap-3 mb-2">
+        <span class="text-warning fw-semibold">1.</span>
+        <span>Set <code>PHONE_HOME=true</code> in your <code>.env</code></span>
+      </li>
+      <li class="d-flex gap-3 mb-2">
+        <span class="text-warning fw-semibold">2.</span>
+        <span>Point <code>PHONE_HOME_ENDPOINT</code> at the main collector</span>
+      </li>
+      <li class="d-flex gap-3 mb-2">
+        <span class="text-warning fw-semibold">3.</span>
+        <span>Add <code>PHONE_HOME_TOKEN</code> if you have one (Bearer auth)</span>
+      </li>
+      <li class="d-flex gap-3 mb-2">
+        <span class="text-warning fw-semibold">4.</span>
+        <span>Set <code>PHONE_HOME_SOURCE</code> to label your node</span>
+      </li>
+      <li class="d-flex gap-3">
+        <span class="text-warning fw-semibold">5.</span>
+        <span>Run Sub Search as usual - data syncs automatically!</span>
+      </li>
+    </ol>
+  </div>
+</div>
 
 <!-- Volunteer Node -->
-<section class="panel p-6 mb-6">
-  <div class="flex items-center gap-3 mb-6">
-    <div class="w-8 h-8 rounded-lg bg-sub-green/20 flex items-center justify-center">
-      <span class="text-sub-green-light font-bold">5</span>
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <div class="rounded d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background-color: rgba(70, 209, 96, 0.2);">
+        <span class="text-success fw-bold">5</span>
+      </div>
+      <h4 class="mb-0">Volunteer a Node</h4>
     </div>
-    <h2>Volunteer a Node</h2>
+
+    <p class="small text-muted mb-3">Nodes add extra throughput by lending your computer + Reddit account:</p>
+
+    <ul class="list-unstyled small text-muted mb-0">
+      <li class="d-flex gap-2 mb-2">
+        <span class="text-success">•</span>
+        <span>Open the <a href="{% url 'nodes_home' %}" class="text-warning">Nodes</a> page and submit the "Add a node" form</span>
+      </li>
+      <li class="d-flex gap-2 mb-2">
+        <span class="text-success">•</span>
+        <span>Use the private link emailed to you to update availability or pause the node</span>
+      </li>
+      <li class="d-flex gap-2">
+        <span class="text-success">•</span>
+        <span>Mark a node as "broken" if it goes offline - automatic cleanup after 7 days</span>
+      </li>
+    </ul>
   </div>
-
-  <p class="text-sm text-muted mb-4">Nodes add extra throughput by lending your computer + Reddit account:</p>
-
-  <ul class="space-y-2 text-sm text-muted">
-    <li class="flex gap-2">
-      <span class="text-sub-green-light">•</span>
-      <span>Open the <a href="{% url 'nodes_home' %}" class="text-sub-yellow hover:underline">Nodes</a> page and submit the "Add a node" form</span>
-    </li>
-    <li class="flex gap-2">
-      <span class="text-sub-green-light">•</span>
-      <span>Use the private link emailed to you to update availability or pause the node</span>
-    </li>
-    <li class="flex gap-2">
-      <span class="text-sub-green-light">•</span>
-      <span>Mark a node as "broken" if it goes offline - automatic cleanup after 7 days</span>
-    </li>
-  </ul>
-</section>
+</div>
 
 <!-- Stay Involved -->
-<section class="grid gap-6 md:grid-cols-2">
-  <div class="card p-6">
-    <p class="section-label mb-2">Report & Discuss</p>
-    <h3 class="text-lg">Open an Issue</h3>
-    <p class="text-sm text-muted mt-2">Share bugs, feature requests, or architectural ideas.</p>
-    <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer/issues" target="_blank" class="btn-primary mt-4">GitHub Issues</a>
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <p class="stat-label mb-2">Report & Discuss</p>
+        <h5>Open an Issue</h5>
+        <p class="small text-muted mb-3">Share bugs, feature requests, or architectural ideas.</p>
+        <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer/issues" target="_blank" class="btn btn-primary">GitHub Issues</a>
+      </div>
+    </div>
   </div>
-  <div class="card p-6">
-    <p class="section-label mb-2">Contribute Code</p>
-    <h3 class="text-lg">Fork the Repo</h3>
-    <p class="text-sm text-muted mt-2">Fork the repository, open pull requests, and help expand the toolset.</p>
-    <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" class="btn-primary mt-4">View Repository</a>
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <p class="stat-label mb-2">Contribute Code</p>
+        <h5>Fork the Repo</h5>
+        <p class="small text-muted mb-3">Fork the repository, open pull requests, and help expand the toolset.</p>
+        <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" class="btn btn-primary">View Repository</a>
+      </div>
+    </div>
   </div>
-</section>
+</div>
 {% endblock %}

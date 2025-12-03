@@ -3,48 +3,66 @@
 
 {% block content %}
 <!-- Header -->
-<section class="panel p-6 mb-6">
-  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-    <div>
-      <p class="section-label">Order History</p>
-      <h1 class="mt-2">Activity Log</h1>
-      <p class="mt-2 text-gray-400">Track all searches and automated background jobs</p>
+<div class="card mb-4">
+  <div class="card-body p-4">
+    <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-lg-between gap-3">
+      <div>
+        <p class="stat-label mb-2">Order History</p>
+        <h1 class="h3 mb-2">Activity Log</h1>
+        <p class="text-muted mb-0">Track all searches and automated background jobs</p>
+      </div>
+      <a href="{% url 'home' %}" class="btn btn-secondary">Back to Home</a>
     </div>
-    <a href="{% url 'home' %}" class="btn-secondary">Back to Home</a>
   </div>
-</section>
+</div>
 
 <!-- Stats -->
-<section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-  <div class="card p-5">
-    <p class="stat-label">Total Searches</p>
-    <p class="stat-value mt-2">{{ job_stats.total|default:0 }}</p>
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-lg-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <p class="stat-label mb-1">Total Searches</p>
+        <p class="stat-value mb-0">{{ job_stats.total|default:0 }}</p>
+      </div>
+    </div>
   </div>
-  <div class="card p-5 border-sub-green/20">
-    <p class="stat-label text-sub-green-light">Completed</p>
-    <p class="stat-value mt-2 text-sub-green-light">{{ job_stats.completed|default:0 }}</p>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card h-100" style="border-color: rgba(70, 209, 96, 0.2);">
+      <div class="card-body">
+        <p class="stat-label text-success mb-1">Completed</p>
+        <p class="stat-value text-success mb-0">{{ job_stats.completed|default:0 }}</p>
+      </div>
+    </div>
   </div>
-  <div class="card p-5 border-red-700/20">
-    <p class="stat-label text-red-300">Failed</p>
-    <p class="stat-value mt-2 text-red-300">{{ job_stats.failed|default:0 }}</p>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card h-100" style="border-color: rgba(255, 88, 91, 0.2);">
+      <div class="card-body">
+        <p class="stat-label text-danger mb-1">Failed</p>
+        <p class="stat-value text-danger mb-0">{{ job_stats.failed|default:0 }}</p>
+      </div>
+    </div>
   </div>
-  <div class="card p-5 border-sub-yellow/20">
-    <p class="stat-label text-sub-yellow">In Queue</p>
-    <p class="stat-value mt-2 text-sub-yellow">{{ queue_count|default:0 }}</p>
-    <p class="text-xs text-muted mt-1">{{ job_stats.pending|default:0 }} pending</p>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card h-100" style="border-color: rgba(255, 214, 53, 0.2);">
+      <div class="card-body">
+        <p class="stat-label text-warning mb-1">In Queue</p>
+        <p class="stat-value text-warning mb-0">{{ queue_count|default:0 }}</p>
+        <p class="small text-muted mb-0">{{ job_stats.pending|default:0 }} pending</p>
+      </div>
+    </div>
   </div>
-</section>
+</div>
 
 <!-- Jobs Table -->
-<section class="panel overflow-hidden">
-  <div class="overflow-x-auto">
-    <table class="min-w-[700px]">
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
       <thead>
         <tr>
-          <th class="w-40">When</th>
+          <th style="width: 160px;">When</th>
           <th>Search Details</th>
-          <th class="w-28 text-right">Results</th>
-          <th class="w-28">Status</th>
+          <th class="text-end" style="width: 120px;">Results</th>
+          <th style="width: 120px;">Status</th>
         </tr>
       </thead>
       <tbody>
@@ -52,46 +70,46 @@
         {% for entry in entries %}
         <tr>
           <td>
-            <p class="font-medium">{{ entry.started_display|default:'Pending' }}</p>
+            <p class="fw-medium mb-0">{{ entry.started_display|default:'Pending' }}</p>
           </td>
           <td>
-            <p class="font-semibold">{{ entry.keyword|default:'All subreddits' }}</p>
-            <p class="text-xs text-muted mt-0.5">
+            <p class="fw-semibold mb-0">{{ entry.keyword|default:'All subreddits' }}</p>
+            <p class="small text-muted mb-0">
               {% if entry.source == 'sub_search' %}
-              <span class="text-sub-yellow">Manual</span>
+              <span class="text-warning">Manual</span>
               {% else %}
-              <span class="text-gray-500">{{ entry.source }}</span>
+              <span class="text-muted">{{ entry.source }}</span>
               {% endif %}
             </p>
           </td>
-          <td class="text-right">
-            <p class="font-semibold">{{ entry.result_count|default:0 }}</p>
-            <p class="text-xs text-muted">subs</p>
+          <td class="text-end">
+            <p class="fw-semibold mb-0">{{ entry.result_count|default:0 }}</p>
+            <p class="small text-muted mb-0">subs</p>
           </td>
           <td>
             {% if entry.error %}
-            <span class="badge badge-error">Error</span>
+            <span class="badge bg-danger">Error</span>
             {% elif entry.completed_at %}
-            <span class="badge badge-success">Complete</span>
+            <span class="badge bg-success">Complete</span>
             {% else %}
-            <span class="badge badge-info">Running</span>
+            <span class="badge bg-info">Running</span>
             {% endif %}
           </td>
         </tr>
         {% endfor %}
         {% else %}
         <tr>
-          <td colspan="4" class="text-center py-12 text-muted">
-            No searches yet. <a href="{% url 'home' %}" class="text-sub-yellow hover:underline">Start your first search!</a>
+          <td colspan="4" class="text-center py-5 text-muted">
+            No searches yet. <a href="{% url 'home' %}" class="text-warning">Start your first search!</a>
           </td>
         </tr>
         {% endif %}
       </tbody>
     </table>
   </div>
-  <div class="flex items-center justify-between border-t border-dark-600/50 px-4 py-4">
-    <p class="text-sm text-muted">Showing recent activity</p>
-    <a href="{% url 'all_subs' %}" class="btn-ghost text-sm">View All The Subs</a>
+  <div class="d-flex align-items-center justify-content-between border-top border-custom p-3">
+    <p class="small text-muted mb-0">Showing recent activity</p>
+    <a href="{% url 'all_subs' %}" class="btn btn-link btn-sm">View All The Subs</a>
   </div>
-</section>
+</div>
 {% endblock %}

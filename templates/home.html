@@ -4,428 +4,464 @@
 
 {% block content %}
 <!-- Hero Section -->
-<section class="panel p-5 mb-4">
-  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-    <div class="flex-1">
-      <h1 class="text-2xl font-bold text-[#D7DADC]">Sub Search</h1>
-      <p class="text-sm text-[#818384] mt-1">Reddit Subreddit Discovery Tool</p>
-      <p class="text-[#818384] text-sm mt-3 max-w-lg">
-        Search Reddit's API for subreddits matching your keywords. Filter by subscribers, mod activity, and more. Every search adds to our shared database.
-      </p>
-    </div>
-    <!-- Dancing Sandwich -->
-    <div class="flex-shrink-0 flex items-center justify-center">
-      <div class="dancing-sandwich text-6xl" title="Fresh subs daily!">
-        <span class="inline-block animate-bounce">&#129386;</span>
+<div class="card mb-4">
+  <div class="card-body p-4">
+    <div class="row align-items-center">
+      <div class="col">
+        <h1 class="h3 mb-1">Sub Search</h1>
+        <p class="text-muted mb-2">Reddit Subreddit Discovery Tool</p>
+        <p class="text-muted small mb-0" style="max-width: 500px;">
+          Search Reddit's API for subreddits matching your keywords. Filter by subscribers, mod activity, and more. Every search adds to our shared database.
+        </p>
+      </div>
+      <div class="col-auto d-none d-md-block">
+        <span class="dancing-sandwich" style="font-size: 4rem;" title="Fresh subs daily!">&#129386;</span>
       </div>
     </div>
   </div>
-</section>
-
-<!-- Stats + Search Form Row -->
-<div class="grid gap-4 lg:grid-cols-2 mb-4">
-  <!-- Left: Stats Panel -->
-  <section class="panel p-5">
-    <p class="section-label mb-4">Database Stats</p>
-    <div class="grid grid-cols-2 gap-3">
-      <div class="card p-3">
-        <p class="stat-label">Subs Indexed</p>
-        <p class="stat-value text-[#FF4500]">{{ stats.total_subreddits|default:0|intcomma }}</p>
-      </div>
-      <div class="card p-3">
-        <p class="stat-label">Total Searches</p>
-        <p class="stat-value">{{ stats.total_runs|default:0|intcomma }}</p>
-      </div>
-      <div class="card p-3">
-        <p class="stat-label">In Queue</p>
-        <p class="stat-value">{{ queue_count|default:0 }}</p>
-      </div>
-      <div class="card p-3">
-        <p class="stat-label">Last Completed</p>
-        <p class="text-sm text-[#D7DADC] local-time" data-ts="{{ stats.last_run_started|date:'c' }}">{{ stats.last_run_started|date:"M d, H:i"|default:"—" }}</p>
-      </div>
-    </div>
-
-    <!-- Live Queue Status -->
-    <div class="mt-4 pt-4 border-t border-[#343536]">
-      <div class="flex items-center justify-between mb-3">
-        <p class="section-label">Live Queue</p>
-        <span class="w-2 h-2 bg-[#46D160] rounded-full animate-pulse"></span>
-      </div>
-      <div class="space-y-2 text-sm">
-        <div class="flex justify-between">
-          <span class="text-[#818384]">Now Running:</span>
-          <span class="text-[#D7DADC] font-medium" id="current-keyword">—</span>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-[#818384]">Next Up:</span>
-          <span class="text-[#D7DADC]" id="ondeck-keyword">—</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Right: Search Form -->
-  <section class="panel p-5">
-    <p class="section-label mb-4">New Search</p>
-    <form method="post" action="{% url 'home' %}" id="run-form">
-      {% csrf_token %}
-      <div class="space-y-3">
-        <div>
-          <label for="keyword">Keyword</label>
-          <input type="text" id="keyword" name="keyword" placeholder="e.g. gaming, crypto, cooking" maxlength="64" pattern="[A-Za-z0-9 _\-]*">
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label for="limit">Max Subs</label>
-            <input type="text" id="limit" name="limit" inputmode="numeric" pattern="[0-9,]*" value="1,000">
-          </div>
-          <div>
-            <label for="min_subs">Min Subscribers</label>
-            <input type="text" id="min_subs" name="min_subs" inputmode="numeric" pattern="[0-9,]*" value="0">
-          </div>
-        </div>
-        <div>
-          <label for="notification_email">Email When Done</label>
-          <input type="email" id="notification_email" name="notification_email" placeholder="optional">
-        </div>
-        <div class="flex flex-wrap gap-4 pt-2">
-          <label class="flex items-center gap-2 cursor-pointer text-sm">
-            <input type="checkbox" id="unmoderated_only" name="unmoderated_only">
-            <span class="text-[#D7DADC]">Unmoderated only</span>
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer text-sm">
-            <input type="checkbox" id="exclude_nsfw" name="exclude_nsfw">
-            <span class="text-[#D7DADC]">Exclude NSFW</span>
-          </label>
-        </div>
-        <!-- Advanced: Mod Activity Filter -->
-        <div class="card p-3">
-          <label class="flex items-center gap-2 cursor-pointer text-sm mb-2">
-            <input type="checkbox" id="activity_enabled" name="activity_enabled">
-            <span class="text-[#D7DADC] font-medium">Filter by mod activity</span>
-          </label>
-          <div class="grid grid-cols-2 gap-2">
-            <select id="activity_mode" name="activity_mode" class="text-sm" disabled>
-              <option value="any">Any activity</option>
-              <option value="active_after">Active since</option>
-              <option value="inactive_before">Inactive since</option>
-            </select>
-            <input type="date" id="activity_date" name="activity_date" class="text-sm" disabled>
-          </div>
-        </div>
-        <button type="submit" class="btn-primary w-full py-3 mt-2">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-          </svg>
-          Start Search
-        </button>
-      </div>
-    </form>
-  </section>
 </div>
 
-<!-- Search Status Modal (hidden by default) -->
-<div id="search-modal" class="modal-backdrop">
-  <div class="modal-content p-6">
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="text-lg font-bold text-[#D7DADC]">Search in Progress</h3>
-      <button id="modal-close" class="text-[#818384] hover:text-[#D7DADC]">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
-      </button>
-    </div>
+<!-- Stats + Search Form Row -->
+<div class="row g-4 mb-4">
+  <!-- Left: Stats Panel -->
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="card-title">Database Stats</h6>
+        <div class="row g-3">
+          <div class="col-6">
+            <div class="bg-input rounded p-3">
+              <p class="stat-label mb-1">Subs Indexed</p>
+              <p class="stat-value text-accent mb-0">{{ stats.total_subreddits|default:0|intcomma }}</p>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="bg-input rounded p-3">
+              <p class="stat-label mb-1">Total Searches</p>
+              <p class="stat-value mb-0">{{ stats.total_runs|default:0|intcomma }}</p>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="bg-input rounded p-3">
+              <p class="stat-label mb-1">In Queue</p>
+              <p class="stat-value mb-0">{{ queue_count|default:0 }}</p>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="bg-input rounded p-3">
+              <p class="stat-label mb-1">Last Completed</p>
+              <p class="small mb-0 local-time" data-ts="{{ stats.last_run_started|date:'c' }}">{{ stats.last_run_started|date:"M d, H:i"|default:"—" }}</p>
+            </div>
+          </div>
+        </div>
 
-    <div class="flex items-center gap-4 mb-6">
-      <div class="loader" id="status-loader"></div>
-      <div>
-        <p id="status-title" class="font-bold text-[#D7DADC]">Preparing search...</p>
-        <p id="status-sub" class="text-sm text-[#818384]">—</p>
+        <!-- Live Queue Status -->
+        <div class="border-top border-custom mt-4 pt-4">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <h6 class="card-title mb-0">Live Queue</h6>
+            <span class="bg-success rounded-circle" style="width: 8px; height: 8px; animation: pulse 2s infinite;"></span>
+          </div>
+          <div class="small">
+            <div class="d-flex justify-content-between mb-2">
+              <span class="text-muted">Now Running:</span>
+              <span class="fw-medium" id="current-keyword">—</span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Next Up:</span>
+              <span id="ondeck-keyword">—</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
+  </div>
 
-    <div class="grid grid-cols-3 gap-4 mb-6">
-      <div class="text-center card p-3">
-        <p class="stat-label">Checked</p>
-        <p id="checked" class="text-xl font-bold text-[#D7DADC]">0</p>
-      </div>
-      <div class="text-center card p-3">
-        <p class="stat-label">Found</p>
-        <p id="found" class="text-xl font-bold text-[#46D160]">0</p>
-      </div>
-      <div class="text-center card p-3">
-        <p class="stat-label">Limit</p>
-        <p id="limit_count" class="text-xl font-bold text-[#818384]">0</p>
+  <!-- Right: Search Form -->
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="card-title">New Search</h6>
+        <form method="post" action="{% url 'home' %}" id="run-form">
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <label for="keyword" class="form-label">Keyword</label>
+            <input type="text" class="form-control" id="keyword" name="keyword" placeholder="e.g. gaming, crypto, cooking" maxlength="64" pattern="[A-Za-z0-9 _\-]*">
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <label for="limit" class="form-label">Max Subs</label>
+              <input type="text" class="form-control" id="limit" name="limit" inputmode="numeric" pattern="[0-9,]*" value="1,000">
+            </div>
+            <div class="col-6">
+              <label for="min_subs" class="form-label">Min Subscribers</label>
+              <input type="text" class="form-control" id="min_subs" name="min_subs" inputmode="numeric" pattern="[0-9,]*" value="0">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="notification_email" class="form-label">Email When Done</label>
+            <input type="email" class="form-control" id="notification_email" name="notification_email" placeholder="optional">
+          </div>
+
+          <div class="d-flex flex-wrap gap-4 mb-3">
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" id="unmoderated_only" name="unmoderated_only">
+              <label class="form-check-label" for="unmoderated_only">Unmoderated only</label>
+            </div>
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" id="exclude_nsfw" name="exclude_nsfw">
+              <label class="form-check-label" for="exclude_nsfw">Exclude NSFW</label>
+            </div>
+          </div>
+
+          <!-- Advanced: Mod Activity Filter -->
+          <div class="bg-input rounded p-3 mb-3">
+            <div class="form-check mb-2">
+              <input type="checkbox" class="form-check-input" id="activity_enabled" name="activity_enabled">
+              <label class="form-check-label fw-medium" for="activity_enabled">Filter by mod activity</label>
+            </div>
+            <div class="row g-2">
+              <div class="col-6">
+                <select class="form-select form-select-sm" id="activity_mode" name="activity_mode" disabled>
+                  <option value="any">Any activity</option>
+                  <option value="active_after">Active since</option>
+                  <option value="inactive_before">Inactive since</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <input type="date" class="form-control form-control-sm" id="activity_date" name="activity_date" disabled>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 py-2">
+            <svg class="me-1" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            Start Search
+          </button>
+        </form>
       </div>
     </div>
+  </div>
+</div>
 
-    <div class="flex gap-3">
-      <button id="stopBtn" class="btn-danger flex-1">Stop Search</button>
-    </div>
+<!-- Search Status Modal -->
+<div class="modal fade" id="search-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Search in Progress</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="d-flex align-items-center gap-3 mb-4">
+          <div class="spinner-border" role="status" id="status-loader">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <div>
+            <p id="status-title" class="fw-bold mb-0">Preparing search...</p>
+            <p id="status-sub" class="text-muted small mb-0">—</p>
+          </div>
+        </div>
 
-    <!-- Results (shown when complete) -->
-    <div id="results-panel" class="mt-6 pt-6 border-t border-[#343536] hidden">
-      <h4 id="results-title" class="text-lg font-bold text-[#46D160] mb-2">Results Ready!</h4>
-      <p id="results-subtitle" class="text-sm text-[#818384] mb-4">Your search is complete</p>
-      <div class="flex gap-3">
-        <a id="download-btn" href="#" class="btn-secondary flex-1 justify-center">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-          </svg>
-          Download CSV
-        </a>
-        <a id="view-all-btn" href="#" class="btn-primary flex-1 justify-center">View Results</a>
+        <div class="row g-3 mb-4">
+          <div class="col-4">
+            <div class="text-center bg-input rounded p-3">
+              <p class="stat-label mb-1">Checked</p>
+              <p id="checked" class="h5 fw-bold mb-0">0</p>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="text-center bg-input rounded p-3">
+              <p class="stat-label mb-1">Found</p>
+              <p id="found" class="h5 fw-bold text-success mb-0">0</p>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="text-center bg-input rounded p-3">
+              <p class="stat-label mb-1">Limit</p>
+              <p id="limit_count" class="h5 fw-bold text-muted mb-0">0</p>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" id="stopBtn" class="btn btn-danger w-100">Stop Search</button>
+
+        <!-- Results (shown when complete) -->
+        <div id="results-panel" class="border-top border-custom mt-4 pt-4 d-none">
+          <h6 id="results-title" class="text-success mb-2">Results Ready!</h6>
+          <p id="results-subtitle" class="text-muted small mb-3">Your search is complete</p>
+          <div class="d-flex gap-2">
+            <a id="download-btn" href="#" class="btn btn-secondary flex-fill">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+              Download CSV
+            </a>
+            <a id="view-all-btn" href="#" class="btn btn-primary flex-fill">View Results</a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
 <!-- Recent Results + Queue Row -->
-<div class="grid gap-4 lg:grid-cols-2 mb-4">
+<div class="row g-4 mb-4">
   <!-- Left: Recent Search Results -->
-  <section class="panel p-5">
-    <div class="flex items-center justify-between mb-4">
-      <p class="section-label">Recent Search Results</p>
-      <a href="{% url 'logs' %}" class="text-xs text-[#818384] hover:text-[#D7DADC]">View All</a>
-    </div>
-    <div class="space-y-2" id="recent-searches-list">
-      {% if recent_user_runs %}
-      {% for run in recent_user_runs %}
-      <div class="card-hover p-3" data-run-id="{{ run.job_id }}">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="font-medium text-[#D7DADC] text-sm">{{ run.keyword|default:"All subreddits" }}</p>
-            <p class="text-xs text-[#818384] mt-0.5">
-              <span class="result-count">{{ run.result_count|default:0 }} subs</span> &middot;
-              <span class="local-time" data-ts="{{ run.started_at|date:'c' }}">{{ run.started_at|date:"M d, H:i"|default:"—" }}</span>
-            </p>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h6 class="card-title mb-0">Recent Search Results</h6>
+          <a href="{% url 'logs' %}" class="small text-muted">View All</a>
+        </div>
+        <div id="recent-searches-list">
+          {% if recent_user_runs %}
+          {% for run in recent_user_runs %}
+          <div class="list-group-item d-flex align-items-center justify-content-between mb-2 rounded" data-run-id="{{ run.job_id }}">
+            <div>
+              <p class="fw-medium small mb-0">{{ run.keyword|default:"All subreddits" }}</p>
+              <p class="text-muted small mb-0">
+                <span class="result-count">{{ run.result_count|default:0 }} subs</span> &middot;
+                <span class="local-time" data-ts="{{ run.started_at|date:'c' }}">{{ run.started_at|date:"M d, H:i"|default:"—" }}</span>
+              </p>
+            </div>
+            <span class="status-badge badge {% if run.completed_at %}bg-success{% elif run.error %}bg-danger{% else %}bg-info{% endif %}">
+              {% if run.completed_at %}done{% elif run.error %}error{% else %}running{% endif %}
+            </span>
           </div>
-          <span class="status-badge badge {% if run.completed_at %}badge-success{% elif run.error %}badge-error{% else %}badge-info{% endif %}">
-            {% if run.completed_at %}done{% elif run.error %}error{% else %}running{% endif %}
-          </span>
-        </div>
-      </div>
-      {% endfor %}
-      {% else %}
-      <p class="text-[#818384] text-sm py-4 text-center">No searches yet</p>
-      {% endif %}
-    </div>
-  </section>
-
-  <!-- Right: Current Queue -->
-  <section class="panel p-5">
-    <div class="flex items-center justify-between mb-4">
-      <p class="section-label">Current Queue</p>
-      <span class="badge badge-neutral">{{ queue_count|default:0 }} pending</span>
-    </div>
-    <div class="space-y-2" id="queue-list">
-      {% if queued_runs %}
-      {% for run in queued_runs %}
-      <div class="card p-3">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="font-medium text-[#D7DADC] text-sm">{{ run.keyword|default:"All subreddits" }}</p>
-            <p class="text-xs text-[#818384] mt-0.5">Limit: {{ run.limit|default:"1000" }}</p>
-          </div>
-          <span class="badge badge-warning">queued</span>
-        </div>
-      </div>
-      {% endfor %}
-      {% else %}
-      <p class="text-[#818384] text-sm py-4 text-center">Queue is empty</p>
-      {% endif %}
-    </div>
-
-    <!-- Auto Bot Status -->
-    <div class="mt-4 pt-4 border-t border-[#343536]">
-      <div class="flex items-center gap-2 mb-2">
-        <svg class="w-4 h-4 text-[#6CB6FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-        </svg>
-        <span class="text-xs font-bold text-[#818384] uppercase">Auto Search Bot</span>
-      </div>
-      {% if random_run %}
-      <p class="text-sm text-[#D7DADC]">Last: "{{ random_run.keyword|default:"random" }}" — {{ random_run.result_count|default:0 }} subs</p>
-      {% else %}
-      <p class="text-sm text-[#818384]">Bot is idle</p>
-      {% endif %}
-      <p class="text-xs text-[#6B6C6D] mt-1">Runs every {{ random_search_interval }} min</p>
-    </div>
-  </section>
-</div>
-
-<!-- Data Tables Row -->
-<div class="grid gap-4 lg:grid-cols-2 mb-4">
-  <!-- Left: Index History -->
-  <section class="panel p-5">
-    <p class="section-label mb-4">Index Statistics</p>
-    <table class="w-full text-sm">
-      <tbody>
-        <tr>
-          <td class="py-2 text-[#818384]">Total Searches</td>
-          <td class="py-2 text-right font-medium text-[#D7DADC]">{{ stats.total_runs|default:0|intcomma }}</td>
-        </tr>
-        <tr>
-          <td class="py-2 text-[#818384]">Index Size</td>
-          <td class="py-2 text-right font-medium text-[#D7DADC]">{{ stats.total_subreddits|default:0|intcomma }} subs</td>
-        </tr>
-        <tr>
-          <td class="py-2 text-[#818384]">Subs Updated (24h)</td>
-          <td class="py-2 text-right font-medium text-[#D7DADC]">{{ stats.subs_updated_24h|default:0|intcomma }}</td>
-        </tr>
-        <tr>
-          <td class="py-2 text-[#818384]">Manual Searches</td>
-          <td class="py-2 text-right font-medium text-[#D7DADC]">{{ stats.manual_searches|default:0|intcomma }}</td>
-        </tr>
-        <tr>
-          <td class="py-2 text-[#818384]">Bot Searches</td>
-          <td class="py-2 text-right font-medium text-[#D7DADC]">{{ stats.bot_searches|default:0|intcomma }}</td>
-        </tr>
-      </tbody>
-    </table>
-    <a href="{% url 'all_subs' %}" class="btn-secondary w-full mt-4 justify-center">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
-      </svg>
-      Browse All Subs
-    </a>
-  </section>
-
-  <!-- Right: Volunteer Nodes -->
-  <section class="panel p-5">
-    <p class="section-label mb-4">Volunteer Network</p>
-    <table class="w-full text-sm">
-      <tbody>
-        <tr>
-          <td class="py-2 text-[#818384]">Active Nodes</td>
-          <td class="py-2 text-right font-medium text-[#D7DADC]">{{ node_stats.active_nodes|default:0 }}</td>
-        </tr>
-        <tr>
-          <td class="py-2 text-[#818384]">Total Nodes</td>
-          <td class="py-2 text-right font-medium text-[#D7DADC]">{{ node_stats.total_nodes|default:0 }}</td>
-        </tr>
-        <tr>
-          <td class="py-2 text-[#818384]">Searches by Nodes</td>
-          <td class="py-2 text-right font-medium text-[#D7DADC]">{{ node_stats.node_searches|default:0|intcomma }}</td>
-        </tr>
-        <tr>
-          <td class="py-2 text-[#818384]">Subs Contributed</td>
-          <td class="py-2 text-right font-medium text-[#D7DADC]">{{ node_stats.subs_contributed|default:0|intcomma }}</td>
-        </tr>
-        <tr>
-          <td class="py-2 text-[#818384]">Network Uptime</td>
-          <td class="py-2 text-right font-medium text-[#46D160]">{{ node_stats.uptime|default:"—" }}</td>
-        </tr>
-      </tbody>
-    </table>
-    <a href="{% url 'nodes_home' %}" class="btn-secondary w-full mt-4 justify-center">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/>
-      </svg>
-      Set Up a Node
-    </a>
-  </section>
-</div>
-
-<!-- How It Works Section -->
-<section class="panel p-5">
-  <div class="flex flex-col lg:flex-row gap-6">
-    <!-- Left 2/3: Steps -->
-    <div class="lg:w-2/3">
-      <p class="section-label mb-4">How It Works</p>
-      <div class="flex flex-col gap-4">
-        <!-- Step 1 -->
-        <div class="flex items-start gap-4">
-          <div class="flex-shrink-0 w-10 h-10 rounded-full bg-[#FF4500] flex items-center justify-center">
-            <span class="text-white font-bold">1</span>
-          </div>
-          <div class="flex-1 pt-1">
-            <p class="font-bold text-[#D7DADC]">Configure Your Search</p>
-            <p class="text-sm text-[#818384] mt-1">Enter keywords, set subscriber minimums, and choose filters. Optionally get email notifications.</p>
-          </div>
-        </div>
-
-        <!-- Connector -->
-        <div class="ml-5 w-px h-4 bg-[#343536]"></div>
-
-        <!-- Step 2 -->
-        <div class="flex items-start gap-4">
-          <div class="flex-shrink-0 w-10 h-10 rounded-full bg-[#FF4500] flex items-center justify-center">
-            <span class="text-white font-bold">2</span>
-          </div>
-          <div class="flex-1 pt-1">
-            <p class="font-bold text-[#D7DADC]">We Query Reddit's API</p>
-            <p class="text-sm text-[#818384] mt-1">Our servers fetch fresh data on subreddit names, descriptions, mod activity, and subscriber counts.</p>
-          </div>
-        </div>
-
-        <!-- Connector -->
-        <div class="ml-5 w-px h-4 bg-[#343536]"></div>
-
-        <!-- Step 3 -->
-        <div class="flex items-start gap-4">
-          <div class="flex-shrink-0 w-10 h-10 rounded-full bg-[#FF4500] flex items-center justify-center">
-            <span class="text-white font-bold">3</span>
-          </div>
-          <div class="flex-1 pt-1">
-            <p class="font-bold text-[#D7DADC]">Results Join the Database</p>
-            <p class="text-sm text-[#818384] mt-1">Download your CSV or browse results online. Every search contributes to our shared public index.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Right 1/3: Quick Info -->
-    <div class="lg:w-1/3 lg:border-l lg:border-[#343536] lg:pl-6">
-      <p class="section-label mb-4">Quick Facts</p>
-      <div class="space-y-3 text-sm">
-        <div class="flex items-center gap-3">
-          <svg class="w-5 h-5 text-[#46D160] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-          </svg>
-          <span class="text-[#D7DADC]">100% free to use</span>
-        </div>
-        <div class="flex items-center gap-3">
-          <svg class="w-5 h-5 text-[#46D160] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-          </svg>
-          <span class="text-[#D7DADC]">No account required</span>
-        </div>
-        <div class="flex items-center gap-3">
-          <svg class="w-5 h-5 text-[#46D160] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-          </svg>
-          <span class="text-[#D7DADC]">Export to CSV</span>
-        </div>
-        <div class="flex items-center gap-3">
-          <svg class="w-5 h-5 text-[#46D160] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-          </svg>
-          <span class="text-[#D7DADC]">Real-time progress</span>
-        </div>
-        <div class="flex items-center gap-3">
-          <svg class="w-5 h-5 text-[#46D160] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-          </svg>
-          <span class="text-[#D7DADC]">Open source</span>
+          {% endfor %}
+          {% else %}
+          <p class="text-muted text-center py-4 mb-0">No searches yet</p>
+          {% endif %}
         </div>
       </div>
     </div>
   </div>
-</section>
+
+  <!-- Right: Current Queue -->
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h6 class="card-title mb-0">Current Queue</h6>
+          <span class="badge bg-secondary">{{ queue_count|default:0 }} pending</span>
+        </div>
+        <div id="queue-list">
+          {% if queued_runs %}
+          {% for run in queued_runs %}
+          <div class="list-group-item d-flex align-items-center justify-content-between mb-2 rounded">
+            <div>
+              <p class="fw-medium small mb-0">{{ run.keyword|default:"All subreddits" }}</p>
+              <p class="text-muted small mb-0">Limit: {{ run.limit|default:"1000" }}</p>
+            </div>
+            <span class="badge bg-warning">queued</span>
+          </div>
+          {% endfor %}
+          {% else %}
+          <p class="text-muted text-center py-4 mb-0">Queue is empty</p>
+          {% endif %}
+        </div>
+
+        <!-- Auto Bot Status -->
+        <div class="border-top border-custom mt-4 pt-4">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <svg width="16" height="16" class="text-info" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+            <span class="stat-label">Auto Search Bot</span>
+          </div>
+          {% if random_run %}
+          <p class="small mb-0">Last: "{{ random_run.keyword|default:"random" }}" — {{ random_run.result_count|default:0 }} subs</p>
+          {% else %}
+          <p class="text-muted small mb-0">Bot is idle</p>
+          {% endif %}
+          <p class="text-muted small mb-0">Runs every {{ random_search_interval }} min</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Data Tables Row -->
+<div class="row g-4 mb-4">
+  <!-- Left: Index History -->
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="card-title">Index Statistics</h6>
+        <table class="table table-sm mb-3">
+          <tbody>
+            <tr>
+              <td class="text-muted border-0">Total Searches</td>
+              <td class="text-end fw-medium border-0">{{ stats.total_runs|default:0|intcomma }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted">Index Size</td>
+              <td class="text-end fw-medium">{{ stats.total_subreddits|default:0|intcomma }} subs</td>
+            </tr>
+            <tr>
+              <td class="text-muted">Subs Updated (24h)</td>
+              <td class="text-end fw-medium">{{ stats.subs_updated_24h|default:0|intcomma }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted">Manual Searches</td>
+              <td class="text-end fw-medium">{{ stats.manual_searches|default:0|intcomma }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted">Bot Searches</td>
+              <td class="text-end fw-medium">{{ stats.bot_searches|default:0|intcomma }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <a href="{% url 'all_subs' %}" class="btn btn-secondary w-100">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+          </svg>
+          Browse All Subs
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Volunteer Nodes -->
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="card-title">Volunteer Network</h6>
+        <table class="table table-sm mb-3">
+          <tbody>
+            <tr>
+              <td class="text-muted border-0">Active Nodes</td>
+              <td class="text-end fw-medium border-0">{{ node_stats.active_nodes|default:0 }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted">Total Nodes</td>
+              <td class="text-end fw-medium">{{ node_stats.total_nodes|default:0 }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted">Searches by Nodes</td>
+              <td class="text-end fw-medium">{{ node_stats.node_searches|default:0|intcomma }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted">Subs Contributed</td>
+              <td class="text-end fw-medium">{{ node_stats.subs_contributed|default:0|intcomma }}</td>
+            </tr>
+            <tr>
+              <td class="text-muted">Network Uptime</td>
+              <td class="text-end fw-medium text-success">{{ node_stats.uptime|default:"—" }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <a href="{% url 'nodes_home' %}" class="btn btn-secondary w-100">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/>
+          </svg>
+          Set Up a Node
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- How It Works Section -->
+<div class="card">
+  <div class="card-body">
+    <div class="row">
+      <!-- Left 2/3: Steps -->
+      <div class="col-lg-8">
+        <h6 class="card-title">How It Works</h6>
+
+        <!-- Step 1 -->
+        <div class="d-flex align-items-start gap-3 mb-3">
+          <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 40px; height: 40px; background-color: var(--ss-accent);">
+            <span class="text-white fw-bold">1</span>
+          </div>
+          <div class="pt-1">
+            <p class="fw-bold mb-1">Configure Your Search</p>
+            <p class="text-muted small mb-0">Enter keywords, set subscriber minimums, and choose filters. Optionally get email notifications.</p>
+          </div>
+        </div>
+
+        <!-- Connector -->
+        <div class="ms-3 border-start border-custom" style="height: 16px; margin-left: 20px !important;"></div>
+
+        <!-- Step 2 -->
+        <div class="d-flex align-items-start gap-3 mb-3">
+          <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 40px; height: 40px; background-color: var(--ss-accent);">
+            <span class="text-white fw-bold">2</span>
+          </div>
+          <div class="pt-1">
+            <p class="fw-bold mb-1">We Query Reddit's API</p>
+            <p class="text-muted small mb-0">Our servers fetch fresh data on subreddit names, descriptions, mod activity, and subscriber counts.</p>
+          </div>
+        </div>
+
+        <!-- Connector -->
+        <div class="ms-3 border-start border-custom" style="height: 16px; margin-left: 20px !important;"></div>
+
+        <!-- Step 3 -->
+        <div class="d-flex align-items-start gap-3">
+          <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 40px; height: 40px; background-color: var(--ss-accent);">
+            <span class="text-white fw-bold">3</span>
+          </div>
+          <div class="pt-1">
+            <p class="fw-bold mb-1">Results Join the Database</p>
+            <p class="text-muted small mb-0">Download your CSV or browse results online. Every search contributes to our shared public index.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right 1/3: Quick Info -->
+      <div class="col-lg-4 border-start border-custom ps-lg-4 mt-4 mt-lg-0">
+        <h6 class="card-title">Quick Facts</h6>
+        <div class="d-flex flex-column gap-2 small">
+          <div class="d-flex align-items-center gap-2">
+            <svg width="20" height="20" class="text-success flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span>100% free to use</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <svg width="20" height="20" class="text-success flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span>No account required</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <svg width="20" height="20" class="text-success flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span>Export to CSV</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <svg width="20" height="20" class="text-success flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span>Real-time progress</span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <svg width="20" height="20" class="text-success flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span>Open source</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <style>
-@keyframes dance {
-  0%, 100% { transform: translateY(0) rotate(-5deg); }
-  25% { transform: translateY(-8px) rotate(5deg); }
-  50% { transform: translateY(0) rotate(-5deg); }
-  75% { transform: translateY(-4px) rotate(3deg); }
-}
-.dancing-sandwich span {
-  animation: dance 1.5s ease-in-out infinite;
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 </style>
 <script>
@@ -447,24 +483,17 @@ function refreshLocalTimeElements() {
   });
 }
 
-// Modal handling
-const modal = document.getElementById('search-modal');
-const modalClose = document.getElementById('modal-close');
+// Modal handling with Bootstrap
+const modalEl = document.getElementById('search-modal');
+const searchModal = modalEl ? new bootstrap.Modal(modalEl) : null;
 
 function showModal() {
-  modal.classList.add('show');
-  document.body.style.overflow = 'hidden';
+  if (searchModal) searchModal.show();
 }
 
 function hideModal() {
-  modal.classList.remove('show');
-  document.body.style.overflow = '';
+  if (searchModal) searchModal.hide();
 }
-
-modalClose?.addEventListener('click', hideModal);
-modal?.addEventListener('click', (e) => {
-  if (e.target === modal) hideModal();
-});
 
 // Live status updates
 async function refreshLiveStatus() {
@@ -495,7 +524,7 @@ async function refreshLiveStatus() {
             const badge = item.querySelector('.status-badge');
             const status = run.completed_at ? 'done' : (run.error ? 'error' : 'running');
             if (badge) {
-              badge.className = `status-badge badge badge-${status === 'done' ? 'success' : status === 'error' ? 'error' : 'info'}`;
+              badge.className = `status-badge badge bg-${status === 'done' ? 'success' : status === 'error' ? 'danger' : 'info'}`;
               badge.textContent = status;
             }
             const count = item.querySelector('.result-count');
@@ -561,7 +590,7 @@ function updateStatusUi(data) {
   document.getElementById('stopBtn').disabled = !!data.done;
 
   if (data.done && data.results_ready) {
-    document.getElementById('results-panel').classList.remove('hidden');
+    document.getElementById('results-panel').classList.remove('d-none');
     const total = Number(data.result_count || found);
     document.getElementById('results-title').textContent = `${total.toLocaleString()} subs found!`;
     document.getElementById('results-subtitle').textContent = 'Your search is complete';
