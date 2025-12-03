@@ -16,79 +16,66 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
-    /* ========================================
-       CUSTOM BOOTSTRAP THEME - SUB SEARCH
-       Reddit-inspired dark theme
-       ======================================== */
-
     :root {
-      /* Core colors */
       --ss-bg-page: #0B1416;
       --ss-bg-header: #030303;
       --ss-bg-card: #1A1A1B;
       --ss-bg-input: #272729;
       --ss-border: #343536;
-      --ss-border-light: #3D3D3F;
       --ss-text: #D7DADC;
       --ss-text-muted: #818384;
-      --ss-text-subtle: #6B6C6D;
       --ss-accent: #FF4500;
-      --ss-accent-hover: #FF5414;
       --ss-success: #46D160;
       --ss-warning: #FFD635;
       --ss-danger: #FF585B;
       --ss-info: #6CB6FF;
     }
 
-    /* Base styles */
-    *, *::before, *::after {
-      box-sizing: border-box;
-    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { min-height: 100vh; }
 
-    html, body {
-      min-height: 100vh;
+    /* Ensure Bootstrap grid works */
+    .row { display: flex; flex-wrap: wrap; margin-right: -12px; margin-left: -12px; }
+    .row > * { flex-shrink: 0; width: 100%; max-width: 100%; padding-right: 12px; padding-left: 12px; }
+    .col-6 { flex: 0 0 auto; width: 50%; }
+    .col-4 { flex: 0 0 auto; width: 33.333333%; }
+    .col { flex: 1 0 0%; }
+    .col-auto { flex: 0 0 auto; width: auto; }
+    @media (min-width: 992px) {
+      .col-lg-4 { flex: 0 0 auto; width: 33.333333%; }
+      .col-lg-6 { flex: 0 0 auto; width: 50%; }
+      .col-lg-8 { flex: 0 0 auto; width: 66.666667%; }
     }
+    .g-2 { --bs-gutter-x: 0.5rem; --bs-gutter-y: 0.5rem; }
+    .g-3 { --bs-gutter-x: 1rem; --bs-gutter-y: 1rem; }
+    .g-4 { --bs-gutter-x: 1.5rem; --bs-gutter-y: 1.5rem; }
+    .row.g-2, .row.g-3, .row.g-4 { margin-top: calc(-1 * var(--bs-gutter-y)); margin-right: calc(-.5 * var(--bs-gutter-x)); margin-left: calc(-.5 * var(--bs-gutter-x)); }
+    .row.g-2 > *, .row.g-3 > *, .row.g-4 > * { padding-right: calc(var(--bs-gutter-x) * .5); padding-left: calc(var(--bs-gutter-x) * .5); margin-top: var(--bs-gutter-y); }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background-color: var(--ss-bg-page);
       color: var(--ss-text);
       font-size: 14px;
-      line-height: 1.5;
       display: flex;
       flex-direction: column;
     }
 
-    main {
-      flex: 1;
-    }
+    main { flex: 1; }
 
-    /* Typography */
-    h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
-      font-weight: 600;
-      color: #fff;
-    }
-
-    a {
-      color: var(--ss-text);
-      text-decoration: none;
-    }
-    a:hover {
-      color: #fff;
-    }
+    h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 { font-weight: 600; color: #fff; }
+    a { color: var(--ss-text); text-decoration: none; }
+    a:hover { color: #fff; }
 
     /* ========== NAVBAR ========== */
     .navbar {
-      background-color: var(--ss-bg-header) !important;
+      background-color: var(--ss-bg-header);
       border-bottom: 1px solid var(--ss-border);
-      padding: 8px 0;
-      min-height: 48px;
+      padding: 0 0;
+      height: 48px;
     }
-    .navbar > .container {
-      display: flex;
-      flex-wrap: nowrap;
-      align-items: center;
-      justify-content: space-between;
+    .navbar .container {
+      height: 100%;
     }
     .navbar-brand {
       display: flex;
@@ -97,15 +84,11 @@
       font-weight: 700;
       font-size: 18px;
       color: var(--ss-text) !important;
-      padding: 0;
-      margin-right: 1rem;
     }
-    .navbar-brand:hover {
-      color: #fff !important;
-    }
+    .navbar-brand:hover { color: #fff !important; }
     .navbar-brand .logo-icon {
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
       background-color: var(--ss-accent);
       border-radius: 50%;
       display: flex;
@@ -113,51 +96,29 @@
       justify-content: center;
     }
     .navbar-brand .logo-icon svg {
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
       color: #fff;
     }
-    .navbar-nav {
-      flex-direction: row;
-    }
-    .navbar-nav .nav-item {
+    .nav-links {
       display: flex;
       align-items: center;
+      gap: 4px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
     }
-    .navbar-nav .nav-link {
-      color: var(--ss-text);
-      font-weight: 600;
+    .nav-links a {
+      color: var(--ss-text-muted);
+      font-weight: 500;
       font-size: 14px;
-      padding: 8px 16px;
-      border-radius: 20px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      white-space: nowrap;
+      padding: 6px 12px;
+      border-radius: 4px;
     }
-    .navbar-nav .nav-link:hover,
-    .navbar-nav .nav-link.active {
-      background-color: var(--ss-bg-input);
+    .nav-links a:hover,
+    .nav-links a.active {
       color: #fff;
-    }
-    .navbar-nav .nav-link svg {
-      width: 20px;
-      height: 20px;
-      flex-shrink: 0;
-    }
-    .navbar-toggler {
-      border-color: var(--ss-border);
-      padding: 4px 8px;
-    }
-    .navbar-toggler-icon {
-      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28215, 218, 220, 1%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
-    }
-    /* On mobile, stack navbar items vertically */
-    @media (max-width: 767.98px) {
-      .navbar-nav {
-        flex-direction: column;
-        padding-top: 1rem;
-      }
+      background-color: var(--ss-bg-input);
     }
 
     /* ========== CARDS ========== */
@@ -166,14 +127,7 @@
       border: 1px solid var(--ss-border);
       border-radius: 8px;
     }
-    .card-header {
-      background-color: transparent;
-      border-bottom: 1px solid var(--ss-border);
-      padding: 12px 16px;
-    }
-    .card-body {
-      padding: 16px;
-    }
+    .card-body { padding: 16px; }
     .card-title {
       font-size: 12px;
       font-weight: 700;
@@ -194,10 +148,7 @@
       justify-content: center;
       gap: 6px;
     }
-    .btn svg {
-      width: 16px;
-      height: 16px;
-    }
+    .btn svg { width: 16px; height: 16px; }
     .btn-primary {
       background-color: var(--ss-text);
       border-color: var(--ss-text);
@@ -208,14 +159,13 @@
       border-color: #fff;
       color: var(--ss-bg-card);
     }
-    .btn-secondary, .btn-outline-secondary {
+    .btn-secondary {
       background-color: transparent;
       border: 1px solid var(--ss-text);
       color: var(--ss-text);
     }
-    .btn-secondary:hover, .btn-outline-secondary:hover {
+    .btn-secondary:hover {
       background-color: rgba(215, 218, 220, 0.1);
-      border-color: var(--ss-text);
       color: #fff;
     }
     .btn-danger {
@@ -223,26 +173,12 @@
       border-color: var(--ss-accent);
       color: #fff;
     }
-    .btn-danger:hover {
-      background-color: var(--ss-accent-hover);
-      border-color: var(--ss-accent-hover);
-    }
     .btn-link {
       color: var(--ss-text-muted);
-      text-decoration: none;
       padding: 4px 8px;
     }
-    .btn-link:hover {
-      color: var(--ss-text);
-    }
-    .btn-sm {
-      padding: 6px 12px;
-      font-size: 13px;
-    }
-    .btn-lg {
-      padding: 12px 24px;
-      font-size: 16px;
-    }
+    .btn-link:hover { color: var(--ss-text); }
+    .btn-sm { padding: 6px 12px; font-size: 13px; }
 
     /* ========== FORMS ========== */
     .form-label {
@@ -267,13 +203,8 @@
       color: var(--ss-text);
       box-shadow: none;
     }
-    .form-control::placeholder {
-      color: var(--ss-text-muted);
-    }
-    .form-text {
-      color: var(--ss-text-muted);
-      font-size: 12px;
-    }
+    .form-control::placeholder { color: var(--ss-text-muted); }
+    .form-text { color: var(--ss-text-muted); font-size: 12px; }
     .form-check-input {
       background-color: var(--ss-bg-input);
       border-color: var(--ss-border);
@@ -284,23 +215,11 @@
       background-color: var(--ss-accent);
       border-color: var(--ss-accent);
     }
-    .form-check-input:focus {
-      box-shadow: none;
-      border-color: var(--ss-text);
-    }
-    .form-check-label {
-      color: var(--ss-text);
-      margin-left: 4px;
-    }
+    .form-check-input:focus { box-shadow: none; }
 
     /* ========== TABLES ========== */
-    .table {
-      color: var(--ss-text);
-      margin-bottom: 0;
-    }
-    .table > thead {
-      background-color: var(--ss-bg-input);
-    }
+    .table { color: var(--ss-text); margin-bottom: 0; }
+    .table > thead { background-color: var(--ss-bg-input); }
     .table > thead th {
       font-size: 11px;
       font-weight: 700;
@@ -315,69 +234,27 @@
       padding: 10px 12px;
       vertical-align: middle;
     }
-    .table > tbody tr:hover {
-      background-color: var(--ss-bg-input);
-    }
-    .table-sortable th {
-      cursor: pointer;
-      user-select: none;
-    }
-    .table-sortable th:hover {
-      color: var(--ss-text);
-    }
+    .table > tbody tr:hover { background-color: var(--ss-bg-input); }
 
     /* ========== BADGES ========== */
     .badge {
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.3px;
       padding: 4px 8px;
       border-radius: 12px;
     }
-    .badge.bg-success {
-      background-color: #1A472A !important;
-      color: var(--ss-success);
-    }
-    .badge.bg-warning {
-      background-color: #4D3800 !important;
-      color: var(--ss-warning);
-    }
-    .badge.bg-danger {
-      background-color: #4A1616 !important;
-      color: var(--ss-danger);
-    }
-    .badge.bg-info {
-      background-color: #1A3D5C !important;
-      color: var(--ss-info);
-    }
-    .badge.bg-secondary {
-      background-color: var(--ss-border) !important;
-      color: var(--ss-text-muted);
-    }
+    .badge.bg-success { background-color: #1A472A !important; color: var(--ss-success); }
+    .badge.bg-warning { background-color: #4D3800 !important; color: var(--ss-warning); }
+    .badge.bg-danger { background-color: #4A1616 !important; color: var(--ss-danger); }
+    .badge.bg-info { background-color: #1A3D5C !important; color: var(--ss-info); }
+    .badge.bg-secondary { background-color: var(--ss-border) !important; color: var(--ss-text-muted); }
 
     /* ========== ALERTS ========== */
-    .alert {
-      border-radius: 4px;
-      border: none;
-      padding: 12px 16px;
-    }
-    .alert-warning {
-      background-color: #4D3800;
-      color: var(--ss-warning);
-    }
-    .alert-success {
-      background-color: #1A472A;
-      color: var(--ss-success);
-    }
-    .alert-danger {
-      background-color: #4A1616;
-      color: var(--ss-danger);
-    }
-    .alert-info {
-      background-color: #1A3D5C;
-      color: var(--ss-info);
-    }
+    .alert { border-radius: 4px; border: none; padding: 12px 16px; }
+    .alert-warning { background-color: #4D3800; color: var(--ss-warning); }
+    .alert-success { background-color: #1A472A; color: var(--ss-success); }
+    .alert-danger { background-color: #4A1616; color: var(--ss-danger); }
 
     /* ========== MODAL ========== */
     .modal-content {
@@ -385,142 +262,62 @@
       border: 1px solid var(--ss-border);
       border-radius: 8px;
     }
-    .modal-header {
-      border-bottom: 1px solid var(--ss-border);
-      padding: 16px;
-    }
-    .modal-title {
-      font-size: 18px;
-      font-weight: 600;
-    }
-    .modal-body {
-      padding: 16px;
-    }
-    .modal-footer {
-      border-top: 1px solid var(--ss-border);
-      padding: 16px;
-    }
-    .btn-close {
-      filter: invert(1);
-    }
+    .modal-header { border-bottom: 1px solid var(--ss-border); padding: 16px; }
+    .modal-body { padding: 16px; }
+    .btn-close { filter: invert(1); }
 
     /* ========== FOOTER ========== */
     footer {
       background-color: var(--ss-bg-header);
       border-top: 1px solid var(--ss-border);
-      padding: 16px 0;
+      padding: 20px 0;
     }
-    footer a {
-      color: var(--ss-text-muted);
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
       font-size: 13px;
     }
-    footer a:hover {
-      color: var(--ss-text);
-    }
-
-    /* ========== UTILITIES ========== */
-    .text-muted {
-      color: var(--ss-text-muted) !important;
-    }
-    .text-accent {
-      color: var(--ss-accent);
-    }
-    .text-success {
-      color: var(--ss-success) !important;
-    }
-    .bg-input {
-      background-color: var(--ss-bg-input);
-    }
-    .border-custom {
-      border-color: var(--ss-border) !important;
-    }
-
-    /* Stat cards */
-    .stat-value {
-      font-size: 24px;
-      font-weight: 700;
-      color: var(--ss-text);
-      line-height: 1.2;
-    }
-    .stat-label {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+    .footer-links a { color: var(--ss-text-muted); }
+    .footer-links a:hover { color: var(--ss-text); }
+    .footer-links .divider { color: var(--ss-border); }
+    .footer-credit {
+      font-size: 13px;
       color: var(--ss-text-muted);
     }
+    .footer-credit a { color: var(--ss-text-muted); }
+    .footer-credit a:hover { color: var(--ss-text); }
 
-    /* Loader */
-    .spinner-border {
-      color: var(--ss-accent);
-    }
+    /* ========== UTILITIES ========== */
+    .text-muted { color: var(--ss-text-muted) !important; }
+    .text-accent { color: var(--ss-accent); }
+    .text-success { color: var(--ss-success) !important; }
+    .bg-input { background-color: var(--ss-bg-input); }
+    .border-custom { border-color: var(--ss-border) !important; }
 
-    /* Code blocks */
-    pre, code {
-      background-color: var(--ss-bg-page);
-      border: 1px solid var(--ss-border);
-      border-radius: 4px;
-      color: var(--ss-text);
-    }
-    code {
-      color: var(--ss-accent);
-      padding: 2px 6px;
-      border: none;
-      background-color: var(--ss-bg-input);
-    }
-    pre code {
-      color: var(--ss-text);
-      padding: 0;
-      background: none;
-    }
+    .stat-value { font-size: 24px; font-weight: 700; color: var(--ss-text); line-height: 1.2; }
+    .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--ss-text-muted); }
+    .spinner-border { color: var(--ss-accent); }
 
-    /* Custom list items */
+    pre, code { background-color: var(--ss-bg-page); border: 1px solid var(--ss-border); border-radius: 4px; color: var(--ss-text); }
+    code { color: var(--ss-accent); padding: 2px 6px; border: none; background-color: var(--ss-bg-input); }
+    pre code { color: var(--ss-text); padding: 0; background: none; }
+
     .list-group-item {
       background-color: var(--ss-bg-input);
       border-color: var(--ss-border);
       color: var(--ss-text);
       padding: 12px;
     }
-    .list-group-item:hover {
-      background-color: var(--ss-border);
-    }
-    .list-group-item + .list-group-item {
-      border-top-width: 1px;
-    }
 
-    /* Dancing sandwich animation */
     @keyframes dance {
       0%, 100% { transform: translateY(0) rotate(-5deg); }
       25% { transform: translateY(-8px) rotate(5deg); }
       50% { transform: translateY(0) rotate(-5deg); }
       75% { transform: translateY(-4px) rotate(3deg); }
     }
-    .dancing-sandwich {
-      animation: dance 1.5s ease-in-out infinite;
-      display: inline-block;
-    }
-
-    /* Pagination */
-    .pagination .page-link {
-      background-color: var(--ss-bg-input);
-      border-color: var(--ss-border);
-      color: var(--ss-text);
-    }
-    .pagination .page-link:hover {
-      background-color: var(--ss-border);
-      border-color: var(--ss-border);
-      color: #fff;
-    }
-    .pagination .page-item.active .page-link {
-      background-color: var(--ss-text);
-      border-color: var(--ss-text);
-      color: var(--ss-bg-card);
-    }
-    .pagination .page-item.disabled .page-link {
-      background-color: var(--ss-bg-input);
-      border-color: var(--ss-border);
-      color: var(--ss-text-muted);
-    }
+    .dancing-sandwich { animation: dance 1.5s ease-in-out infinite; display: inline-block; }
   </style>
 
   {% block head_extra %}{% endblock %}
@@ -528,8 +325,8 @@
 
 <body>
   <!-- Navbar -->
-  <nav class="navbar navbar-expand-md sticky-top">
-    <div class="container">
+  <nav class="navbar sticky-top">
+    <div class="container d-flex align-items-center justify-content-between">
       <a class="navbar-brand" href="{% url 'home' %}">
         <span class="logo-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -539,32 +336,11 @@
         <span class="d-none d-sm-inline">sub search</span>
       </a>
 
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav ms-auto gap-1">
-          <li class="nav-item">
-            <a class="nav-link{% if nav_active == 'home' %} active{% endif %}" href="{% url 'home' %}">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-              <span>Home</span>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link{% if nav_active == 'allsubs' %} active{% endif %}" href="{% url 'all_subs' %}">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
-              <span>All Subs</span>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link{% if nav_active == 'nodes' %} active{% endif %}" href="{% url 'nodes_home' %}">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/></svg>
-              <span>Nodes</span>
-            </a>
-          </li>
-        </ul>
-      </div>
+      <ul class="nav-links">
+        <li><a href="{% url 'home' %}"{% if nav_active == 'home' %} class="active"{% endif %}>Home</a></li>
+        <li><a href="{% url 'all_subs' %}"{% if nav_active == 'allsubs' %} class="active"{% endif %}>All Subs</a></li>
+        <li><a href="{% url 'nodes_home' %}"{% if nav_active == 'nodes' %} class="active"{% endif %}>Nodes</a></li>
+      </ul>
     </div>
   </nav>
 
@@ -597,19 +373,21 @@
   <!-- Footer -->
   <footer class="mt-auto">
     <div class="container">
-      <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3">
-        <nav class="d-flex flex-wrap gap-3">
-          <a href="{% url 'help' %}">Help</a>
-          <a href="{% url 'developer_docs' %}">API Docs</a>
-          <a href="{% url 'logs' %}">Activity Log</a>
-          <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" rel="noopener" class="d-flex align-items-center gap-1">
-            <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-            GitHub
-          </a>
-        </nav>
-        <span class="text-muted" style="font-size: 12px;">
-          Built by <a href="https://ericrosenberg.com" target="_blank">Eric Rosenberg</a>
-        </span>
+      <div class="row align-items-center">
+        <div class="col-12 col-md-auto mb-2 mb-md-0">
+          <div class="footer-links">
+            <a href="{% url 'help' %}">Help</a>
+            <span class="divider">&bull;</span>
+            <a href="{% url 'developer_docs' %}">API Docs</a>
+            <span class="divider">&bull;</span>
+            <a href="{% url 'logs' %}">Activity Log</a>
+            <span class="divider">&bull;</span>
+            <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" rel="noopener">GitHub</a>
+          </div>
+        </div>
+        <div class="col-12 col-md text-md-end">
+          <span class="footer-credit">an <a href="https://ericrosenberg.com" target="_blank">Eric Rosenberg</a> Project</span>
+        </div>
       </div>
     </div>
   </footer>
