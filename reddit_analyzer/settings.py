@@ -1,9 +1,11 @@
 """
 Django settings for Reddit Sub Analyzer.
 
-Supports fallback configuration:
-- PostgreSQL → SQLite (if PostgreSQL credentials missing)
-- Redis → Memory broker (if Redis unavailable)
+Production requirements:
+- PostgreSQL database (DB_POSTGRES_* environment variables)
+- Redis for Celery broker and caching (REDIS_URL)
+
+Development mode (DEBUG=1) falls back to SQLite and memory broker.
 """
 
 import os
@@ -437,35 +439,3 @@ LOGGING = {
     },
 }
 
-# =============================================================================
-# =============================================================================
-REDIS_URL = os.environ.get("REDIS_URL", "")
-
-if REDIS_URL:
-    CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.redis.RedisCache",
-            "LOCATION": REDIS_URL,
-            "KEY_PREFIX": "subsearch",
-            "TIMEOUT": 300,
-        }
-    }
-else:
-    CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "unique-subsearch",
-            "TIMEOUT": 300,
-        }
-    }
-
-# =============================================================================
-# FINAL cache override for docker-compose-apps (no Redis cache)
-# =============================================================================
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "unique-subsearch",
-        "TIMEOUT": 300,
-    }
-}

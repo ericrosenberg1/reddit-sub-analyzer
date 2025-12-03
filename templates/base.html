@@ -1,116 +1,121 @@
 {% load static %}
-<!doctype html>
-<html lang="en" class="h-full">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{% block title %}Sub Search - Reddit Subreddit Discovery{% endblock %}</title>
-    {% if site_url %}
-    <link rel="canonical" href="{{ site_url }}{{ request.path }}" />
-    {% endif %}
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
-    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'system-ui', 'sans-serif'],
-              display: ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
-            },
-            colors: {
-              brand: {
-                light: '#FBE36B',
-                DEFAULT: '#2BA84A',
-                dark: '#1A5A30',
-              },
-              slate: {
-                925: '#050f18',
-              },
-            },
-            boxShadow: {
-              brand: '0 18px 40px rgba(43, 168, 74, 0.35)',
-            },
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Sub Search - Reddit Subreddit Discovery{% endblock %}</title>
+  {% if site_url %}<link rel="canonical" href="{{ site_url }}{{ request.path }}">{% endif %}
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            display: ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            brand: { light: '#FBE36B', DEFAULT: '#2BA84A', dark: '#1A5A30' },
           },
         },
-      };
-    </script>
-    <link rel="stylesheet" href="{% static 'styles.css' %}" />
-    <script>
-      // CSRF token helper for AJAX requests
-      function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-          const cookies = document.cookie.split(';');
-          for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-              cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-              break;
-            }
+      },
+    };
+  </script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="{% static 'styles.css' %}">
+
+  <!-- CSRF Helper -->
+  <script>
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
           }
         }
-        return cookieValue;
       }
-      const csrfToken = getCookie('csrftoken');
-    </script>
-    {% block head_extra %}{% endblock %}
-  </head>
-  <body class="min-h-full bg-slate-950 text-slate-100 antialiased">
-    <div class="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_top_left,_rgba(43,168,74,0.25),_transparent_50%),_radial-gradient(circle_at_bottom_right,_rgba(251,227,107,0.15),_transparent_55%)]"></div>
-    <div class="relative z-10 flex min-h-screen flex-col">
-      <header class="sticky top-0 z-20 border-b border-white/10 bg-slate-950/80 backdrop-blur">
-        <div class="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4">
-          <a href="{% url 'home' %}" class="flex items-center gap-3 text-white">
-            <img src="{% static 'img/sub-sando-badge.svg' %}" alt="Sub Search logo" class="h-12 w-12 rounded-2xl bg-black/20 p-1 shadow-brand hero-art">
-            <div class="flex flex-col leading-[1.1]">
-              <span class="font-display text-xl">Sub Search</span>
-              <span class="text-xs text-white/50">Reddit Discovery Tool</span>
-            </div>
-          </a>
-          <nav class="flex items-center gap-2 text-sm font-semibold">
-            <a href="{% url 'home' %}" class="nav-link {% if nav_active == 'home' %}active{% endif %}">Home</a>
-            <a href="{% url 'nodes_home' %}" class="nav-link {% if nav_active == 'nodes' %}active{% endif %}">Nodes</a>
-            <a href="{% url 'all_subs' %}" class="nav-link {% if nav_active == 'allsubs' %}active{% endif %}">All The Subs</a>
-          </nav>
-        </div>
-      </header>
-      <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-10">
-        {% if config_warnings %}
-        <div class="mb-6 rounded-2xl border border-amber-400/40 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
-          <p class="font-semibold text-amber-50">Heads up: review your deployment settings.</p>
-          <ul class="mt-2 list-disc space-y-1 pl-5 text-amber-100/90">
-            {% for warning in config_warnings %}
-            <li>{{ warning }}</li>
-            {% endfor %}
-          </ul>
-        </div>
-        {% endif %}
-        {% if messages %}
-        <div class="mb-6 space-y-3">
-          {% for message in messages %}
-          <div class="rounded-2xl border px-4 py-3 text-sm {% if message.tags == 'success' %}border-green-500/40 bg-green-500/10 text-green-100{% elif message.tags == 'error' %}border-red-500/40 bg-red-500/10 text-red-100{% else %}border-sky-500/40 bg-sky-500/10 text-sky-100{% endif %}">
-            {{ message }}
+      return cookieValue;
+    }
+    const csrfToken = getCookie('csrftoken');
+  </script>
+
+  {% block head_extra %}{% endblock %}
+</head>
+
+<body class="min-h-screen flex flex-col">
+  <!-- Background gradient overlay -->
+  <div class="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_top_left,_rgba(43,168,74,0.2),_transparent_50%),_radial-gradient(circle_at_bottom_right,_rgba(251,227,107,0.12),_transparent_55%)]"></div>
+
+  <div class="relative z-10 flex min-h-screen flex-col">
+    <!-- Header -->
+    <header class="sticky top-0 z-20 border-b border-white/10 bg-slate-950/80 backdrop-blur">
+      <div class="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4">
+        <a href="{% url 'home' %}" class="flex items-center gap-3">
+          <img src="{% static 'img/sub-sando-badge.svg' %}" alt="Sub Search" class="h-12 w-12 rounded-2xl bg-black/20 p-1 hero-art">
+          <div class="flex flex-col leading-tight">
+            <span class="font-display text-xl text-white">Sub Search</span>
+            <span class="text-xs text-white/50">Reddit Discovery Tool</span>
           </div>
-          {% endfor %}
+        </a>
+        <nav class="flex items-center gap-2">
+          <a href="{% url 'home' %}" class="nav-link{% if nav_active == 'home' %} active{% endif %}">Home</a>
+          <a href="{% url 'nodes_home' %}" class="nav-link{% if nav_active == 'nodes' %} active{% endif %}">Nodes</a>
+          <a href="{% url 'all_subs' %}" class="nav-link{% if nav_active == 'allsubs' %} active{% endif %}">All The Subs</a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-10">
+      {% if config_warnings %}
+      <div class="alert alert-warning mb-6">
+        <p class="font-semibold">Heads up: review your deployment settings.</p>
+        <ul class="mt-2 list-disc pl-5">
+          {% for warning in config_warnings %}<li>{{ warning }}</li>{% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {% if messages %}
+      <div class="mb-6 space-y-3">
+        {% for message in messages %}
+        <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-error{% else %}alert-info{% endif %}">
+          {{ message }}
         </div>
-        {% endif %}
-        {% block content %}{% endblock %}
-      </main>
-      <footer class="border-t border-white/5 bg-slate-950/70">
-        <div class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-4 px-4 py-6 text-xs text-white/60">
-          <span>Open source on <a class="underline decoration-dotted" href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" rel="noopener">GitHub</a></span>
-          <span>•</span>
-          <span><a class="underline decoration-dotted" href="https://github.com/ericrosenberg1/reddit-sub-analyzer/blob/main/docs/HELP.md" target="_blank" rel="noopener">Help</a></span>
-          <span>•</span>
-          <span><a class="underline decoration-dotted" href="https://github.com/ericrosenberg1/reddit-sub-analyzer/blob/main/docs/DEVELOPERS.md" target="_blank" rel="noopener">Docs</a></span>
-          <span>•</span>
-          <span>{{ build_number }}</span>
-        </div>
-      </footer>
-    </div>
-    {% block scripts %}{% endblock %}
-  </body>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/5 bg-slate-950/70">
+      <div class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-4 px-4 py-6 text-xs text-white/60">
+        <span>Open source on <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer" target="_blank" rel="noopener" class="underline decoration-dotted hover:text-white">GitHub</a></span>
+        <span>•</span>
+        <a href="{% url 'help' %}" class="underline decoration-dotted hover:text-white">Help</a>
+        <span>•</span>
+        <a href="{% url 'developer_docs' %}" class="underline decoration-dotted hover:text-white">Docs</a>
+        <span>•</span>
+        <span>{{ build_number }}</span>
+      </div>
+    </footer>
+  </div>
+
+  {% block scripts %}{% endblock %}
+</body>
 </html>

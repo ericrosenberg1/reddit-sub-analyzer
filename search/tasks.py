@@ -58,8 +58,7 @@ def find_unmoderated_subreddits(
     result_callback=None,
 ):
     """
-    Connect to Reddit API and find subreddits.
-    This is a port of the Flask version's find_unmoderated_subreddits function.
+    Connect to Reddit API and find subreddits matching the given criteria.
     """
     import praw
     import prawcore

@@ -1,5 +1,5 @@
 [Unit]
-Description=Sub Search (Django) via Gunicorn
+Description=Sub Search Celery Beat Scheduler
 After=network.target postgresql.service redis.service
 Wants=network-online.target
 
@@ -9,7 +9,7 @@ User=subsearch
 Group=subsearch
 WorkingDirectory=/opt/subsearch
 EnvironmentFile=-/etc/subsearch.env
-ExecStart=/opt/subsearch/.venv/bin/gunicorn reddit_analyzer.wsgi:application --workers 4 --bind 127.0.0.1:${PORT:-8000}
+ExecStart=/opt/subsearch/.venv/bin/celery -A reddit_analyzer beat --loglevel=info
 Restart=on-failure
 RestartSec=5
 PrivateTmp=true

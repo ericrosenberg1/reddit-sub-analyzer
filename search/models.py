@@ -1,8 +1,5 @@
 """
 Django models for Reddit Sub Analyzer.
-
-These models replace the raw SQL tables from the Flask version with proper
-Django ORM models, maintaining full compatibility with the existing schema.
 """
 
 from django.db import models

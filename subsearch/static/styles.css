@@ -1,48 +1,592 @@
+/*
+ * Sub Search - Global Styles
+ * A comprehensive stylesheet that sets consistent defaults for all elements.
+ * Works alongside Tailwind CSS for utility classes.
+ */
+
+/* ==========================================================================
+   CSS Custom Properties (Design Tokens)
+   ========================================================================== */
 :root {
+  /* Color Scheme */
   color-scheme: dark;
-  --sub-green: #2ba84a;
-  --sub-yellow: #fbe36b;
-  --sub-bread: #f4b860;
-  --sub-navy: #050f18;
+
+  /* Brand Colors */
+  --color-brand: #2ba84a;
+  --color-brand-light: #fbe36b;
+  --color-brand-dark: #1a5a30;
+
+  /* Background Colors */
+  --color-bg-primary: #02070e;
+  --color-bg-secondary: #0a1628;
+  --color-bg-surface: rgba(8, 18, 31, 0.85);
+  --color-bg-elevated: rgba(15, 23, 42, 0.9);
+
+  /* Text Colors */
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: rgba(255, 255, 255, 0.8);
+  --color-text-muted: rgba(255, 255, 255, 0.6);
+  --color-text-subtle: rgba(255, 255, 255, 0.4);
+
+  /* Border Colors */
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-border-focus: var(--color-brand);
+
+  /* Status Colors */
+  --color-success: #10b981;
+  --color-error: #ef4444;
+  --color-warning: #f59e0b;
+  --color-info: #0ea5e9;
+
+  /* Spacing Scale */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+
+  /* Border Radius Scale */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* Typography */
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 25px 40px rgba(5, 10, 20, 0.65);
+  --shadow-brand: 0 18px 40px rgba(43, 168, 74, 0.35);
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 300ms ease;
+}
+
+/* ==========================================================================
+   Base Reset & Defaults
+   ========================================================================== */
+
+/* Box sizing */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Remove default margins */
+body,
+h1, h2, h3, h4, h5, h6,
+p,
+figure,
+blockquote,
+dl, dd {
+  margin: 0;
+}
+
+/* Base document styles */
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: radial-gradient(circle at 10% 20%, rgba(43, 168, 74, 0.15), transparent 55%), radial-gradient(circle at 80% 0%, rgba(251, 227, 107, 0.08), transparent 50%), #02070e;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(43, 168, 74, 0.15), transparent 55%),
+    radial-gradient(circle at 80% 0%, rgba(251, 227, 107, 0.08), transparent 50%);
+  background-attachment: fixed;
 }
 
+/* ==========================================================================
+   Typography
+   ========================================================================== */
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-text-primary);
+  margin-bottom: 0.5em;
+}
+
+h1 { font-size: 2.25rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.125rem; }
+h5 { font-size: 1rem; }
+h6 { font-size: 0.875rem; }
+
+/* Body text */
+p {
+  color: var(--color-text-secondary);
+  margin-bottom: 1em;
+}
+
+p:last-child {
+  margin-bottom: 0;
+}
+
+/* Small text */
+small,
+.text-sm {
+  font-size: 0.875rem;
+}
+
+.text-xs {
+  font-size: 0.75rem;
+}
+
+/* Links */
+a {
+  color: var(--color-brand);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-brand-light);
+}
+
+/* Code */
+code,
+pre {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.875em;
+}
+
+code {
+  padding: 0.125em 0.375em;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  color: var(--color-brand-light);
+}
+
+pre {
+  padding: var(--space-md);
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+}
+
+pre code {
+  padding: 0;
+  background: none;
+}
+
+/* Lists */
+ul, ol {
+  padding-left: 1.5em;
+  margin-bottom: 1em;
+  color: var(--color-text-secondary);
+}
+
+li {
+  margin-bottom: 0.5em;
+}
+
+li:last-child {
+  margin-bottom: 0;
+}
+
+/* ==========================================================================
+   Form Elements
+   ========================================================================== */
+
+/* Base input styles */
+input,
+textarea,
+select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-subtle);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 3px rgba(43, 168, 74, 0.25);
+}
+
+/* Disabled state */
+input:disabled,
+textarea:disabled,
+select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Checkbox and radio */
+input[type="checkbox"],
+input[type="radio"] {
+  width: auto;
+  padding: 0;
+  accent-color: var(--color-brand);
+}
+
+/* Select dropdown */
+select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' fill-opacity='0.6' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.5rem;
+}
+
+/* Labels */
+label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+/* Form help text */
+.form-help {
+  margin-top: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
+button,
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-decoration: none;
+  border: none;
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+/* Primary button (gradient) */
+.btn-primary,
+button[type="submit"] {
+  color: var(--color-bg-primary);
+  background: linear-gradient(135deg, var(--color-brand), var(--color-brand-light));
+  box-shadow: var(--shadow-brand);
+}
+
+.btn-primary:hover,
+button[type="submit"]:hover {
+  transform: scale(1.02);
+  filter: brightness(1.05);
+}
+
+/* Secondary button */
+.btn-secondary {
+  color: var(--color-brand);
+  background: rgba(43, 168, 74, 0.15);
+}
+
+.btn-secondary:hover {
+  background: rgba(43, 168, 74, 0.25);
+  color: var(--color-brand-light);
+}
+
+/* Ghost button */
+.btn-ghost {
+  color: var(--color-text-muted);
+  background: transparent;
+}
+
+.btn-ghost:hover {
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Danger button */
+.btn-danger {
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+/* Disabled button */
+button:disabled,
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* ==========================================================================
+   Navigation
+   ========================================================================== */
+
 .nav-link {
-  border-radius: 9999px;
-  padding: 0.35rem 0.9rem;
-  color: rgba(255, 255, 255, 0.65);
-  transition: color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.375rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: transparent;
+  border-radius: var(--radius-full);
+  text-decoration: none;
+  transition: color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .nav-link:hover {
-  color: #fff;
+  color: var(--color-text-primary);
   background: rgba(255, 255, 255, 0.08);
 }
 
 .nav-link.active {
-  color: #041014;
-  background: linear-gradient(120deg, var(--sub-green), var(--sub-yellow));
+  color: var(--color-bg-primary);
+  background: linear-gradient(120deg, var(--color-brand), var(--color-brand-light));
   box-shadow: 0 12px 30px rgba(43, 168, 74, 0.35);
 }
 
+/* ==========================================================================
+   Cards & Panels
+   ========================================================================== */
+
+.panel,
 .panel-surface {
-  background: radial-gradient(circle at top left, rgba(251, 227, 107, 0.12), transparent 45%), radial-gradient(circle at top right, rgba(43, 168, 74, 0.12), transparent 55%), rgba(8, 18, 31, 0.85);
-  border: 1px solid rgba(251, 227, 107, 0.14);
-  border-radius: 1.25rem;
-  box-shadow: 0 25px 40px rgba(5, 10, 20, 0.65);
+  background: var(--color-bg-surface);
+  background-image:
+    radial-gradient(circle at top left, rgba(251, 227, 107, 0.08), transparent 45%),
+    radial-gradient(circle at top right, rgba(43, 168, 74, 0.08), transparent 55%);
+  border: 1px solid rgba(251, 227, 107, 0.12);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-xl);
 }
 
+.card {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+}
+
+/* ==========================================================================
+   Tables
+   ========================================================================== */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+thead {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+th {
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-subtle);
+  border-bottom: 1px solid var(--color-border);
+}
+
+th[data-sort] {
+  cursor: pointer;
+  user-select: none;
+}
+
+th[data-sort]:hover {
+  color: var(--color-text-primary);
+}
+
+td {
+  padding: 1rem;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  vertical-align: top;
+}
+
+tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* ==========================================================================
+   Status Badges
+   ========================================================================== */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  border-radius: var(--radius-full);
+}
+
+.badge-success {
+  color: #a7f3d0;
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.badge-error {
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.badge-warning {
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.badge-info {
+  color: #bae6fd;
+  background: rgba(14, 165, 233, 0.15);
+}
+
+.badge-neutral {
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ==========================================================================
+   Alerts & Messages
+   ========================================================================== */
+
+.alert {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-lg);
+  font-size: 0.875rem;
+  border: 1px solid;
+}
+
+.alert-success {
+  color: #a7f3d0;
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.alert-error {
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.alert-warning {
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.alert-info {
+  color: #bae6fd;
+  background: rgba(14, 165, 233, 0.1);
+  border-color: rgba(14, 165, 233, 0.3);
+}
+
+/* ==========================================================================
+   Loading States
+   ========================================================================== */
+
 .loader {
-  width: 1.9rem;
-  height: 1.9rem;
-  border-radius: 9999px;
+  width: 1.75rem;
+  height: 1.75rem;
   border: 3px solid rgba(255, 255, 255, 0.2);
-  border-top-color: var(--sub-yellow);
-  animation: spin 0.9s linear infinite;
+  border-top-color: var(--color-brand-light);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.05) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-md);
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ==========================================================================
+   Utility Classes
+   ========================================================================== */
+
+/* Text utilities */
+.text-brand { color: var(--color-brand); }
+.text-brand-light { color: var(--color-brand-light); }
+.text-muted { color: var(--color-text-muted); }
+.text-subtle { color: var(--color-text-subtle); }
+
+/* Display */
+.font-display { font-family: var(--font-display); }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+
+/* Tracking (letter-spacing) */
+.tracking-wide { letter-spacing: 0.025em; }
+.tracking-wider { letter-spacing: 0.05em; }
+.tracking-widest { letter-spacing: 0.1em; }
+.tracking-label { letter-spacing: 0.2em; }
+
+/* Line clamping */
+.clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .clamp-2 {
@@ -52,18 +596,82 @@ body {
   overflow: hidden;
 }
 
+.clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Image effects */
 .hero-art {
   filter: drop-shadow(0 20px 35px rgba(4, 16, 20, 0.8));
 }
 
+/* Section label styling */
+.section-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--color-text-muted);
+  margin-bottom: 0.5rem;
+}
+
+/* Stats display */
+.stat-value {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--color-text-subtle);
+}
+
+/* Data chip */
 .data-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
   border: 1px solid rgba(251, 227, 107, 0.4);
   background: rgba(251, 227, 107, 0.1);
   color: rgba(251, 227, 107, 0.9);
+  border-radius: var(--radius-full);
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
+/* ==========================================================================
+   Responsive Utilities
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  h1 { font-size: 1.75rem; }
+  h2 { font-size: 1.25rem; }
+
+  .panel,
+  .panel-surface {
+    border-radius: var(--radius-xl);
+  }
+}
+
+/* ==========================================================================
+   Print Styles
+   ========================================================================== */
+
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+
+  .nav-link,
+  .btn,
+  button {
+    display: none;
   }
 }

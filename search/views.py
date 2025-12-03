@@ -1,7 +1,6 @@
 """
 Django views for Reddit Sub Search.
 
-These views port the Flask routes to Django with similar functionality.
 Includes security hardening, input sanitization, and caching.
 """
 
@@ -158,15 +157,6 @@ def home_with_job(request, job_id):
     if not sanitized_job_id:
         return redirect('home')
     return redirect(f'/?job={sanitized_job_id}')
-
-
-def _sanitize_keyword(s):
-    """Sanitize keyword to prevent injection."""
-    if not s:
-        return ''
-    s = s[:64]
-    sanitized = re.sub(r'[^A-Za-z0-9 _\-]', '', s)
-    return ' '.join(sanitized.split()).strip()
 
 
 def _get_summary_stats():
@@ -594,19 +584,6 @@ def _parse_bool(value):
     if val in ('0', 'false', 'no', 'n', 'off'):
         return False
     return None
-
-
-def _safe_int(value, default=None):
-    """Safely parse integer from query string."""
-    if value is None:
-        return default
-    try:
-        cleaned = str(value).replace(',', '').strip()
-        if cleaned == '':
-            return default
-        return int(cleaned)
-    except (TypeError, ValueError):
-        return default
 
 
 def favicon(request):
