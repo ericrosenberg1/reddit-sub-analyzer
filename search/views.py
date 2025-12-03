@@ -474,7 +474,12 @@ def api_subreddits(request):
     job_id = InputSanitizer.sanitize_job_id(job_id_raw) if job_id_raw else ''
 
     # Validate sort field (prevent SQL injection via sort)
-    valid_sort_fields = {'name', 'title', 'subscribers', 'updated_at', 'first_seen_at', 'mod_count'}
+    # Map frontend field names to database field names
+    sort_field_map = {
+        'mod_activity': 'last_activity_utc',
+    }
+    sort = sort_field_map.get(sort, sort)
+    valid_sort_fields = {'name', 'title', 'subscribers', 'updated_at', 'first_seen_at', 'mod_count', 'last_activity_utc'}
     if sort not in valid_sort_fields:
         sort = 'subscribers'
 
