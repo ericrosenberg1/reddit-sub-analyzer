@@ -126,7 +126,7 @@
 </div>
 
 <!-- Search Status Modal (hidden by default) -->
-<div id="search-modal" class="modal-backdrop hidden">
+<div id="search-modal" class="modal-backdrop">
   <div class="modal-content p-6">
     <div class="flex items-center justify-between mb-4">
       <h3 class="text-lg font-bold text-[#D7DADC]">Search in Progress</h3>
@@ -452,12 +452,12 @@ const modal = document.getElementById('search-modal');
 const modalClose = document.getElementById('modal-close');
 
 function showModal() {
-  modal.classList.remove('hidden');
+  modal.classList.add('show');
   document.body.style.overflow = 'hidden';
 }
 
 function hideModal() {
-  modal.classList.add('hidden');
+  modal.classList.remove('show');
   document.body.style.overflow = '';
 }
 

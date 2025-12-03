@@ -421,10 +421,13 @@
       inset: 0;
       background-color: rgba(0, 0, 0, 0.7);
       z-index: 100;
-      display: flex;
+      display: none;
       align-items: center;
       justify-content: center;
       padding: 1rem;
+    }
+    .modal-backdrop.show {
+      display: flex;
     }
     .modal-content {
       background-color: #1A1A1B;
