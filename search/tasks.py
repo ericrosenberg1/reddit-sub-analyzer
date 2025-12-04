@@ -343,10 +343,18 @@ def run_sub_search(self, job_id: str):
 
 def _query_existing_matches(query_run):
     """Query database for existing subreddit matches."""
+    from django.db.models import Q
+
     qs = Subreddit.objects.all()
 
     if query_run.keyword:
-        qs = qs.filter(name__icontains=query_run.keyword)
+        # Search by name, title, and description for loose keyword matching
+        keyword = query_run.keyword
+        qs = qs.filter(
+            Q(name__icontains=keyword) |
+            Q(title__icontains=keyword) |
+            Q(public_description__icontains=keyword)
+        )
 
     if query_run.unmoderated_only:
         qs = qs.filter(is_unmoderated=True)
