@@ -319,12 +319,14 @@ def run_sub_search(self, job_id: str):
         if results_buffer:
             _flush_results(query_run, results_buffer)
 
-        # Count total results
-        api_results = payload.get('results', []) if isinstance(payload, dict) else payload
-        total_count = len(existing_matches) + len(api_results)
+        # Count total results - use 'evaluated' (all subs found) not 'results' (filtered)
+        # This way the result count shows all keyword matches, not just filtered ones
+        api_evaluated = payload.get('evaluated', []) if isinstance(payload, dict) else payload
+        total_count = len(existing_matches) + len(api_evaluated)
 
         query_run.mark_complete(result_count=total_count)
-        logger.info("Job %s completed with %d results", job_id, total_count)
+        logger.info("Job %s completed with %d results (%d from DB, %d from API)",
+                   job_id, total_count, len(existing_matches), len(api_evaluated))
 
         # Send email notification if requested
         if query_run.notification_email:
@@ -354,7 +356,13 @@ def run_sub_search(self, job_id: str):
 
 
 def _query_existing_matches(query_run):
-    """Query database for existing subreddit matches."""
+    """Query database for existing subreddit matches by keyword only.
+
+    Note: This only matches by keyword (name/title/description).
+    User filters (unmoderated, nsfw, subscribers) are NOT applied here
+    because we want the result count to reflect keyword matches,
+    not filtered results. Filters are applied when viewing/downloading.
+    """
     from django.db.models import Q
 
     qs = Subreddit.objects.all()
@@ -367,15 +375,9 @@ def _query_existing_matches(query_run):
             Q(title__icontains=keyword) |
             Q(public_description__icontains=keyword)
         )
-
-    if query_run.unmoderated_only:
-        qs = qs.filter(is_unmoderated=True)
-
-    if query_run.exclude_nsfw:
-        qs = qs.filter(is_nsfw=False)
-
-    if query_run.min_subscribers:
-        qs = qs.filter(subscribers__gte=query_run.min_subscribers)
+    else:
+        # No keyword means no matches from existing DB
+        return []
 
     # Limit to reasonable amount
     return list(qs.order_by('-subscribers')[:5000])
