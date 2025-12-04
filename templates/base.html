@@ -88,6 +88,7 @@
     }
     .navbar .container {
       height: 100%;
+      flex-wrap: nowrap;
     }
     .navbar-brand {
       display: flex;
@@ -117,10 +118,11 @@
     .nav-pills-custom {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       margin: 0;
       padding: 0;
       list-style: none;
+      flex-wrap: nowrap;
     }
     .nav-pill {
       display: flex;
@@ -133,6 +135,7 @@
       overflow: hidden;
       text-decoration: none;
       transition: all 0.2s ease;
+      flex-shrink: 0;
     }
     .nav-pill:hover {
       background: linear-gradient(135deg, rgba(70, 209, 96, 0.25) 0%, rgba(255, 214, 53, 0.25) 100%);
@@ -147,30 +150,36 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
       background: linear-gradient(135deg, var(--ss-success) 0%, var(--ss-warning) 100%);
       border-radius: 20px 0 0 20px;
     }
     .nav-pill-icon svg {
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
       color: #000;
     }
     .nav-pill-text {
-      padding: 6px 12px 6px 8px;
+      padding: 5px 10px 5px 6px;
       font-weight: 600;
-      font-size: 13px;
+      font-size: 12px;
       color: var(--ss-text);
       white-space: nowrap;
     }
     .nav-pill:hover .nav-pill-text { color: #fff; }
+    /* Hide pill text on small screens, show only icons */
+    @media (max-width: 767px) {
+      .nav-pill-text { display: none; }
+      .nav-pill-icon { border-radius: 20px; }
+    }
 
     .dancing-sandwich {
       animation: dance 1.5s ease-in-out infinite;
       display: inline-block;
-      font-size: 1.8rem;
-      margin-left: 12px;
+      font-size: 1.5rem;
+      margin-left: 8px;
+      flex-shrink: 0;
     }
 
     /* ========== CARDS - Enhanced ========== */
