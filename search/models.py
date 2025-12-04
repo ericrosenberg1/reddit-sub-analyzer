@@ -242,11 +242,29 @@ class Subreddit(models.Model):
         if query_run:
             defaults['last_seen_run'] = query_run
 
-        sub, created = cls.objects.update_or_create(
-            name__iexact=name,
-            defaults=defaults
-        )
-        return sub
+        # Use get_or_create pattern to avoid race conditions with iexact lookup
+        # First try to find existing record (case-insensitive)
+        existing = cls.objects.filter(name__iexact=name).first()
+        if existing:
+            # Update existing record
+            for key, value in defaults.items():
+                setattr(existing, key, value)
+            existing.save()
+            return existing
+        else:
+            # Create new record with explicit name
+            defaults['name'] = name
+            try:
+                return cls.objects.create(**defaults)
+            except Exception:
+                # Handle race condition - another process may have created it
+                existing = cls.objects.filter(name__iexact=name).first()
+                if existing:
+                    for key, value in defaults.items():
+                        setattr(existing, key, value)
+                    existing.save()
+                    return existing
+                raise
 
 
 class SummaryCache(models.Model):
