@@ -185,11 +185,26 @@
       .nav-pill-icon { border-radius: 20px; }
     }
 
-    .dancing-sandwich {
-      animation: dance 1.5s ease-in-out infinite;
+    .nav-sandwich {
       display: inline-block;
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       flex-shrink: 0;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+      user-select: none;
+    }
+    .nav-sandwich:hover {
+      transform: scale(1.15);
+    }
+    .nav-sandwich:active {
+      transform: scale(0.95);
+    }
+    .flying-sub {
+      position: fixed;
+      font-size: 3rem;
+      z-index: 9999;
+      pointer-events: none;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
     }
 
     /* ========== CARDS - LCARS Style ========== */
@@ -622,12 +637,6 @@
       padding: 12px;
     }
 
-    @keyframes dance {
-      0%, 100% { transform: translateY(0) rotate(-5deg); }
-      25% { transform: translateY(-8px) rotate(5deg); }
-      50% { transform: translateY(0) rotate(-5deg); }
-      75% { transform: translateY(-4px) rotate(3deg); }
-    }
 
     /* ========== RESPONSIVE CONTAINER ========== */
     .container {
@@ -702,7 +711,7 @@
             </a>
           </li>
           <li class="d-none d-md-block">
-            <span class="dancing-sandwich" title="Fresh subs daily!">&#129386;</span>
+            <span class="nav-sandwich" id="nav-sandwich" title="Fresh subs daily!">🥖</span>
           </li>
         </ul>
       </div>
@@ -786,6 +795,88 @@
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+
+  <!-- Flying Sub Easter Egg -->
+  <script>
+  (function() {
+    const sandwich = document.getElementById('nav-sandwich');
+    if (!sandwich) return;
+
+    // Golf swing sound as base64 (short swoosh)
+    const golfSwingSound = new Audio('data:audio/mp3;base64,//uQxAAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7kMQAA8AAADSAAAAANIAAADSAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV');
+    golfSwingSound.volume = 0.3;
+
+    function flyingSub() {
+      // Play golf swing sound
+      golfSwingSound.currentTime = 0;
+      golfSwingSound.play().catch(() => {});
+
+      // Create flying sub element
+      const sub = document.createElement('div');
+      sub.className = 'flying-sub';
+      sub.textContent = '🥪';
+      document.body.appendChild(sub);
+
+      // Random entry/exit points on different edges
+      const edges = ['top', 'bottom', 'left', 'right'];
+      const entryEdge = edges[Math.floor(Math.random() * edges.length)];
+      let exitEdge;
+      do {
+        exitEdge = edges[Math.floor(Math.random() * edges.length)];
+      } while (exitEdge === entryEdge);
+
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      function getPoint(edge) {
+        switch(edge) {
+          case 'top': return { x: Math.random() * vw, y: -50 };
+          case 'bottom': return { x: Math.random() * vw, y: vh + 50 };
+          case 'left': return { x: -50, y: Math.random() * vh };
+          case 'right': return { x: vw + 50, y: Math.random() * vh };
+        }
+      }
+
+      const start = getPoint(entryEdge);
+      const end = getPoint(exitEdge);
+
+      // Calculate rotation based on direction
+      const angle = Math.atan2(end.y - start.y, end.x - start.x) * (180 / Math.PI);
+
+      sub.style.left = start.x + 'px';
+      sub.style.top = start.y + 'px';
+      sub.style.transform = `rotate(${angle}deg)`;
+
+      // Animate across screen
+      const duration = 800 + Math.random() * 400;
+      const startTime = performance.now();
+
+      function animate(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // Ease out cubic
+        const eased = 1 - Math.pow(1 - progress, 3);
+
+        const x = start.x + (end.x - start.x) * eased;
+        const y = start.y + (end.y - start.y) * eased;
+
+        sub.style.left = x + 'px';
+        sub.style.top = y + 'px';
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          sub.remove();
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    sandwich.addEventListener('click', flyingSub);
+  })();
+  </script>
 
   {% block scripts %}{% endblock %}
 </body>
