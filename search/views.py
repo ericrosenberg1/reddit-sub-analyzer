@@ -34,8 +34,9 @@ def home(request):
     if request.method == 'POST':
         return _handle_search_submission(request)
 
-    # Get rolling 24h stats
+    # Get rolling 24h stats and summary stats for Database Stats panel
     rolling_stats = RollingStats.get_stats()
+    stats = _get_summary_stats()
 
     # Recent user searches
     recent_user_runs = list(
@@ -65,6 +66,7 @@ def home(request):
     random_search_interval = getattr(settings, 'AUTO_RANDOM_SEARCH_INTERVAL_MINUTES', 30)
 
     return render(request, 'home.html', {
+        'stats': stats,
         'rolling_stats': rolling_stats,
         'recent_user_runs': recent_user_runs,
         'random_run': random_run,

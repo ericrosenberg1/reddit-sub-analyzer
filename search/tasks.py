@@ -131,42 +131,30 @@ def find_unmoderated_subreddits(
                 pass
 
         latest_post_utc = None
+        passes_filters = True  # Track if sub passes user's filters
 
         try:
-            # NSFW filter
-            if exclude_nsfw:
-                try:
-                    if getattr(subreddit, 'over18', False):
-                        continue
-                except (praw.exceptions.PRAWException, prawcore.exceptions.PrawcoreException, AttributeError):
-                    continue
+            # Get basic info first - we save ALL subreddits to database
+            display_name = getattr(subreddit, 'display_name', 'unknown')
+            display_name_prefixed = getattr(subreddit, 'display_name_prefixed', f"r/{display_name}")
+            title = getattr(subreddit, 'title', display_name)
+            public_description = getattr(subreddit, 'public_description', '') or ''
+            is_nsfw = bool(getattr(subreddit, 'over18', False))
 
-            # Activity filter
-            if activity_mode in ("active_after", "inactive_before") and activity_threshold_utc:
-                try:
-                    for post in subreddit.new(limit=1):
-                        latest_post_utc = getattr(post, 'created_utc', None)
-                        break
-                    if latest_post_utc is None:
-                        continue
-                    if activity_mode == "active_after" and latest_post_utc < activity_threshold_utc:
-                        continue
-                    if activity_mode == "inactive_before" and latest_post_utc >= activity_threshold_utc:
-                        continue
-                except (praw.exceptions.PRAWException, prawcore.exceptions.PrawcoreException, AttributeError):
-                    continue
+            # Skip if already in our exclude set (already in DB from this search)
+            name_key = (display_name or "").strip().lower()
+            if normalized_excludes and name_key in normalized_excludes:
+                continue
 
-            # Subscriber count
+            # Get subscriber count
             subscribers = None
             try:
                 subscribers = subreddit.subscribers
             except (praw.exceptions.PRAWException, prawcore.exceptions.PrawcoreException, AttributeError):
                 subscribers = None
             subs_count = subscribers if isinstance(subscribers, int) else (subscribers or 0)
-            if subs_count < (min_subscribers or 0):
-                continue
 
-            # Moderator count
+            # Get moderator count
             try:
                 moderators = list(subreddit.moderator())
                 real_mods = [
@@ -177,11 +165,16 @@ def find_unmoderated_subreddits(
             except (praw.exceptions.PRAWException, prawcore.exceptions.PrawcoreException, AttributeError):
                 mod_count = None
 
-            display_name = getattr(subreddit, 'display_name', 'unknown')
-            display_name_prefixed = getattr(subreddit, 'display_name_prefixed', f"r/{display_name}")
-            title = getattr(subreddit, 'title', display_name)
-            public_description = getattr(subreddit, 'public_description', '') or ''
+            # Get activity info if filter is active
+            if activity_mode in ("active_after", "inactive_before") and activity_threshold_utc:
+                try:
+                    for post in subreddit.new(limit=1):
+                        latest_post_utc = getattr(post, 'created_utc', None)
+                        break
+                except (praw.exceptions.PRAWException, prawcore.exceptions.PrawcoreException, AttributeError):
+                    pass
 
+            # Build sub_info - this gets saved to DB regardless of filters
             sub_info = {
                 'name': display_name,
                 'display_name_prefixed': display_name_prefixed,
@@ -190,29 +183,48 @@ def find_unmoderated_subreddits(
                 'subscribers': subs_count,
                 'url': f"https://reddit.com{getattr(subreddit, 'url', '/')}",
                 'is_unmoderated': bool(mod_count == 0) if mod_count is not None else False,
-                'is_nsfw': bool(getattr(subreddit, 'over18', False)),
+                'is_nsfw': is_nsfw,
                 'mod_count': mod_count,
                 'last_activity_utc': latest_post_utc,
             }
 
-            # Skip if already seen
-            name_key = (display_name or "").strip().lower()
-            if normalized_excludes and name_key in normalized_excludes:
-                continue
-
-            evaluated_subs.append(sub_info)
-
-            if not unmoderated_only or sub_info['is_unmoderated']:
-                filtered_subs.append(sub_info)
-                if unmoderated_only:
-                    logger.info("Found unmoderated: %s (%s subscribers)",
-                               sub_info['display_name_prefixed'], sub_info['subscribers'])
-
+            # ALWAYS save to database via result_callback
             if result_callback:
                 try:
                     result_callback(dict(sub_info))
                 except Exception:
                     logger.debug("Result callback failed for %s", sub_info.get("name"), exc_info=True)
+
+            evaluated_subs.append(sub_info)
+
+            # Now apply user's filters to determine if it counts in results
+            # NSFW filter
+            if exclude_nsfw and is_nsfw:
+                passes_filters = False
+
+            # Subscriber count filter
+            if passes_filters and subs_count < (min_subscribers or 0):
+                passes_filters = False
+
+            # Activity filter
+            if passes_filters and activity_mode in ("active_after", "inactive_before") and activity_threshold_utc:
+                if latest_post_utc is None:
+                    passes_filters = False
+                elif activity_mode == "active_after" and latest_post_utc < activity_threshold_utc:
+                    passes_filters = False
+                elif activity_mode == "inactive_before" and latest_post_utc >= activity_threshold_utc:
+                    passes_filters = False
+
+            # Unmoderated filter
+            if passes_filters and unmoderated_only and not sub_info['is_unmoderated']:
+                passes_filters = False
+
+            # Add to filtered results if passes all filters
+            if passes_filters:
+                filtered_subs.append(sub_info)
+                if unmoderated_only and sub_info['is_unmoderated']:
+                    logger.info("Found unmoderated: %s (%s subscribers)",
+                               sub_info['display_name_prefixed'], sub_info['subscribers'])
 
         except Exception:
             pass
