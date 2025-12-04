@@ -570,6 +570,108 @@ def cleanup_stale_jobs():
     return {'cleaned': count}
 
 
+# Priority for retried searches (between user=0 and auto=9)
+PRIORITY_RETRY = 5
+
+
+@shared_task
+def retry_errored_searches():
+    """
+    Re-queue errored user searches with medium priority.
+
+    Runs every 10 minutes. Finds errored SUB_SEARCH jobs and re-queues them
+    with priority 5 (between user priority 0 and auto priority 9).
+    """
+    # Find errored user searches from the last 24 hours
+    cutoff = timezone.now() - timedelta(hours=24)
+
+    errored_jobs = QueryRun.objects.filter(
+        source=QueryRun.Source.SUB_SEARCH,
+        state=QueryRun.State.ERROR,
+        completed_at__gte=cutoff,
+    ).exclude(
+        error__icontains='stopped by user'  # Don't retry user-stopped jobs
+    ).order_by('started_at')[:10]  # Limit to 10 retries per run
+
+    retried = 0
+    for job in errored_jobs:
+        # Create a new job with the same parameters
+        new_job_id = uuid.uuid4().hex
+
+        new_job = QueryRun.objects.create(
+            job_id=new_job_id,
+            source=QueryRun.Source.SUB_SEARCH,
+            state=QueryRun.State.QUEUED,
+            keyword=job.keyword,
+            limit_value=job.limit_value,
+            unmoderated_only=job.unmoderated_only,
+            exclude_nsfw=job.exclude_nsfw,
+            min_subscribers=job.min_subscribers,
+            activity_mode=job.activity_mode,
+            activity_threshold_utc=job.activity_threshold_utc,
+            priority=PRIORITY_RETRY,
+            notification_email=job.notification_email,
+        )
+
+        # Mark old job as superseded (update error message)
+        job.error = f"{job.error} (retried as {new_job_id})"
+        job.save(update_fields=['error'])
+
+        # Submit with medium priority
+        task = run_sub_search.apply_async(
+            args=[new_job_id],
+            priority=PRIORITY_RETRY,
+        )
+
+        new_job.celery_task_id = task.id
+        new_job.save(update_fields=['celery_task_id'])
+
+        logger.info("Retried errored search %s -> %s (keyword=%s)",
+                   job.job_id, new_job_id, job.keyword)
+        retried += 1
+
+    if retried:
+        logger.info("Retry task re-queued %d errored searches", retried)
+
+    return {'retried': retried}
+
+
+@shared_task
+def check_idle_and_run_random():
+    """
+    Check if queue is idle and run a random search if no search completed recently.
+
+    Runs every minute. If no search has completed in the last 7 minutes and
+    the queue is empty, triggers a random search.
+    """
+    # Check if anything is currently running or queued
+    active_jobs = QueryRun.objects.filter(
+        state__in=[QueryRun.State.PENDING, QueryRun.State.QUEUED, QueryRun.State.RUNNING]
+    ).exists()
+
+    if active_jobs:
+        # Queue is not idle, do nothing
+        return {'status': 'busy', 'triggered': False}
+
+    # Check when the last search completed
+    idle_threshold = timezone.now() - timedelta(minutes=7)
+
+    last_completed = QueryRun.objects.filter(
+        state=QueryRun.State.COMPLETE,
+        completed_at__isnull=False
+    ).order_by('-completed_at').first()
+
+    if last_completed and last_completed.completed_at > idle_threshold:
+        # A search completed within the last 7 minutes, don't trigger yet
+        return {'status': 'recent_activity', 'triggered': False}
+
+    # Queue is empty and idle for 7+ minutes, trigger a random search
+    logger.info("Queue idle for 7+ minutes, triggering random search")
+    run_random_search.apply_async(priority=PRIORITY_AUTO)
+
+    return {'status': 'triggered', 'triggered': True}
+
+
 @shared_task
 def cleanup_broken_nodes():
     """

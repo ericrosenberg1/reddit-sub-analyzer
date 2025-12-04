@@ -255,17 +255,8 @@ from celery.schedules import crontab
 # Parse interval settings
 AUTO_INGEST_ENABLED = os.environ.get('AUTO_INGEST_ENABLED', '1').lower() in ('1', 'true', 'yes')
 AUTO_INGEST_INTERVAL = int(os.environ.get('AUTO_INGEST_INTERVAL_MINUTES', 180))
-RANDOM_SEARCH_ENABLED = os.environ.get('RANDOM_SEARCH_ENABLED', '1').lower() in ('1', 'true', 'yes')
-RANDOM_SEARCH_INTERVAL = int(os.environ.get('RANDOM_SEARCH_INTERVAL_MINUTES', 360))
 
 CELERY_BEAT_SCHEDULE = {}
-
-if RANDOM_SEARCH_ENABLED:
-    CELERY_BEAT_SCHEDULE['random-search'] = {
-        'task': 'search.tasks.run_random_search',
-        'schedule': RANDOM_SEARCH_INTERVAL * 60,  # Convert to seconds
-        'options': {'priority': 9},  # Lower priority (higher number = lower priority)
-    }
 
 if AUTO_INGEST_ENABLED:
     CELERY_BEAT_SCHEDULE['auto-ingest'] = {
@@ -289,6 +280,18 @@ CELERY_BEAT_SCHEDULE['cleanup-broken-nodes'] = {
 CELERY_BEAT_SCHEDULE['refresh-rolling-stats'] = {
     'task': 'search.tasks.refresh_rolling_stats',
     'schedule': crontab(minute='0,15,30,45'),
+}
+
+# Retry errored searches - every 10 minutes
+CELERY_BEAT_SCHEDULE['retry-errored-searches'] = {
+    'task': 'search.tasks.retry_errored_searches',
+    'schedule': 600,  # Every 10 minutes
+}
+
+# Smart random search - check every minute if idle for 7+ minutes
+CELERY_BEAT_SCHEDULE['check-idle-random-search'] = {
+    'task': 'search.tasks.check_idle_and_run_random',
+    'schedule': 60,  # Every minute
 }
 
 

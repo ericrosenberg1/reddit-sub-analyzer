@@ -19,5 +19,5 @@ def site_context(request):
     return {
         'site_url': settings.SITE_URL,
         'config_warnings': config_warnings,
-        'random_search_interval': settings.RANDOM_SEARCH_INTERVAL,
+        'random_search_interval': 7,  # Smart idle detection runs every 7 minutes
     }

@@ -38,10 +38,13 @@ def home(request):
     rolling_stats = RollingStats.get_stats()
     stats = _get_summary_stats()
 
-    # Recent user searches
+    # Recent user searches - only completed ones (not running/queued)
     recent_user_runs = list(
-        QueryRun.objects.filter(source=QueryRun.Source.SUB_SEARCH)
-        .order_by('-started_at')[:5]
+        QueryRun.objects.filter(
+            source=QueryRun.Source.SUB_SEARCH,
+            state__in=[QueryRun.State.COMPLETE, QueryRun.State.STOPPED, QueryRun.State.ERROR]
+        )
+        .order_by('-completed_at')[:8]
     )
 
     # Latest random search
@@ -62,9 +65,6 @@ def home(request):
     )
     queue_count = len(queued_runs)
 
-    # Random search interval from settings
-    random_search_interval = getattr(settings, 'AUTO_RANDOM_SEARCH_INTERVAL_MINUTES', 30)
-
     return render(request, 'home.html', {
         'stats': stats,
         'rolling_stats': rolling_stats,
@@ -74,7 +74,6 @@ def home(request):
         'volunteer_nodes': volunteer_nodes,
         'queue_count': queue_count,
         'queued_runs': queued_runs,
-        'random_search_interval': random_search_interval,
         'job_id': job_id,
         'nav_active': 'home',
     })
