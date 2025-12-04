@@ -151,67 +151,6 @@
   </div>
 </div>
 
-<!-- Search Status Modal -->
-<div class="modal fade" id="search-modal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Search in Progress</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <div class="d-flex align-items-center gap-3 mb-4">
-          <div class="spinner-border" role="status" id="status-loader">
-            <span class="visually-hidden">Loading...</span>
-          </div>
-          <div>
-            <p id="status-title" class="fw-bold mb-0">Preparing search...</p>
-            <p id="status-sub" class="text-muted small mb-0">—</p>
-          </div>
-        </div>
-
-        <div class="row g-3 mb-4">
-          <div class="col-4">
-            <div class="text-center bg-input rounded p-3">
-              <p class="stat-label mb-1">Checked</p>
-              <p id="checked" class="h5 fw-bold mb-0">0</p>
-            </div>
-          </div>
-          <div class="col-4">
-            <div class="text-center bg-input rounded p-3">
-              <p class="stat-label mb-1">Found</p>
-              <p id="found" class="h5 fw-bold text-success mb-0">0</p>
-            </div>
-          </div>
-          <div class="col-4">
-            <div class="text-center bg-input rounded p-3">
-              <p class="stat-label mb-1">Limit</p>
-              <p id="limit_count" class="h5 fw-bold text-muted mb-0">0</p>
-            </div>
-          </div>
-        </div>
-
-        <button type="button" id="stopBtn" class="btn btn-danger w-100">Stop Search</button>
-
-        <!-- Results (shown when complete) -->
-        <div id="results-panel" class="border-top border-custom mt-4 pt-4 d-none">
-          <h6 id="results-title" class="text-success mb-2">Results Ready!</h6>
-          <p id="results-subtitle" class="text-muted small mb-3">Your search is complete</p>
-          <div class="d-flex gap-2">
-            <a id="download-btn" href="#" class="btn btn-secondary flex-fill">
-              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-              </svg>
-              Download CSV
-            </a>
-            <a id="view-all-btn" href="#" class="btn btn-primary flex-fill">View Results</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- Recent Results + Queue Row -->
 <div class="row g-4 mb-4">
   <!-- Left: Recent Search Results -->
@@ -225,17 +164,32 @@
         <div id="recent-searches-list">
           {% if recent_user_runs %}
           {% for run in recent_user_runs %}
-          <div class="list-group-item d-flex align-items-center justify-content-between mb-2 rounded" data-run-id="{{ run.job_id }}">
-            <div>
+          <div class="list-group-item d-flex align-items-center justify-content-between mb-2 rounded" data-run-id="{{ run.job_id }}" data-keyword="{{ run.keyword|default:'' }}">
+            <div class="flex-grow-1 me-2">
               <p class="fw-medium small mb-0">{{ run.keyword|default:"All subreddits" }}</p>
               <p class="text-muted small mb-0">
                 <span class="result-count">{{ run.result_count|default:0 }} subs</span> &middot;
                 <span class="local-time" data-ts="{{ run.started_at|date:'c' }}">{{ run.started_at|date:"M d, H:i"|default:"—" }}</span>
               </p>
             </div>
-            <span class="status-badge badge {% if run.completed_at %}bg-success{% elif run.error %}bg-danger{% else %}bg-info{% endif %}">
-              {% if run.completed_at %}done{% elif run.error %}error{% else %}running{% endif %}
-            </span>
+            <div class="d-flex align-items-center gap-2">
+              {% if run.completed_at and run.result_count > 0 %}
+              <a href="{% url 'all_subs' %}?keyword={{ run.keyword|urlencode }}" class="btn btn-sm btn-secondary" title="View Results">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+              </a>
+              <a href="/job/{{ run.job_id }}/download.csv" class="btn btn-sm btn-secondary" title="Download CSV">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+              </a>
+              {% endif %}
+              <span class="status-badge badge {% if run.completed_at %}bg-success{% elif run.error %}bg-danger{% else %}bg-info{% endif %}">
+                {% if run.completed_at %}done{% elif run.error %}error{% else %}running{% endif %}
+              </span>
+            </div>
           </div>
           {% endfor %}
           {% else %}
@@ -471,18 +425,6 @@ function refreshLocalTimeElements() {
   });
 }
 
-// Modal handling with Bootstrap
-const modalEl = document.getElementById('search-modal');
-const searchModal = modalEl ? new bootstrap.Modal(modalEl) : null;
-
-function showModal() {
-  if (searchModal) searchModal.show();
-}
-
-function hideModal() {
-  if (searchModal) searchModal.hide();
-}
-
 // Countdown timer
 function updateCountdown() {
   const countdownEl = document.getElementById('next-search-countdown');
@@ -621,69 +563,6 @@ function escapeHtml(s) {
   return s ? String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) : '';
 }
 
-// Job polling
-const jobIdFromServer = {% if job_id %}"{{ job_id }}"{% else %}null{% endif %};
-let pollTimer = null;
-let activeJobId = jobIdFromServer;
-
-async function fetchStatus(id) {
-  try {
-    const res = await fetch(`/status/${id}/`);
-    if (!res.ok) return;
-    const data = await res.json();
-    if (!data) return;
-    updateStatusUi(data);
-    if (data.done && pollTimer) {
-      clearInterval(pollTimer);
-      pollTimer = null;
-    }
-  } catch (e) { console.error(e); }
-}
-
-function updateStatusUi(data) {
-  const limit = Number(data.limit || data.job_config?.limit || 0);
-  const checked = Number(data.checked || 0);
-  const found = Number(data.found || 0);
-
-  document.getElementById('limit_count').textContent = limit.toLocaleString();
-  document.getElementById('checked').textContent = checked.toLocaleString();
-  document.getElementById('found').textContent = found.toLocaleString();
-
-  const state = data.state || (data.done ? 'complete' : 'running');
-  const statusTitle = document.getElementById('status-title');
-  const statusSub = document.getElementById('status-sub');
-  const loader = document.getElementById('status-loader');
-
-  if (state === 'queued') {
-    statusTitle.textContent = 'In the queue...';
-    statusSub.textContent = 'Waiting for your turn';
-  } else if (state === 'running') {
-    statusTitle.textContent = 'Searching...';
-    statusSub.textContent = `Keyword: "${data.keyword || 'all'}"`;
-  } else if (state === 'error') {
-    statusTitle.textContent = 'Search failed';
-    statusSub.textContent = data.error || 'Unknown error';
-    loader.style.display = 'none';
-  } else {
-    statusTitle.textContent = state === 'stopped' ? 'Search cancelled' : 'Search complete!';
-    statusSub.textContent = '';
-    loader.style.display = 'none';
-  }
-
-  document.getElementById('stopBtn').disabled = !!data.done;
-
-  if (data.done && data.results_ready) {
-    document.getElementById('results-panel').classList.remove('d-none');
-    const total = Number(data.result_count || found);
-    document.getElementById('results-title').textContent = `${total.toLocaleString()} subs found!`;
-    document.getElementById('results-subtitle').textContent = 'Your search is complete';
-    const dlBtn = document.getElementById('download-btn');
-    const viewBtn = document.getElementById('view-all-btn');
-    dlBtn.href = `/job/${activeJobId}/download.csv`;
-    viewBtn.href = `/all-the-subs/?job_id=${encodeURIComponent(activeJobId)}`;
-  }
-}
-
 // Activity filter toggle
 document.getElementById('activity_enabled')?.addEventListener('change', function() {
   const mode = document.getElementById('activity_mode');
@@ -691,21 +570,6 @@ document.getElementById('activity_enabled')?.addEventListener('change', function
   mode.disabled = !this.checked;
   date.disabled = !this.checked;
   if (!this.checked) { mode.value = 'any'; date.value = ''; }
-});
-
-// Stop button
-document.getElementById('stopBtn')?.addEventListener('click', async function() {
-  if (!activeJobId) return;
-  try {
-    const res = await fetch(`/stop/${activeJobId}/`, {
-      method: 'POST',
-      headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' }
-    });
-    if (res.ok) {
-      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-      fetchStatus(activeJobId);
-    }
-  } catch (e) { console.error(e); }
 });
 
 // Fetch last completed search time for countdown
@@ -732,12 +596,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   setInterval(refreshLiveStatus, 3000);
   countdownInterval = setInterval(updateCountdown, 1000);
-
-  if (activeJobId) {
-    showModal();
-    fetchStatus(activeJobId);
-    pollTimer = setInterval(() => fetchStatus(activeJobId), 1000);
-  }
 });
 </script>
 {% endblock %}

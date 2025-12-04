@@ -523,6 +523,30 @@
       50% { transform: translateY(0) rotate(-5deg); }
       75% { transform: translateY(-4px) rotate(3deg); }
     }
+
+    /* ========== RESPONSIVE CONTAINER ========== */
+    .container {
+      width: 100%;
+      padding-right: 16px;
+      padding-left: 16px;
+      margin-right: auto;
+      margin-left: auto;
+    }
+    @media (min-width: 576px) {
+      .container { max-width: 540px; padding-right: 20px; padding-left: 20px; }
+    }
+    @media (min-width: 768px) {
+      .container { max-width: 720px; padding-right: 24px; padding-left: 24px; }
+    }
+    @media (min-width: 992px) {
+      .container { max-width: 960px; padding-right: 32px; padding-left: 32px; }
+    }
+    @media (min-width: 1200px) {
+      .container { max-width: 1140px; padding-right: 40px; padding-left: 40px; }
+    }
+    @media (min-width: 1400px) {
+      .container { max-width: 1320px; padding-right: 48px; padding-left: 48px; }
+    }
   </style>
 
   {% block head_extra %}{% endblock %}
