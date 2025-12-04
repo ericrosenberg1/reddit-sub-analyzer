@@ -578,6 +578,26 @@ def cleanup_broken_nodes():
     return {'removed': count}
 
 
+@shared_task
+def refresh_rolling_stats():
+    """
+    Refresh 24-hour rolling statistics.
+
+    Runs every 15 minutes at :00, :15, :30, :45 via Celery Beat.
+    """
+    from .models import RollingStats
+
+    stats = RollingStats.refresh_stats()
+    logger.info(
+        "Refreshed rolling stats: discovered=%d, updated=%d, human=%d, bot=%d",
+        stats.subs_discovered_24h,
+        stats.subs_updated_24h,
+        stats.human_searches_24h,
+        stats.bot_searches_24h,
+    )
+    return stats.to_dict()
+
+
 def _fetch_random_keyword():
     """Fetch a random word from API or use fallback."""
     DEFAULT_WORDS = [

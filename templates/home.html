@@ -247,34 +247,31 @@
       </div>
     </div>
 
-    <!-- Index Statistics -->
+    <!-- Index Statistics (24h) -->
     <div class="lcars-panel mt-4">
       <div class="lcars-scan-line"></div>
       <div class="lcars-header">
-        <span class="lcars-header-text">Index Statistics</span>
+        <span class="lcars-header-text">24-Hour Activity</span>
+        <span class="ms-auto small" style="color: var(--lcars-tan);" id="stats-updated-at" data-ts="{{ rolling_stats.updated_at|date:'c'|default:'' }}"></span>
       </div>
       <div class="lcars-body">
         <table class="table table-sm mb-3">
           <tbody>
             <tr>
-              <td class="text-muted border-0">Total Searches</td>
-              <td class="text-end fw-medium border-0">{{ stats.total_runs|default:0|intcomma }}</td>
+              <td class="text-muted border-0">Subs Discovered</td>
+              <td class="text-end fw-medium border-0">{{ rolling_stats.subs_discovered_24h|default:0|intcomma }}</td>
             </tr>
             <tr>
-              <td class="text-muted">Index Size</td>
-              <td class="text-end fw-medium">{{ stats.total_subreddits|default:0|intcomma }} subs</td>
+              <td class="text-muted">Subs Updated</td>
+              <td class="text-end fw-medium">{{ rolling_stats.subs_updated_24h|default:0|intcomma }}</td>
             </tr>
             <tr>
-              <td class="text-muted">Subs Updated (24h)</td>
-              <td class="text-end fw-medium">{{ stats.subs_updated_24h|default:0|intcomma }}</td>
-            </tr>
-            <tr>
-              <td class="text-muted">Manual Searches</td>
-              <td class="text-end fw-medium">{{ stats.manual_searches|default:0|intcomma }}</td>
+              <td class="text-muted">Human Searches</td>
+              <td class="text-end fw-medium">{{ rolling_stats.human_searches_24h|default:0|intcomma }}</td>
             </tr>
             <tr>
               <td class="text-muted">Bot Searches</td>
-              <td class="text-end fw-medium">{{ stats.bot_searches|default:0|intcomma }}</td>
+              <td class="text-end fw-medium">{{ rolling_stats.bot_searches_24h|default:0|intcomma }}</td>
             </tr>
           </tbody>
         </table>
@@ -596,16 +593,45 @@ async function fetchLastSearchTime() {
   }
 }
 
+// Format stats updated time (relative)
+function formatStatsUpdatedTime() {
+  const el = document.getElementById('stats-updated-at');
+  if (!el) return;
+  const ts = el.getAttribute('data-ts');
+  if (!ts) {
+    el.textContent = '';
+    return;
+  }
+  const date = new Date(ts);
+  if (Number.isNaN(date.getTime())) {
+    el.textContent = '';
+    return;
+  }
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) {
+    el.textContent = 'Updated just now';
+  } else if (diffMins < 60) {
+    el.textContent = `Updated ${diffMins}m ago`;
+  } else {
+    const diffHours = Math.floor(diffMins / 60);
+    el.textContent = `Updated ${diffHours}h ago`;
+  }
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
   refreshLocalTimeElements();
   refreshDurationElements();
+  formatStatsUpdatedTime();
   await fetchLastSearchTime();
   refreshLiveStatus();
   updateCountdown();
 
   setInterval(refreshLiveStatus, 3000);
   countdownInterval = setInterval(updateCountdown, 1000);
+  setInterval(formatStatsUpdatedTime, 60000); // Update relative time every minute
 });
 </script>
 {% endblock %}

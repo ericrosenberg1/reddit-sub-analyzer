@@ -255,3 +255,77 @@ class SummaryCache(models.Model):
     class Meta:
         verbose_name = 'Summary Cache'
         verbose_name_plural = 'Summary Cache'
+
+
+class RollingStats(models.Model):
+    """
+    Rolling 24-hour statistics, updated every 15 minutes.
+    """
+    # Only one row with id=1 - singleton pattern
+    subs_discovered_24h = models.IntegerField(default=0)
+    subs_updated_24h = models.IntegerField(default=0)
+    human_searches_24h = models.IntegerField(default=0)
+    bot_searches_24h = models.IntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Rolling Stats'
+        verbose_name_plural = 'Rolling Stats'
+
+    @classmethod
+    def get_stats(cls):
+        """Get or create the singleton stats row."""
+        stats, _ = cls.objects.get_or_create(pk=1)
+        return stats
+
+    @classmethod
+    def refresh_stats(cls):
+        """Recalculate 24-hour rolling statistics."""
+        from datetime import timedelta
+
+        now = timezone.now()
+        cutoff = now - timedelta(hours=24)
+
+        # Subs discovered in last 24h (first_seen_at within window)
+        subs_discovered = Subreddit.objects.filter(
+            first_seen_at__gte=cutoff
+        ).count()
+
+        # Subs updated in last 24h (updated_at within window)
+        subs_updated = Subreddit.objects.filter(
+            updated_at__gte=cutoff
+        ).count()
+
+        # Human searches in last 24h (SUB_SEARCH source)
+        human_searches = QueryRun.objects.filter(
+            source=QueryRun.Source.SUB_SEARCH,
+            started_at__gte=cutoff
+        ).count()
+
+        # Bot searches in last 24h (AUTO_RANDOM and AUTO_INGEST sources)
+        bot_searches = QueryRun.objects.filter(
+            source__in=[QueryRun.Source.AUTO_RANDOM, QueryRun.Source.AUTO_INGEST],
+            started_at__gte=cutoff
+        ).count()
+
+        # Update or create the singleton
+        stats, _ = cls.objects.update_or_create(
+            pk=1,
+            defaults={
+                'subs_discovered_24h': subs_discovered,
+                'subs_updated_24h': subs_updated,
+                'human_searches_24h': human_searches,
+                'bot_searches_24h': bot_searches,
+            }
+        )
+        return stats
+
+    def to_dict(self):
+        """Return stats as a dictionary."""
+        return {
+            'subs_discovered_24h': self.subs_discovered_24h,
+            'subs_updated_24h': self.subs_updated_24h,
+            'human_searches_24h': self.human_searches_24h,
+            'bot_searches_24h': self.bot_searches_24h,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }

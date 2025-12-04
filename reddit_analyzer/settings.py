@@ -285,6 +285,12 @@ CELERY_BEAT_SCHEDULE['cleanup-broken-nodes'] = {
     'schedule': crontab(hour=3, minute=0),  # Daily at 3 AM
 }
 
+# Rolling stats - refresh every 15 minutes at :00, :15, :30, :45
+CELERY_BEAT_SCHEDULE['refresh-rolling-stats'] = {
+    'task': 'search.tasks.refresh_rolling_stats',
+    'schedule': crontab(minute='0,15,30,45'),
+}
+
 
 # =============================================================================
 # Application-Specific Settings

@@ -21,7 +21,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_GET, require_POST
 
 from reddit_analyzer.middleware import InputSanitizer
-from .models import QueryRun, Subreddit
+from .models import QueryRun, Subreddit, RollingStats
 from .tasks import submit_user_search, PRIORITY_USER
 
 logger = logging.getLogger(__name__)
@@ -34,8 +34,8 @@ def home(request):
     if request.method == 'POST':
         return _handle_search_submission(request)
 
-    # Get stats
-    stats = _get_summary_stats()
+    # Get rolling 24h stats
+    rolling_stats = RollingStats.get_stats()
 
     # Recent user searches
     recent_user_runs = list(
@@ -65,7 +65,7 @@ def home(request):
     random_search_interval = getattr(settings, 'AUTO_RANDOM_SEARCH_INTERVAL_MINUTES', 30)
 
     return render(request, 'home.html', {
-        'stats': stats,
+        'rolling_stats': rolling_stats,
         'recent_user_runs': recent_user_runs,
         'random_run': random_run,
         'node_stats': node_stats,
