@@ -83,12 +83,19 @@
     .navbar {
       background-color: var(--ss-bg-header);
       border-bottom: 1px solid var(--ss-border);
-      padding: 0;
+      padding: 0 16px;
       height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
-    .navbar .container {
-      height: 100%;
-      flex-wrap: nowrap;
+    .navbar-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 1320px;
+      margin: 0 auto;
     }
     .navbar-brand {
       display: flex;
@@ -182,34 +189,50 @@
       flex-shrink: 0;
     }
 
-    /* ========== CARDS - Enhanced ========== */
+    /* ========== CARDS - LCARS Style ========== */
     .card {
-      background-color: var(--ss-bg-card);
-      border: 2px solid var(--ss-border);
-      border-radius: 12px;
-      box-shadow:
-        0 0 0 1px rgba(70, 209, 96, 0.05),
-        0 4px 20px rgba(0, 0, 0, 0.3),
-        0 0 40px rgba(70, 209, 96, 0.03),
-        0 0 40px rgba(255, 214, 53, 0.02);
-      transition: box-shadow 0.3s ease, border-color 0.3s ease;
+      font-family: 'Orbitron', 'Antonio', sans-serif;
+      background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
+      border: 2px solid var(--lcars-orange);
+      border-radius: 0 24px 24px 0;
+      position: relative;
+      overflow: hidden;
     }
-    .card:hover {
-      border-color: rgba(70, 209, 96, 0.3);
-      box-shadow:
-        0 0 0 1px rgba(70, 209, 96, 0.1),
-        0 8px 30px rgba(0, 0, 0, 0.4),
-        0 0 60px rgba(70, 209, 96, 0.05),
-        0 0 60px rgba(255, 214, 53, 0.03);
+    .card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 8px;
+      background: linear-gradient(180deg, var(--lcars-orange) 0%, var(--lcars-gold) 50%, var(--lcars-orange) 100%);
     }
-    .card-body { padding: 20px; }
+    .card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--lcars-gold), transparent);
+      animation: lcars-scan 3s linear infinite;
+    }
+    .card-body { padding: 20px 20px 20px 24px; }
     .card-title {
+      font-family: 'Orbitron', sans-serif;
       font-size: 12px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--ss-text-muted);
+      letter-spacing: 1.5px;
+      color: var(--lcars-tan);
       margin-bottom: 16px;
+    }
+    .card .form-label {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--lcars-tan);
+    }
+    .card .text-muted {
+      color: var(--lcars-tan) !important;
     }
 
     /* Section spacing */
@@ -564,7 +587,7 @@
 <body>
   <!-- Navbar -->
   <nav class="navbar sticky-top">
-    <div class="container d-flex align-items-center justify-content-between">
+    <div class="navbar-inner">
       <a class="navbar-brand" href="{% url 'home' %}">
         <span class="logo-icon">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -573,7 +596,6 @@
         </span>
         <span class="d-none d-sm-inline">sub search</span>
       </a>
-
       <div class="d-flex align-items-center">
         <ul class="nav-pills-custom">
           <li>
