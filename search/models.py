@@ -29,8 +29,9 @@ class QueryRun(models.Model):
     state = models.CharField(max_length=32, choices=State.choices, default=State.PENDING)
 
     # Timestamps
-    started_at = models.DateTimeField(default=timezone.now)
-    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)  # When job was requested
+    started_at = models.DateTimeField(null=True, blank=True)  # When job started running
+    completed_at = models.DateTimeField(null=True, blank=True)  # When job finished
 
     # Search parameters
     keyword = models.CharField(max_length=128, null=True, blank=True)
@@ -62,10 +63,10 @@ class QueryRun(models.Model):
     notification_email = models.EmailField(max_length=256, null=True, blank=True)
 
     class Meta:
-        ordering = ['-started_at']
+        ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['source', '-started_at']),
-            models.Index(fields=['state', '-started_at']),
+            models.Index(fields=['source', '-created_at']),
+            models.Index(fields=['state', '-created_at']),
             models.Index(fields=['celery_task_id']),
         ]
 

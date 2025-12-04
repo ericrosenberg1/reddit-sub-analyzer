@@ -206,7 +206,22 @@ def developer_docs(request):
 
 def logs(request):
     """View search history logs."""
-    entries = list(QueryRun.objects.order_by('-started_at')[:30])
+    entries = list(QueryRun.objects.order_by('-created_at')[:50])
+
+    # Add duration_display property to entries
+    for entry in entries:
+        if entry.duration_ms:
+            seconds = entry.duration_ms // 1000
+            minutes = seconds // 60
+            hours = minutes // 60
+            if hours > 0:
+                entry.duration_display = f"{hours}h {minutes % 60}m"
+            elif minutes > 0:
+                entry.duration_display = f"{minutes}m {seconds % 60}s"
+            else:
+                entry.duration_display = f"{seconds}s"
+        else:
+            entry.duration_display = None
 
     job_stats = {
         'total': QueryRun.objects.filter(source=QueryRun.Source.SUB_SEARCH).count(),
@@ -218,9 +233,8 @@ def logs(request):
             source=QueryRun.Source.SUB_SEARCH,
             state=QueryRun.State.ERROR
         ).count(),
-        'pending': QueryRun.objects.filter(
-            source=QueryRun.Source.SUB_SEARCH,
-            state__in=[QueryRun.State.PENDING, QueryRun.State.QUEUED, QueryRun.State.RUNNING]
+        'running': QueryRun.objects.filter(
+            state=QueryRun.State.RUNNING
         ).count(),
     }
 

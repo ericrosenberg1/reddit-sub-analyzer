@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load humanize %}
 {% block title %}Activity Log - Sub Search{% endblock %}
 
 {% block content %}
@@ -22,7 +23,7 @@
     <div class="card h-100">
       <div class="card-body">
         <p class="stat-label mb-1">Total Searches</p>
-        <p class="stat-value mb-0">{{ job_stats.total|default:0 }}</p>
+        <p class="stat-value mb-0">{{ job_stats.total|default:0|intcomma }}</p>
       </div>
     </div>
   </div>
@@ -30,7 +31,7 @@
     <div class="card h-100" style="border-color: rgba(70, 209, 96, 0.2);">
       <div class="card-body">
         <p class="stat-label text-success mb-1">Completed</p>
-        <p class="stat-value text-success mb-0">{{ job_stats.completed|default:0 }}</p>
+        <p class="stat-value text-success mb-0">{{ job_stats.completed|default:0|intcomma }}</p>
       </div>
     </div>
   </div>
@@ -38,7 +39,7 @@
     <div class="card h-100" style="border-color: rgba(255, 88, 91, 0.2);">
       <div class="card-body">
         <p class="stat-label text-danger mb-1">Failed</p>
-        <p class="stat-value text-danger mb-0">{{ job_stats.failed|default:0 }}</p>
+        <p class="stat-value text-danger mb-0">{{ job_stats.failed|default:0|intcomma }}</p>
       </div>
     </div>
   </div>
@@ -47,7 +48,7 @@
       <div class="card-body">
         <p class="stat-label text-warning mb-1">In Queue</p>
         <p class="stat-value text-warning mb-0">{{ queue_count|default:0 }}</p>
-        <p class="small text-muted mb-0">{{ job_stats.pending|default:0 }} pending</p>
+        <p class="small text-muted mb-0">{{ job_stats.running|default:0 }} running</p>
       </div>
     </div>
   </div>
@@ -59,47 +60,121 @@
     <table class="table table-hover mb-0">
       <thead>
         <tr>
-          <th style="width: 160px;">When</th>
-          <th>Search Details</th>
-          <th class="text-end" style="width: 120px;">Results</th>
-          <th style="width: 120px;">Status</th>
+          <th style="width: 200px;">Keyword</th>
+          <th style="width: 100px;">Source</th>
+          <th style="width: 140px;">Requested</th>
+          <th style="width: 140px;">Started</th>
+          <th style="width: 140px;">Completed</th>
+          <th style="width: 80px;">Duration</th>
+          <th class="text-end" style="width: 100px;">Results</th>
+          <th style="width: 100px;">Status</th>
+          <th style="width: 100px;">Actions</th>
         </tr>
       </thead>
       <tbody>
         {% if entries %}
         {% for entry in entries %}
         <tr>
-          <td>
-            <p class="fw-medium mb-0">{{ entry.started_display|default:'Pending' }}</p>
-          </td>
+          <!-- Keyword -->
           <td>
             <p class="fw-semibold mb-0">{{ entry.keyword|default:'All subreddits' }}</p>
-            <p class="small text-muted mb-0">
-              {% if entry.source == 'sub_search' %}
-              <span class="text-warning">Manual</span>
-              {% else %}
-              <span class="text-muted">{{ entry.source }}</span>
-              {% endif %}
-            </p>
           </td>
-          <td class="text-end">
-            <p class="fw-semibold mb-0">{{ entry.result_count|default:0 }}</p>
-            <p class="small text-muted mb-0">subs</p>
-          </td>
+          <!-- Source -->
           <td>
-            {% if entry.error %}
-            <span class="badge bg-danger">Error</span>
-            {% elif entry.completed_at %}
-            <span class="badge bg-success">Complete</span>
+            {% if entry.source == 'sub_search' %}
+            <span class="badge" style="background-color: rgba(255, 214, 53, 0.2); color: var(--ss-warning);">Manual</span>
+            {% elif entry.source == 'auto-random' %}
+            <span class="badge" style="background-color: rgba(102, 153, 204, 0.2); color: #6699cc;">Bot</span>
+            {% elif entry.source == 'auto-ingest' %}
+            <span class="badge" style="background-color: rgba(153, 102, 204, 0.2); color: #9966cc;">Ingest</span>
             {% else %}
-            <span class="badge bg-info">Running</span>
+            <span class="badge bg-secondary">{{ entry.source }}</span>
             {% endif %}
+          </td>
+          <!-- Requested (when job was created) -->
+          <td>
+            <span class="local-time small" data-ts="{{ entry.created_at|date:'c' }}">{{ entry.created_at|date:"M d, H:i"|default:"—" }}</span>
+          </td>
+          <!-- Started (when job began running) -->
+          <td>
+            {% if entry.started_at %}
+            <span class="local-time small" data-ts="{{ entry.started_at|date:'c' }}">{{ entry.started_at|date:"M d, H:i" }}</span>
+            {% else %}
+            <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+          <!-- Completed -->
+          <td>
+            {% if entry.completed_at %}
+            <span class="local-time small" data-ts="{{ entry.completed_at|date:'c' }}">{{ entry.completed_at|date:"M d, H:i" }}</span>
+            {% else %}
+            <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+          <!-- Duration -->
+          <td>
+            {% if entry.duration_ms %}
+            <span class="small">{{ entry.duration_display }}</span>
+            {% elif entry.completed_at and entry.started_at %}
+            <span class="duration-display small" data-started="{{ entry.started_at|date:'c' }}" data-completed="{{ entry.completed_at|date:'c' }}"></span>
+            {% else %}
+            <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+          <!-- Results -->
+          <td class="text-end">
+            <p class="fw-semibold mb-0">{{ entry.result_count|default:0|intcomma }}</p>
+          </td>
+          <!-- Status -->
+          <td>
+            {% if entry.state == 'complete' %}
+            <span class="badge bg-success">Complete</span>
+            {% elif entry.state == 'error' %}
+            <span class="badge bg-danger" {% if entry.error %}title="{{ entry.error }}"{% endif %}>Error</span>
+            {% elif entry.state == 'stopped' %}
+            <span class="badge bg-warning text-dark">Stopped</span>
+            {% elif entry.state == 'running' %}
+            <span class="badge bg-info">Running</span>
+            {% elif entry.state == 'queued' %}
+            <span class="badge" style="background-color: rgba(255, 214, 53, 0.3); color: #ffd635;">Queued</span>
+            {% elif entry.state == 'pending' %}
+            <span class="badge bg-secondary">Pending</span>
+            {% else %}
+            <span class="badge bg-secondary">{{ entry.state }}</span>
+            {% endif %}
+          </td>
+          <!-- Actions -->
+          <td>
+            <div class="d-flex gap-1">
+              {% if entry.keyword and entry.result_count > 0 %}
+              <a href="{% url 'all_subs' %}?keyword={{ entry.keyword|urlencode }}" class="btn btn-sm btn-outline-secondary" title="View Results">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+              </a>
+              <a href="/job/{{ entry.job_id }}/download.csv" class="btn btn-sm btn-outline-secondary" title="Download CSV">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+              </a>
+              {% elif entry.keyword and entry.state == 'complete' %}
+              <a href="{% url 'all_subs' %}?keyword={{ entry.keyword|urlencode }}" class="btn btn-sm btn-outline-secondary" title="View Results">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+              </a>
+              {% else %}
+              <span class="text-muted small">—</span>
+              {% endif %}
+            </div>
           </td>
         </tr>
         {% endfor %}
         {% else %}
         <tr>
-          <td colspan="4" class="text-center py-5 text-muted">
+          <td colspan="9" class="text-center py-5 text-muted">
             No searches yet. <a href="{% url 'home' %}" class="text-warning">Start your first search!</a>
           </td>
         </tr>
@@ -108,8 +183,60 @@
     </table>
   </div>
   <div class="d-flex align-items-center justify-content-between border-top border-custom p-3">
-    <p class="small text-muted mb-0">Showing recent activity</p>
+    <p class="small text-muted mb-0">Showing {{ entries|length }} most recent entries</p>
     <a href="{% url 'all_subs' %}" class="btn btn-link btn-sm">View All The Subs</a>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Format local time
+function formatLocalTime(isoString) {
+  if (!isoString) return '—';
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return '—';
+  const options = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false };
+  return date.toLocaleString(undefined, options);
+}
+
+function refreshLocalTimeElements() {
+  document.querySelectorAll('.local-time').forEach(el => {
+    const ts = el.getAttribute('data-ts');
+    if (ts) el.textContent = formatLocalTime(ts);
+  });
+}
+
+function formatDuration(startTs, endTs) {
+  if (!startTs || !endTs) return '—';
+  const start = new Date(startTs);
+  const end = new Date(endTs);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return '—';
+  const diffMs = end - start;
+  if (diffMs < 0) return '—';
+  const seconds = Math.floor(diffMs / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  if (hours > 0) {
+    return `${hours}h ${minutes % 60}m`;
+  } else if (minutes > 0) {
+    return `${minutes}m ${seconds % 60}s`;
+  } else {
+    return `${seconds}s`;
+  }
+}
+
+function refreshDurationElements() {
+  document.querySelectorAll('.duration-display').forEach(el => {
+    const started = el.getAttribute('data-started');
+    const completed = el.getAttribute('data-completed');
+    el.textContent = formatDuration(started, completed);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  refreshLocalTimeElements();
+  refreshDurationElements();
+});
+</script>
 {% endblock %}
