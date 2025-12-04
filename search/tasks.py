@@ -418,7 +418,7 @@ def run_random_search(self):
     query_run = QueryRun.objects.create(
         job_id=job_id,
         source=QueryRun.Source.AUTO_RANDOM,
-        state=QueryRun.State.RUNNING,
+        state=QueryRun.State.QUEUED,
         keyword=keyword,
         limit_value=limit,
         unmoderated_only=False,
@@ -428,6 +428,8 @@ def run_random_search(self):
         priority=PRIORITY_AUTO,
     )
 
+    # Mark as running now that we're actually executing
+    query_run.mark_running()
     logger.info("Starting random search: keyword=%s job_id=%s", keyword, job_id)
 
     try:
@@ -488,7 +490,7 @@ def run_auto_ingest(self):
         query_run = QueryRun.objects.create(
             job_id=job_id,
             source=QueryRun.Source.AUTO_INGEST,
-            state=QueryRun.State.RUNNING,
+            state=QueryRun.State.QUEUED,
             keyword=keyword,
             limit_value=settings.AUTO_INGEST_LIMIT,
             unmoderated_only=False,
@@ -498,6 +500,8 @@ def run_auto_ingest(self):
             priority=PRIORITY_AUTO,
         )
 
+        # Mark as running now that we're actually executing
+        query_run.mark_running()
         logger.info("Starting auto-ingest: keyword=%s job_id=%s", label, job_id)
 
         try:
