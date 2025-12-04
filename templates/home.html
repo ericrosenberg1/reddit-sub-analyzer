@@ -7,15 +7,14 @@
 <div class="card mb-4">
   <div class="card-body p-4">
     <div class="row align-items-center">
-      <div class="col">
-        <h1 class="h3 mb-1">Sub Search</h1>
-        <p class="text-muted mb-2">Reddit Subreddit Discovery Tool</p>
-        <p class="text-muted small mb-0" style="max-width: 500px;">
+      <div class="col-lg-8">
+        <h1 class="h2 mb-2">Sub Search</h1>
+        <p class="text-muted mb-0">Reddit Subreddit Discovery Tool</p>
+      </div>
+      <div class="col-lg-4 mt-3 mt-lg-0">
+        <p class="text-muted small mb-0">
           Search Reddit's API for subreddits matching your keywords. Filter by subscribers, mod activity, and more. Every search adds to our shared database.
         </p>
-      </div>
-      <div class="col-auto d-none d-md-block">
-        <span class="dancing-sandwich" style="font-size: 4rem;" title="Fresh subs daily!">&#129386;</span>
       </div>
     </div>
   </div>
@@ -23,62 +22,55 @@
 
 <!-- Stats + Search Form Row -->
 <div class="row g-4 mb-4">
-  <!-- Left: Stats Panel -->
+  <!-- Left: LCARS Stats Panel -->
   <div class="col-lg-6">
-    <div class="card h-100">
-      <div class="card-body">
-        <h6 class="card-title">Database Stats</h6>
-        <div class="row g-3">
-          <div class="col-6">
-            <div class="bg-input rounded p-3">
-              <p class="stat-label mb-1">Subs Indexed</p>
-              <p class="stat-value text-accent mb-0">{{ stats.total_subreddits|default:0|intcomma }}</p>
-            </div>
-          </div>
-          <div class="col-6">
-            <div class="bg-input rounded p-3">
-              <p class="stat-label mb-1">Total Searches</p>
-              <p class="stat-value mb-0">{{ stats.total_runs|default:0|intcomma }}</p>
-            </div>
-          </div>
-          <div class="col-6">
-            <div class="bg-input rounded p-3">
-              <p class="stat-label mb-1">In Queue</p>
-              <p class="stat-value mb-0">{{ queue_count|default:0 }}</p>
-            </div>
-          </div>
-          <div class="col-6">
-            <div class="bg-input rounded p-3">
-              <p class="stat-label mb-1">Last Completed</p>
-              <p class="small mb-0 local-time" data-ts="{{ stats.last_run_started|date:'c' }}">{{ stats.last_run_started|date:"M d, H:i"|default:"—" }}</p>
-            </div>
-          </div>
+    <div class="lcars-panel h-100">
+      <div class="lcars-scan-line"></div>
+      <div class="lcars-header">
+        <span class="lcars-header-text">Database Stats</span>
+      </div>
+      <div class="lcars-body">
+        <div class="lcars-stat">
+          <span class="lcars-stat-label">Subs Indexed</span>
+          <span class="lcars-stat-value accent">{{ stats.total_subreddits|default:0|intcomma }}</span>
         </div>
+        <div class="lcars-stat">
+          <span class="lcars-stat-label">Total Searches</span>
+          <span class="lcars-stat-value">{{ stats.total_runs|default:0|intcomma }}</span>
+        </div>
+        <div class="lcars-stat">
+          <span class="lcars-stat-label">In Queue</span>
+          <span class="lcars-stat-value" id="lcars-queue-count">{{ queue_count|default:0 }}</span>
+        </div>
+        <div class="lcars-stat">
+          <span class="lcars-stat-label">Last Completed</span>
+          <span class="lcars-stat-value" style="font-size: 14px;">
+            <span class="local-time" data-ts="{{ stats.last_run_started|date:'c' }}">{{ stats.last_run_started|date:"M d, H:i"|default:"—" }}</span>
+          </span>
+        </div>
+      </div>
 
-        <!-- Live Queue Status -->
-        <div class="border-top border-custom mt-4 pt-4">
-          <div class="d-flex align-items-center justify-content-between mb-3">
-            <h6 class="card-title mb-0">Live Queue</h6>
-            <span id="live-indicator" class="bg-success rounded-circle" style="width: 8px; height: 8px; animation: pulse 2s infinite;"></span>
-          </div>
-          <div class="small">
-            <div class="d-flex justify-content-between mb-2">
-              <span class="text-muted">Now Running:</span>
-              <span class="fw-medium" id="current-keyword">—</span>
-            </div>
-            <div class="d-flex justify-content-between mb-2" id="current-progress-row" style="display: none !important;">
-              <span class="text-muted">Progress:</span>
-              <span id="current-progress">0 / 0</span>
-            </div>
-            <div class="d-flex justify-content-between mb-2">
-              <span class="text-muted">User Queue:</span>
-              <span id="user-queue-count">0 waiting</span>
-            </div>
-            <div class="d-flex justify-content-between">
-              <span class="text-muted">Next Bot:</span>
-              <span id="next-bot-keyword" class="text-info">every {{ random_search_interval }} min</span>
-            </div>
-          </div>
+      <!-- Live Queue Status - LCARS Style -->
+      <div class="lcars-live-section">
+        <div class="lcars-live-header">
+          <span class="lcars-live-dot" id="live-indicator"></span>
+          <span class="lcars-live-title">Live Queue</span>
+        </div>
+        <div class="lcars-live-row">
+          <span class="lcars-live-label">Current Search:</span>
+          <span class="lcars-live-value" id="current-keyword">—</span>
+        </div>
+        <div class="lcars-live-row" id="current-progress-row" style="display: none;">
+          <span class="lcars-live-label">Progress:</span>
+          <span class="lcars-live-value" id="current-progress">0 / 0</span>
+        </div>
+        <div class="lcars-live-row">
+          <span class="lcars-live-label">Human Queue:</span>
+          <span class="lcars-live-value" id="user-queue-count">0 waiting</span>
+        </div>
+        <div class="lcars-live-row" id="countdown-row">
+          <span class="lcars-live-label">Next Auto Search:</span>
+          <span class="lcars-countdown" id="next-search-countdown">calculating...</span>
         </div>
       </div>
     </div>
@@ -98,29 +90,32 @@
           </div>
 
           <div class="row g-3 mb-3">
-            <div class="col-6">
-              <label for="limit" class="form-label">Max Subs</label>
+            <div class="col-4">
+              <label for="limit" class="form-label">Max Results</label>
               <input type="text" class="form-control" id="limit" name="limit" inputmode="numeric" pattern="[0-9,]*" value="1,000">
             </div>
-            <div class="col-6">
-              <label for="min_subs" class="form-label">Min Subscribers</label>
+            <div class="col-4">
+              <label for="min_subs" class="form-label">Min Subs</label>
               <input type="text" class="form-control" id="min_subs" name="min_subs" inputmode="numeric" pattern="[0-9,]*" value="0">
             </div>
-          </div>
-
-          <div class="mb-3">
-            <label for="notification_email" class="form-label">Email When Done</label>
-            <input type="email" class="form-control" id="notification_email" name="notification_email" placeholder="optional">
-          </div>
-
-          <div class="d-flex flex-wrap gap-4 mb-3">
-            <div class="form-check">
-              <input type="checkbox" class="form-check-input" id="unmoderated_only" name="unmoderated_only">
-              <label class="form-check-label" for="unmoderated_only">Unmoderated only</label>
+            <div class="col-4">
+              <label for="notification_email" class="form-label">Notify Email</label>
+              <input type="email" class="form-control" id="notification_email" name="notification_email" placeholder="optional">
             </div>
-            <div class="form-check">
-              <input type="checkbox" class="form-check-input" id="exclude_nsfw" name="exclude_nsfw">
-              <label class="form-check-label" for="exclude_nsfw">Exclude NSFW</label>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="unmoderated_only" name="unmoderated_only">
+                <label class="form-check-label" for="unmoderated_only">Unmoderated only</label>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="exclude_nsfw" name="exclude_nsfw">
+                <label class="form-check-label" for="exclude_nsfw">Exclude NSFW</label>
+              </div>
             </div>
           </div>
 
@@ -454,14 +449,11 @@
 {% endblock %}
 
 {% block scripts %}
-<style>
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-</style>
 <script>
 const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+const RANDOM_SEARCH_INTERVAL = {{ random_search_interval|default:30 }};
+let lastSearchEndTime = null;
+let countdownInterval = null;
 
 function formatLocalTime(ts) {
   if (!ts) return '—';
@@ -491,6 +483,42 @@ function hideModal() {
   if (searchModal) searchModal.hide();
 }
 
+// Countdown timer
+function updateCountdown() {
+  const countdownEl = document.getElementById('next-search-countdown');
+  const countdownRowEl = document.getElementById('countdown-row');
+  const currentKeywordEl = document.getElementById('current-keyword');
+
+  // If something is running, hide countdown
+  if (currentKeywordEl && currentKeywordEl.textContent !== 'Idle' && currentKeywordEl.textContent !== '—') {
+    countdownRowEl.style.display = 'none';
+    return;
+  }
+
+  countdownRowEl.style.display = 'flex';
+
+  if (!lastSearchEndTime) {
+    countdownEl.textContent = `~${RANDOM_SEARCH_INTERVAL} min`;
+    return;
+  }
+
+  const nextSearchTime = new Date(lastSearchEndTime.getTime() + RANDOM_SEARCH_INTERVAL * 60 * 1000);
+  const now = new Date();
+  const diffMs = nextSearchTime - now;
+
+  if (diffMs <= 0) {
+    countdownEl.textContent = 'any moment...';
+  } else {
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffSecs = Math.floor((diffMs % 60000) / 1000);
+    if (diffMins > 0) {
+      countdownEl.textContent = `${diffMins}m ${diffSecs}s`;
+    } else {
+      countdownEl.textContent = `${diffSecs}s`;
+    }
+  }
+}
+
 // Live status updates
 async function refreshLiveStatus() {
   try {
@@ -498,21 +526,21 @@ async function refreshLiveStatus() {
     if (queueRes.ok) {
       const data = await queueRes.json();
 
-      // Update "Now Running" section
+      // Update "Current Search" section
       const currentKeywordEl = document.getElementById('current-keyword');
       const progressRowEl = document.getElementById('current-progress-row');
       const progressEl = document.getElementById('current-progress');
 
       if (data.running) {
         currentKeywordEl.textContent = data.running.keyword || 'searching...';
-        currentKeywordEl.className = 'fw-medium text-success';
+        currentKeywordEl.style.color = 'var(--ss-success)';
         if (data.running.checked > 0 || data.running.found > 0) {
           progressRowEl.style.display = 'flex';
           progressEl.textContent = `${data.running.found} found / ${data.running.checked} checked`;
         }
       } else {
         currentKeywordEl.textContent = 'Idle';
-        currentKeywordEl.className = 'fw-medium text-muted';
+        currentKeywordEl.style.color = 'var(--lcars-tan)';
         progressRowEl.style.display = 'none';
       }
 
@@ -521,8 +549,10 @@ async function refreshLiveStatus() {
       document.getElementById('user-queue-count').textContent =
         userJobs.length > 0 ? `${userJobs.length} waiting` : 'none';
 
-      // Update queue badge
+      // Update queue badge and LCARS queue count
       document.getElementById('queue-badge').textContent = `${data.total_queued || 0} pending`;
+      const lcarsQueueCount = document.getElementById('lcars-queue-count');
+      if (lcarsQueueCount) lcarsQueueCount.textContent = data.total_queued || 0;
 
       // Render the queue list
       const queueListEl = document.getElementById('queue-list');
@@ -678,11 +708,30 @@ document.getElementById('stopBtn')?.addEventListener('click', async function() {
   } catch (e) { console.error(e); }
 });
 
+// Fetch last completed search time for countdown
+async function fetchLastSearchTime() {
+  try {
+    const res = await fetch('/api/recent-runs?limit=1&source=random');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.runs && data.runs.length > 0 && data.runs[0].completed_at) {
+        lastSearchEndTime = new Date(data.runs[0].completed_at);
+      }
+    }
+  } catch (e) {
+    console.error('Failed to fetch last search time:', e);
+  }
+}
+
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   refreshLocalTimeElements();
+  await fetchLastSearchTime();
   refreshLiveStatus();
+  updateCountdown();
+
   setInterval(refreshLiveStatus, 3000);
+  countdownInterval = setInterval(updateCountdown, 1000);
 
   if (activeJobId) {
     showModal();

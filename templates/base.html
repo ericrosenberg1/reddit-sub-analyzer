@@ -10,10 +10,10 @@
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
 
-  <!-- Google Fonts -->
+  <!-- Google Fonts - Inter + Antonio (LCARS-style) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Antonio:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <style>
     :root {
@@ -29,6 +29,12 @@
       --ss-warning: #FFD635;
       --ss-danger: #FF585B;
       --ss-info: #6CB6FF;
+      /* LCARS colors */
+      --lcars-orange: #FF9900;
+      --lcars-gold: #FFCC00;
+      --lcars-blue: #9999FF;
+      --lcars-purple: #CC99CC;
+      --lcars-tan: #FFCC99;
     }
 
     *, *::before, *::after { box-sizing: border-box; }
@@ -39,9 +45,15 @@
     .row > * { flex-shrink: 0; width: 100%; max-width: 100%; padding-right: 12px; padding-left: 12px; }
     .col-6 { flex: 0 0 auto; width: 50%; }
     .col-4 { flex: 0 0 auto; width: 33.333333%; }
+    .col-3 { flex: 0 0 auto; width: 25%; }
     .col { flex: 1 0 0%; }
     .col-auto { flex: 0 0 auto; width: auto; }
+    @media (min-width: 768px) {
+      .col-md-4 { flex: 0 0 auto; width: 33.333333%; }
+      .col-md-8 { flex: 0 0 auto; width: 66.666667%; }
+    }
     @media (min-width: 992px) {
+      .col-lg-3 { flex: 0 0 auto; width: 25%; }
       .col-lg-4 { flex: 0 0 auto; width: 33.333333%; }
       .col-lg-6 { flex: 0 0 auto; width: 50%; }
       .col-lg-8 { flex: 0 0 auto; width: 66.666667%; }
@@ -71,8 +83,8 @@
     .navbar {
       background-color: var(--ss-bg-header);
       border-bottom: 1px solid var(--ss-border);
-      padding: 0 0;
-      height: 48px;
+      padding: 0;
+      height: 56px;
     }
     .navbar .container {
       height: 100%;
@@ -87,8 +99,8 @@
     }
     .navbar-brand:hover { color: #fff !important; }
     .navbar-brand .logo-icon {
-      width: 28px;
-      height: 28px;
+      width: 32px;
+      height: 32px;
       background-color: var(--ss-accent);
       border-radius: 50%;
       display: flex;
@@ -96,45 +108,237 @@
       justify-content: center;
     }
     .navbar-brand .logo-icon svg {
-      width: 16px;
-      height: 16px;
+      width: 18px;
+      height: 18px;
       color: #fff;
     }
-    .nav-links {
+
+    /* Nav Pills */
+    .nav-pills-custom {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 8px;
       margin: 0;
       padding: 0;
       list-style: none;
     }
-    .nav-links a {
-      color: var(--ss-text-muted);
-      font-weight: 500;
-      font-size: 14px;
-      padding: 6px 12px;
-      border-radius: 4px;
+    .nav-pill {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      background: linear-gradient(135deg, rgba(70, 209, 96, 0.15) 0%, rgba(255, 214, 53, 0.15) 100%);
+      border: 1px solid rgba(70, 209, 96, 0.3);
+      border-radius: 20px;
+      padding: 0;
+      overflow: hidden;
+      text-decoration: none;
+      transition: all 0.2s ease;
     }
-    .nav-links a:hover,
-    .nav-links a.active {
-      color: #fff;
-      background-color: var(--ss-bg-input);
+    .nav-pill:hover {
+      background: linear-gradient(135deg, rgba(70, 209, 96, 0.25) 0%, rgba(255, 214, 53, 0.25) 100%);
+      border-color: rgba(70, 209, 96, 0.5);
+      transform: translateY(-1px);
+    }
+    .nav-pill.active {
+      background: linear-gradient(135deg, rgba(70, 209, 96, 0.3) 0%, rgba(255, 214, 53, 0.3) 100%);
+      border-color: var(--ss-success);
+    }
+    .nav-pill-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--ss-success) 0%, var(--ss-warning) 100%);
+      border-radius: 20px 0 0 20px;
+    }
+    .nav-pill-icon svg {
+      width: 16px;
+      height: 16px;
+      color: #000;
+    }
+    .nav-pill-text {
+      padding: 6px 12px 6px 8px;
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--ss-text);
+      white-space: nowrap;
+    }
+    .nav-pill:hover .nav-pill-text { color: #fff; }
+
+    .dancing-sandwich {
+      animation: dance 1.5s ease-in-out infinite;
+      display: inline-block;
+      font-size: 1.8rem;
+      margin-left: 12px;
     }
 
-    /* ========== CARDS ========== */
+    /* ========== CARDS - Enhanced ========== */
     .card {
       background-color: var(--ss-bg-card);
-      border: 1px solid var(--ss-border);
-      border-radius: 8px;
+      border: 2px solid var(--ss-border);
+      border-radius: 12px;
+      box-shadow:
+        0 0 0 1px rgba(70, 209, 96, 0.05),
+        0 4px 20px rgba(0, 0, 0, 0.3),
+        0 0 40px rgba(70, 209, 96, 0.03),
+        0 0 40px rgba(255, 214, 53, 0.02);
+      transition: box-shadow 0.3s ease, border-color 0.3s ease;
     }
-    .card-body { padding: 16px; }
+    .card:hover {
+      border-color: rgba(70, 209, 96, 0.3);
+      box-shadow:
+        0 0 0 1px rgba(70, 209, 96, 0.1),
+        0 8px 30px rgba(0, 0, 0, 0.4),
+        0 0 60px rgba(70, 209, 96, 0.05),
+        0 0 60px rgba(255, 214, 53, 0.03);
+    }
+    .card-body { padding: 20px; }
     .card-title {
       font-size: 12px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       color: var(--ss-text-muted);
+      margin-bottom: 16px;
+    }
+
+    /* Section spacing */
+    .section-gap { margin-bottom: 24px; }
+
+    /* ========== LCARS Style Stats ========== */
+    .lcars-panel {
+      font-family: 'Orbitron', 'Antonio', sans-serif;
+      background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
+      border: 2px solid var(--lcars-orange);
+      border-radius: 0 24px 24px 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .lcars-panel::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 8px;
+      background: linear-gradient(180deg, var(--lcars-orange) 0%, var(--lcars-gold) 50%, var(--lcars-orange) 100%);
+    }
+    .lcars-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px 12px 20px;
+      background: linear-gradient(90deg, var(--lcars-orange) 0%, transparent 100%);
+      border-bottom: 2px solid var(--lcars-gold);
+    }
+    .lcars-header-text {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #000;
+    }
+    .lcars-body {
+      padding: 16px 20px;
+    }
+    .lcars-stat {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 153, 0, 0.2);
+    }
+    .lcars-stat:last-child { border-bottom: none; }
+    .lcars-stat-label {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--lcars-tan);
+      min-width: 100px;
+    }
+    .lcars-stat-value {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--lcars-gold);
+      text-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
+    }
+    .lcars-stat-value.accent { color: var(--lcars-orange); }
+    .lcars-divider {
+      height: 2px;
+      background: linear-gradient(90deg, var(--lcars-orange) 0%, var(--lcars-gold) 50%, transparent 100%);
+      margin: 12px 0;
+    }
+    .lcars-live-section {
+      padding: 12px 20px;
+      background: rgba(0, 0, 0, 0.3);
+      border-top: 2px solid var(--lcars-gold);
+    }
+    .lcars-live-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       margin-bottom: 12px;
+    }
+    .lcars-live-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--ss-success);
+      border-radius: 50%;
+      animation: lcars-pulse 2s ease-in-out infinite;
+    }
+    .lcars-live-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--lcars-blue);
+    }
+    .lcars-live-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      font-size: 12px;
+    }
+    .lcars-live-label {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--lcars-tan);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .lcars-live-value {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--lcars-gold);
+      font-weight: 600;
+    }
+    .lcars-countdown {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--lcars-blue);
+      font-size: 11px;
+    }
+    @keyframes lcars-pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--ss-success); }
+      50% { opacity: 0.5; box-shadow: 0 0 4px var(--ss-success); }
+    }
+    @keyframes lcars-scan {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    .lcars-scan-line {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--lcars-gold), transparent);
+      animation: lcars-scan 3s linear infinite;
     }
 
     /* ========== BUTTONS ========== */
@@ -150,14 +354,15 @@
     }
     .btn svg { width: 16px; height: 16px; }
     .btn-primary {
-      background-color: var(--ss-text);
-      border-color: var(--ss-text);
-      color: var(--ss-bg-card);
+      background: linear-gradient(135deg, var(--ss-success) 0%, var(--ss-warning) 100%);
+      border: none;
+      color: #000;
+      font-weight: 700;
     }
     .btn-primary:hover {
-      background-color: #fff;
-      border-color: #fff;
-      color: var(--ss-bg-card);
+      background: linear-gradient(135deg, #5ae070 0%, #ffe045 100%);
+      color: #000;
+      transform: translateY(-1px);
     }
     .btn-secondary {
       background-color: transparent;
@@ -192,16 +397,16 @@
     .form-control, .form-select {
       background-color: var(--ss-bg-input);
       border: 1px solid var(--ss-border);
-      border-radius: 4px;
+      border-radius: 6px;
       color: var(--ss-text);
       padding: 10px 12px;
       font-size: 14px;
     }
     .form-control:focus, .form-select:focus {
       background-color: var(--ss-bg-input);
-      border-color: var(--ss-text);
+      border-color: var(--ss-success);
       color: var(--ss-text);
-      box-shadow: none;
+      box-shadow: 0 0 0 2px rgba(70, 209, 96, 0.15);
     }
     .form-control::placeholder { color: var(--ss-text-muted); }
     .form-text { color: var(--ss-text-muted); font-size: 12px; }
@@ -212,8 +417,8 @@
       height: 18px;
     }
     .form-check-input:checked {
-      background-color: var(--ss-accent);
-      border-color: var(--ss-accent);
+      background-color: var(--ss-success);
+      border-color: var(--ss-success);
     }
     .form-check-input:focus { box-shadow: none; }
 
@@ -251,7 +456,7 @@
     .badge.bg-secondary { background-color: var(--ss-border) !important; color: var(--ss-text-muted); }
 
     /* ========== ALERTS ========== */
-    .alert { border-radius: 4px; border: none; padding: 12px 16px; }
+    .alert { border-radius: 8px; border: none; padding: 12px 16px; }
     .alert-warning { background-color: #4D3800; color: var(--ss-warning); }
     .alert-success { background-color: #1A472A; color: var(--ss-success); }
     .alert-danger { background-color: #4A1616; color: var(--ss-danger); }
@@ -259,8 +464,9 @@
     /* ========== MODAL ========== */
     .modal-content {
       background-color: var(--ss-bg-card);
-      border: 1px solid var(--ss-border);
-      border-radius: 8px;
+      border: 2px solid var(--ss-border);
+      border-radius: 12px;
+      box-shadow: 0 0 60px rgba(70, 209, 96, 0.1);
     }
     .modal-header { border-bottom: 1px solid var(--ss-border); padding: 16px; }
     .modal-body { padding: 16px; }
@@ -317,7 +523,6 @@
       50% { transform: translateY(0) rotate(-5deg); }
       75% { transform: translateY(-4px) rotate(3deg); }
     }
-    .dancing-sandwich { animation: dance 1.5s ease-in-out infinite; display: inline-block; }
   </style>
 
   {% block head_extra %}{% endblock %}
@@ -336,11 +541,41 @@
         <span class="d-none d-sm-inline">sub search</span>
       </a>
 
-      <ul class="nav-links">
-        <li><a href="{% url 'home' %}"{% if nav_active == 'home' %} class="active"{% endif %}>Home</a></li>
-        <li><a href="{% url 'all_subs' %}"{% if nav_active == 'allsubs' %} class="active"{% endif %}>All Subs</a></li>
-        <li><a href="{% url 'nodes_home' %}"{% if nav_active == 'nodes' %} class="active"{% endif %}>Nodes</a></li>
-      </ul>
+      <div class="d-flex align-items-center">
+        <ul class="nav-pills-custom">
+          <li>
+            <a href="{% url 'home' %}" class="nav-pill{% if nav_active == 'home' %} active{% endif %}">
+              <span class="nav-pill-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                </svg>
+              </span>
+              <span class="nav-pill-text">Home</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'all_subs' %}" class="nav-pill{% if nav_active == 'allsubs' %} active{% endif %}">
+              <span class="nav-pill-icon">
+                <svg fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 5.58 2 10c0 2.21 1.13 4.21 3 5.67V22l4-3h3c5.52 0 10-3.58 10-8s-4.48-8-10-8zm-2 11H6v-2h4v2zm6 0h-4v-2h4v2zm0-4H6V7h10v2z"/>
+                </svg>
+              </span>
+              <span class="nav-pill-text">All The Subs</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'nodes_home' %}" class="nav-pill{% if nav_active == 'nodes' %} active{% endif %}">
+              <span class="nav-pill-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
+                </svg>
+              </span>
+              <span class="nav-pill-text">Nodes</span>
+            </a>
+          </li>
+        </ul>
+        <span class="dancing-sandwich d-none d-md-inline" title="Fresh subs daily!">&#129386;</span>
+      </div>
     </div>
   </nav>
 
@@ -348,7 +583,7 @@
   <main class="py-4">
     <div class="container">
       {% if config_warnings %}
-      <div class="alert alert-warning mb-4">
+      <div class="alert alert-warning section-gap">
         <strong>Configuration Notice</strong>
         <ul class="mb-0 mt-2 ps-3">
           {% for warning in config_warnings %}<li>{{ warning }}</li>{% endfor %}
@@ -357,7 +592,7 @@
       {% endif %}
 
       {% if messages %}
-      <div class="mb-4">
+      <div class="section-gap">
         {% for message in messages %}
         <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-danger{% else %}alert-info{% endif %}">
           {{ message }}

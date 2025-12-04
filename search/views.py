@@ -405,10 +405,17 @@ def job_download_csv(request, job_id):
 def api_recent_runs(request):
     """Get recent runs as JSON."""
     limit = min(max(int(request.GET.get('limit', 5) or 5), 1), 50)
+    source_filter = request.GET.get('source', '')
 
-    runs = QueryRun.objects.filter(
-        source=QueryRun.Source.SUB_SEARCH
-    ).order_by('-started_at')[:limit]
+    # Build query based on source filter
+    if source_filter == 'random':
+        queryset = QueryRun.objects.filter(source=QueryRun.Source.RANDOM)
+    elif source_filter == 'manual':
+        queryset = QueryRun.objects.filter(source=QueryRun.Source.SUB_SEARCH)
+    else:
+        queryset = QueryRun.objects.filter(source=QueryRun.Source.SUB_SEARCH)
+
+    runs = queryset.filter(completed_at__isnull=False).order_by('-completed_at')[:limit]
 
     return JsonResponse({
         'runs': [
