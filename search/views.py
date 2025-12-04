@@ -91,8 +91,11 @@ def _handle_search_submission(request):
     activity_date_raw = request.POST.get('activity_date', '').strip()
     notification_email_raw = request.POST.get('notification_email', '').strip()
 
-    # Sanitize keyword using the InputSanitizer
-    keyword = InputSanitizer.sanitize_keyword(keyword_raw) or None
+    # Sanitize keyword using the InputSanitizer - keyword is required
+    keyword = InputSanitizer.sanitize_keyword(keyword_raw)
+    if not keyword:
+        messages.error(request, "Please enter a keyword to search for subreddits.")
+        return redirect('home')
 
     # Sanitize and validate email
     notification_email = None
@@ -425,39 +428,58 @@ def api_recent_runs(request):
 
 @require_GET
 def api_queue(request):
-    """Get queue status with priority separation."""
+    """Get queue status with priority separation and running job info."""
     limit = min(max(int(request.GET.get('limit', 10) or 10), 1), 50)
 
+    # Get currently running job
+    running_job = QueryRun.objects.filter(state=QueryRun.State.RUNNING).first()
+
+    # Get queued jobs - user jobs first (priority 0), then auto jobs (priority 9)
     queued_jobs = QueryRun.objects.filter(
         state__in=[QueryRun.State.PENDING, QueryRun.State.QUEUED]
     ).order_by('priority', 'started_at')[:limit]
-
-    running_count = QueryRun.objects.filter(state=QueryRun.State.RUNNING).count()
 
     # Calculate average job time
     avg_time = _calculate_average_job_time()
 
     queue_items = []
     for idx, job in enumerate(queued_jobs):
+        # Only include jobs with keywords (no "all subreddits" searches)
+        if not job.keyword:
+            continue
+
         eta_start = int(idx * avg_time)
         eta_completion = int((idx + 1) * avg_time)
 
         queue_items.append({
             'job_id': job.job_id,
-            'keyword': job.keyword or 'All subreddits',
+            'keyword': job.keyword,
             'limit': job.limit_value,
             'source': job.source,
             'priority': job.priority,
             'position': idx + 1,
             'eta_start_seconds': eta_start,
             'eta_completion_seconds': eta_completion,
-            'is_manual': job.priority == PRIORITY_USER,
+            'is_manual': job.source == QueryRun.Source.SUB_SEARCH,
         })
 
+    # Build running job info
+    running_info = None
+    if running_job:
+        running_info = {
+            'job_id': running_job.job_id,
+            'keyword': running_job.keyword,
+            'source': running_job.source,
+            'checked': running_job.checked_count or 0,
+            'found': running_job.found_count or 0,
+            'limit': running_job.limit_value,
+            'is_manual': running_job.source == QueryRun.Source.SUB_SEARCH,
+        }
+
     return JsonResponse({
+        'running': running_info,
         'queue': queue_items,
-        'total_queued': queued_jobs.count(),
-        'running_count': running_count,
+        'total_queued': len(queue_items),
         'avg_job_time_seconds': avg_time,
     })
 

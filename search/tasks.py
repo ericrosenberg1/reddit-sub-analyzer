@@ -450,12 +450,18 @@ def run_auto_ingest(self):
     Execute auto-ingest job for configured keywords.
 
     This task runs with LOW priority (9) so user searches are processed first.
+    Only runs if AUTO_INGEST_KEYWORDS is configured with actual keywords.
     """
-    keywords = settings.AUTO_INGEST_KEYWORDS or [None]
+    keywords = settings.AUTO_INGEST_KEYWORDS
+    if not keywords:
+        logger.info("Auto-ingest skipped: no keywords configured")
+        return {'status': 'skipped', 'reason': 'no keywords configured'}
 
     for keyword in keywords:
+        if not keyword:
+            continue  # Skip empty keywords
         job_id = uuid.uuid4().hex
-        label = (keyword or 'global').replace(' ', '-').lower()
+        label = keyword.replace(' ', '-').lower()
 
         query_run = QueryRun.objects.create(
             job_id=job_id,
