@@ -193,8 +193,8 @@
                 </svg>
               </a>
               {% endif %}
-              <span class="status-badge badge {% if run.completed_at %}bg-success{% elif run.error %}bg-danger{% else %}bg-info{% endif %}">
-                {% if run.completed_at %}done{% elif run.error %}error{% else %}running{% endif %}
+              <span class="status-badge badge {% if run.state == 'complete' %}bg-success{% elif run.state == 'error' %}bg-danger{% elif run.state == 'stopped' %}bg-warning{% else %}bg-secondary{% endif %}">
+                {% if run.state == 'complete' %}done{% elif run.state == 'error' %}error{% elif run.state == 'stopped' %}stopped{% else %}{{ run.state }}{% endif %}
               </span>
             </div>
           </div>

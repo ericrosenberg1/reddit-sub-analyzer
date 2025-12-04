@@ -319,14 +319,14 @@ def run_sub_search(self, job_id: str):
         if results_buffer:
             _flush_results(query_run, results_buffer)
 
-        # Count total results - use 'evaluated' (all subs found) not 'results' (filtered)
-        # This way the result count shows all keyword matches, not just filtered ones
-        api_evaluated = payload.get('evaluated', []) if isinstance(payload, dict) else payload
-        total_count = len(existing_matches) + len(api_evaluated)
+        # Count total keyword matches in database AFTER search completes
+        # This gives accurate count of all subs matching the keyword
+        total_count = _count_keyword_matches(query_run.keyword)
 
         query_run.mark_complete(result_count=total_count)
-        logger.info("Job %s completed with %d results (%d from DB, %d from API)",
-                   job_id, total_count, len(existing_matches), len(api_evaluated))
+        api_evaluated = payload.get('evaluated', []) if isinstance(payload, dict) else payload
+        logger.info("Job %s completed with %d total matches in DB (%d evaluated from API)",
+                   job_id, total_count, len(api_evaluated))
 
         # Send email notification if requested
         if query_run.notification_email:
@@ -339,8 +339,10 @@ def run_sub_search(self, job_id: str):
         }
 
     except SoftTimeLimitExceeded:
-        query_run.mark_complete(result_count=len(results_buffer), error='Task timed out')
-        logger.warning("Job %s timed out", job_id)
+        # Even on timeout, count what's in the DB
+        total_count = _count_keyword_matches(query_run.keyword)
+        query_run.mark_complete(result_count=total_count, error='Task timed out')
+        logger.warning("Job %s timed out (still found %d matches in DB)", job_id, total_count)
         # Send notification even on timeout
         if query_run.notification_email:
             send_completion_notification.delay(job_id)
@@ -348,7 +350,9 @@ def run_sub_search(self, job_id: str):
 
     except Exception as e:
         logger.exception("Job %s failed: %s", job_id, e)
-        query_run.mark_complete(result_count=0, error=str(e))
+        # Even on error, count what's in the DB
+        total_count = _count_keyword_matches(query_run.keyword)
+        query_run.mark_complete(result_count=total_count, error=str(e))
         # Send notification even on error
         if query_run.notification_email:
             send_completion_notification.delay(job_id)
@@ -381,6 +385,25 @@ def _query_existing_matches(query_run):
 
     # Limit to reasonable amount
     return list(qs.order_by('-subscribers')[:5000])
+
+
+def _count_keyword_matches(keyword):
+    """Count total subreddits in database matching a keyword.
+
+    Returns the count of all subs where the keyword appears in
+    name, title, or description. This is used for the final
+    result count after a search completes.
+    """
+    from django.db.models import Q
+
+    if not keyword:
+        return 0
+
+    return Subreddit.objects.filter(
+        Q(name__icontains=keyword) |
+        Q(title__icontains=keyword) |
+        Q(public_description__icontains=keyword)
+    ).count()
 
 
 def _flush_results(query_run, results):
