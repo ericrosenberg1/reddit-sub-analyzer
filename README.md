@@ -4,53 +4,56 @@
 [![GitHub forks](https://img.shields.io/github/forks/ericrosenberg1/reddit-sub-analyzer?style=for-the-badge)](https://github.com/ericrosenberg1/reddit-sub-analyzer/network)
 [![GitHub issues](https://img.shields.io/github/issues/ericrosenberg1/reddit-sub-analyzer?style=for-the-badge)](https://github.com/ericrosenberg1/reddit-sub-analyzer/issues)
 [![Python](https://img.shields.io/badge/python-3.11+-blue?style=for-the-badge&logo=python)](https://www.python.org/)
-[![Flask](https://img.shields.io/badge/flask-3.0+-green?style=for-the-badge&logo=flask)](https://flask.palletsprojects.com/)
+[![Django](https://img.shields.io/badge/django-5.2-green?style=for-the-badge&logo=django)](https://www.djangoproject.com/)
 [![Reddit API](https://img.shields.io/badge/reddit-API-orange?style=for-the-badge&logo=reddit)](https://www.reddit.com/dev/api/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
-[![Current Version](https://img.shields.io/badge/version-2025.11.01.0-brightgreen?style=for-the-badge)](VERSION)
+[![Current Version](https://img.shields.io/badge/version-2025.12.03-brightgreen?style=for-the-badge)](VERSION)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=for-the-badge)](CONTRIBUTING.md)
 
-> 🔍 Discover, analyze, and export Reddit communities with the largest community-maintained subreddit database.
+> Discover, analyze, and export Reddit communities with the largest community-maintained subreddit database.
 
-**Sub Search** is an open-source tool for discovering Reddit subreddits with advanced filtering, real-time search, and a constantly-growing database of 3+ million subreddits. Perfect for researchers, marketers, community builders, and Reddit enthusiasts.
+**Sub Search** is an open-source tool for discovering Reddit subreddits with advanced filtering, real-time search progress, and a constantly-growing database of 227,000+ subreddits. Perfect for researchers, marketers, community builders, and Reddit enthusiasts.
 
-[🚀 Live Demo](https://allthesubs.ericrosenberg.com) • [📖 User Guide](docs/HELP.md) • [💻 Developer Docs](docs/DEVELOPERS.md) • [📋 Changelog](docs/CHANGELOG.md)
-
----
-
-## ✨ Features
-
-### 🔎 Powerful Search
-- **Advanced Filtering** - Search by keyword, subscriber count, NSFW status, and moderator activity
-- **Real-Time Progress** - Live updates with ETA calculations and smooth animations
-- **Database + API** - Query cached results instantly or fetch fresh data from Reddit
-
-### 📊 Comprehensive Database
-- **3+ Million Subreddits** - Continuously growing community-maintained index
-- **Auto-Ingest** - Automated discovery of new subreddits every 3 hours
-- **Random Discovery** - Background bot finds subreddits using random keywords
-
-### 🌐 Distributed Network
-- **Volunteer Nodes** - Run your own discovery node to contribute to the database
-- **Phone Home** - Share discoveries with the main database
-- **No Central Bottleneck** - Decentralized data collection
-
-### 📤 Export & Integration
-- **CSV Export** - Download search results for analysis
-- **REST API** - Programmatic access to the database
-- **Real-Time Updates** - WebSocket-like polling for live progress
+[Live Demo](https://allthesubs.ericrosenberg.com) | [Help Center](https://allthesubs.ericrosenberg.com/help/) | [API Docs](https://allthesubs.ericrosenberg.com/developer-docs/)
 
 ---
 
-## 🚀 Quick Start
+## Features
+
+### Powerful Search
+- **Keyword Matching** - Search by keyword in subreddit names, titles, and descriptions
+- **Advanced Filters** - Filter by subscriber count, NSFW status, moderator activity, and more
+- **Real-Time Progress** - Live updates with ETA calculations as searches run
+- **Accumulated Results** - Each search adds to the database, making future searches more valuable
+
+### Smart Automation
+- **Priority Queue** - User searches always run first (priority 0), automated searches run when idle (priority 9)
+- **Auto-Retry** - Failed searches automatically retry every 10 minutes with medium priority
+- **Smart Idle Detection** - Bot triggers random keyword searches after 7 minutes of inactivity
+- **Rolling Stats** - 24-hour activity metrics updated every 15 minutes
+
+### Export & Integration
+- **CSV Export** - Download all matching subreddits for any keyword
+- **REST API** - Programmatic access to the database with filtering and pagination
+- **Browse Interface** - Filter, sort, and explore all indexed subreddits
+
+### Volunteer Network
+- **Distributed Discovery** - Run your own node to contribute to the database
+- **Node Management** - Register, monitor, and manage volunteer nodes
+- **Phone Home Sync** - Optionally sync discoveries back to the main database
+
+---
+
+## Quick Start
 
 ### Prerequisites
 
 - **Python 3.11+**
+- **Redis** (for Celery task queue)
+- **PostgreSQL** (recommended) or **SQLite** (development)
 - **Reddit API Credentials** ([Get them here](https://www.reddit.com/prefs/apps))
-- **SQLite** (included) or **PostgreSQL** (optional)
 
-### Installation (Local)
+### Installation
 
 ```bash
 # 1. Clone the repository
@@ -58,34 +61,165 @@ git clone https://github.com/ericrosenberg1/reddit-sub-analyzer.git
 cd reddit-sub-analyzer
 
 # 2. Create virtual environment
-python3 -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # 3. Install dependencies
 pip install -r requirements.txt
 
 # 4. Configure environment
 cp .env.example .env
-# Edit .env with your Reddit API credentials
+# Edit .env with your credentials (see Configuration below)
 
-# 5. Initialize database
-python -c "from subsearch.storage import init_db; init_db()"
+# 5. Run database migrations
+python manage.py migrate
 
-# 6. Run the application
-python -m subsearch.web_app
+# 6. Start Redis (in a separate terminal or as a service)
+redis-server
+
+# 7. Start Celery worker (in a separate terminal)
+celery -A reddit_analyzer worker --loglevel=info
+
+# 8. Start Celery Beat scheduler (in a separate terminal)
+celery -A reddit_analyzer beat --loglevel=info
+
+# 9. Run the Django development server
+python manage.py runserver
 ```
 
-Visit `http://localhost:5055` 🎉
+Visit `http://localhost:8000`
 
-### Docker Deployment
+---
+
+## Architecture
+
+```
++----------------------------------------------------------+
+|                  Web Interface                            |
+|            (Django Templates + JavaScript)                |
++----------------------------+-----------------------------+
+                             |
++----------------------------+-----------------------------+
+|                 Django Application                        |
+|                                                           |
+|  +-------------+  +--------------+  +--------------+     |
+|  | Search App  |  |  Nodes App   |  |  Views/API   |     |
+|  +-------------+  +--------------+  +--------------+     |
++----------------------------+-----------------------------+
+                             |
++----------------------------+-----------------------------+
+|           Celery Task Queue (Priority-Based)              |
+|                                                           |
+|  Priority 0: User searches (immediate)                    |
+|  Priority 5: Retried failed searches                      |
+|  Priority 9: Auto-ingest & random searches                |
++----------------------------+-----------------------------+
+                             |
++----------------------------+-----------------------------+
+|                External Integrations                      |
+|                                                           |
+|  +-------------+  +--------------+  +--------------+     |
+|  | Reddit API  |  |  Database    |  |   Redis      |     |
+|  |   (PRAW)    |  | PostgreSQL   |  |  (Broker)    |     |
+|  +-------------+  +--------------+  +--------------+     |
++----------------------------------------------------------+
+```
+
+### Key Components
+
+| Component | Purpose |
+|-----------|---------|
+| **Django** | Web framework, ORM, admin interface |
+| **Celery** | Async task queue with priority levels |
+| **Redis** | Message broker and result backend |
+| **PRAW** | Reddit API wrapper with rate limiting |
+| **PostgreSQL** | Production database (SQLite for dev) |
+
+### Celery Tasks
+
+| Task | Priority | Schedule | Description |
+|------|----------|----------|-------------|
+| `run_sub_search` | 0 | On-demand | User-submitted searches |
+| `retry_errored_searches` | 5 | Every 10 min | Re-queue failed searches |
+| `run_random_search` | 9 | When idle 7+ min | Random keyword discovery |
+| `run_auto_ingest` | 9 | Every 3 hours | Configured keyword ingestion |
+| `cleanup_stale_jobs` | - | Every 5 min | Mark stuck jobs as failed |
+| `refresh_rolling_stats` | - | Every 15 min | Update 24h activity metrics |
+
+---
+
+## Configuration
+
+### Required Environment Variables
 
 ```bash
-# Build image
-docker build -t sub-search .
+# Django
+DJANGO_SECRET_KEY=your-secret-key-here
+DEBUG=0
+ALLOWED_HOSTS=yourdomain.com,localhost
 
-# Run container
+# Reddit API (get from https://www.reddit.com/prefs/apps)
+REDDIT_CLIENT_ID=your_client_id
+REDDIT_CLIENT_SECRET=your_client_secret
+REDDIT_USERNAME=your_reddit_username      # Optional but recommended
+REDDIT_PASSWORD=your_reddit_password      # Optional but recommended
+
+# Database
+DATABASE_URL=postgres://user:pass@localhost:5432/subsearch
+
+# Redis
+REDIS_URL=redis://localhost:6379/0
+```
+
+### Optional Configuration
+
+```bash
+# Rate Limiting
+SUBSEARCH_RATE_LIMIT_DELAY=0.15          # Seconds between API calls
+SUBSEARCH_PUBLIC_API_LIMIT=2000          # Max subreddits per search
+
+# Auto-Ingest
+AUTO_INGEST_ENABLED=1
+AUTO_INGEST_INTERVAL_MINUTES=180
+AUTO_INGEST_KEYWORDS=gaming,technology,science,music
+
+# Random Search
+RANDOM_SEARCH_LIMIT=2000
+
+# Email Notifications (optional)
+EMAIL_HOST=smtp.example.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=your_email
+EMAIL_HOST_PASSWORD=your_password
+```
+
+See [.env.example](.env.example) for all options.
+
+---
+
+## Production Deployment
+
+### Using Gunicorn + Systemd
+
+```bash
+# Install Gunicorn
+pip install gunicorn
+
+# Run with Gunicorn
+gunicorn reddit_analyzer.wsgi:application --bind 0.0.0.0:8000 --workers 4
+```
+
+Create systemd services for:
+- Django app (Gunicorn)
+- Celery worker
+- Celery Beat scheduler
+
+### Using Docker
+
+```bash
+docker build -t sub-search .
 docker run -d \
-  -p 5055:5055 \
+  -p 8000:8000 \
   -v $(pwd)/data:/app/data \
   --env-file .env \
   --name sub-search \
@@ -94,217 +228,79 @@ docker run -d \
 
 ---
 
-## 📖 Documentation
+## API Endpoints
 
-- **[User Guide](docs/HELP.md)** - How to use Sub Search (no coding required)
-- **[Developer Guide](docs/DEVELOPERS.md)** - Technical documentation for contributors
-
----
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                      Web Interface                       │
-│              (Flask + Tailwind CSS + HTMX)              │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-┌──────────────────────┴──────────────────────────────────┐
-│                  Core Application                        │
-│                  (Python + Flask)                        │
-│                                                          │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐    │
-│  │   Search    │  │   Queue     │  │   Storage   │    │
-│  │   Engine    │  │   Manager   │  │   Layer     │    │
-│  └─────────────┘  └─────────────┘  └─────────────┘    │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-┌──────────────────────┴──────────────────────────────────┐
-│                External Integrations                     │
-│                                                          │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐    │
-│  │   Reddit    │  │   Database  │  │ Phone Home  │    │
-│  │     API     │  │  SQLite/PG  │  │   Sync      │    │
-│  └─────────────┘  └─────────────┘  └─────────────┘    │
-└─────────────────────────────────────────────────────────┘
-```
-
-### Key Components
-
-- **Search Engine** - Queries Reddit API with intelligent rate limiting
-- **Queue Manager** - Handles concurrent searches with ETA calculations
-- **Storage Layer** - Caches results in SQLite/PostgreSQL
-- **Auto-Ingest** - Background worker for continuous discovery
-- **Phone Home** - Optional sync with central database
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET/POST | Home page with search form |
+| `/status/<job_id>/` | GET | Get job status (JSON) |
+| `/stop/<job_id>/` | POST | Stop a running search |
+| `/job/<job_id>/download.csv` | GET | Download results as CSV |
+| `/api/subreddits/` | GET | Search subreddits with filters |
+| `/api/recent-runs/` | GET | Recent completed searches |
+| `/api/queue/` | GET | Queue status and ETA |
+| `/all-the-subs/` | GET | Browse all indexed subreddits |
+| `/logs/` | GET | Activity log with search history |
 
 ---
 
-## 🛠️ Configuration
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `REDDIT_CLIENT_ID` | Reddit app client ID | Required |
-| `REDDIT_CLIENT_SECRET` | Reddit app secret | Required |
-| `REDDIT_USERNAME` | Reddit account username | Optional |
-| `REDDIT_PASSWORD` | Reddit account password | Optional |
-| `SUBSEARCH_RATE_LIMIT_DELAY` | Delay between API calls (seconds) | 0.15 |
-| `SUBSEARCH_PUBLIC_API_LIMIT` | Max subreddits to check per search | 2000 |
-| `AUTO_INGEST_ENABLED` | Enable automatic discovery | 1 |
-| `AUTO_INGEST_INTERVAL_MINUTES` | Time between auto-ingest runs | 180 |
-| `PHONE_HOME` | Enable syncing with main database | false |
-
-See [.env.example](.env.example) for complete configuration options.
-
----
-
-## 🌐 Cloud Deployment
-
-### Deploy to Railway
-
-1. Fork this repository
-2. Connect to Railway
-3. Add environment variables
-4. Deploy
-
-### Deploy to Heroku or similar
-
-```bash
-# Install Heroku CLI
-# https://devcenter.heroku.com/articles/heroku-cli
-
-# Create app
-heroku create your-app-name
-
-# Set environment variables
-heroku config:set REDDIT_CLIENT_ID=your_id
-heroku config:set REDDIT_CLIENT_SECRET=your_secret
-
-# Deploy
-git push heroku main
-```
-
----
-
-## 🤝 Running a Volunteer Node
+## Running a Volunteer Node
 
 Help grow the database by running your own discovery node!
 
-### Setup
-
-```bash
-# 1. Follow Quick Start installation
-
-# 2. Enable auto-ingest in .env
-AUTO_INGEST_ENABLED=1
-AUTO_INGEST_INTERVAL_MINUTES=180
-
-# 3. Optional: Enable phone home to share discoveries
-PHONE_HOME=true
-PHONE_HOME_ENDPOINT=https://allthesubs.ericrosenberg.com/api/ingest
-PHONE_HOME_TOKEN=your_token_here
-
-# 4. Run continuously
-python -m subsearch.web_app
-```
-
-### Register Your Node
-
-Visit the [Nodes page](https://allthesubs.ericrosenberg.com/nodes/join) to register your volunteer node and get a unique node management link.
+1. Follow the installation steps above
+2. Configure your `.env` with Reddit credentials
+3. Enable auto-ingest and optionally phone home
+4. Register at [allthesubs.ericrosenberg.com/nodes/join](https://allthesubs.ericrosenberg.com/nodes/join)
 
 ---
 
-## 🧪 Development
+## Contributing
 
-### Setup Development Environment
-
-```bash
-# Clone and setup
-git clone https://github.com/ericrosenberg1/reddit-sub-analyzer.git
-cd reddit-sub-analyzer
-
-# Create virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-
-# Install dependencies (including dev tools)
-pip install -r requirements.txt
-pip install -r requirements-dev.txt  # If exists
-
-# Run
-python -m subsearch.web_app
-```
+- **Report Bugs** - [Open an issue](https://github.com/ericrosenberg1/reddit-sub-analyzer/issues/new)
+- **Submit PRs** - Fix bugs or add features
+- **Run a Node** - Help grow the database
+- **Improve Docs** - Help make documentation better
 
 ---
 
-## 🤝 Contributing
+## Performance
 
-### Ways to Contribute
-
-- 🐛 **Report Bugs** - [Open an issue](https://github.com/ericrosenberg1/reddit-sub-analyzer/issues/new)
-- 💡 **Suggest Features** - Share your ideas in discussions
-- 📝 **Improve Docs** - Help make documentation better
-- 🔧 **Submit PRs** - Fix bugs or add features
-- 🌐 **Run a Node** - Help grow the database
-
-### Development Workflow
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Run tests (`pytest`)
-5. Commit your changes (`git commit -m 'feat: add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
+- **Search Speed**: 2-4 minutes for 2000 subreddits
+- **Database Size**: 227,000+ subreddits and growing
+- **Batch Processing**: Results saved in batches of 32 for efficiency
+- **Rate Limiting**: 0.15s delays respect Reddit's API limits
 
 ---
 
-## 📊 Performance
+## Security
 
-- **Search Speed**: 2-4 minutes for 1000 subreddits (60-75% faster than v1.0)
-- **Database Size**: 3+ million subreddits and growing
-- **API Efficiency**: Intelligent rate limiting with 0.15s delays
-- **Real-Time Updates**: Status polling every 1 second
+- **Input Sanitization** - All user input validated and sanitized
+- **Rate Limiting** - Per-IP limits on API endpoints
+- **CSRF Protection** - Django CSRF tokens on all forms
+- **Security Headers** - CSP, X-Frame-Options, X-Content-Type-Options
 
----
-
-## 🔐 Security
-
-- **API Key Protection** - Credentials stored securely in environment variables
-- **Rate Limiting** - Respects Reddit API limits
-- **Input Sanitization** - All user input is validated
-- **CSRF Protection** - Flask CSRF tokens enabled
-
-Found a security issue? Please email me through the contact for at ericrosenberg.com instead of opening a public issue.
+Found a security issue? Please email through the contact form at [ericrosenberg.com](https://ericrosenberg.com) instead of opening a public issue.
 
 ---
 
-## 📜 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-- **PRAW** - Python Reddit API Wrapper
-- **Flask** - Web framework
-- **Tailwind CSS** - Styling
-- **Reddit** - API and data source
-
----
-
-## 📞 Support
-
-- **Documentation**: [User Guide](docs/HELP.md) | [Developer Docs](docs/DEVELOPERS.md)
-- **Issues**: [GitHub Issues](https://github.com/ericrosenberg1/reddit-sub-analyzer/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/ericrosenberg1/reddit-sub-analyzer/discussions)
+- **[PRAW](https://praw.readthedocs.io/)** - Python Reddit API Wrapper
+- **[Django](https://www.djangoproject.com/)** - Web framework
+- **[Celery](https://docs.celeryproject.org/)** - Distributed task queue
+- **[Redis](https://redis.io/)** - In-memory data store
 
 ---
 
 <p align="center">
-  Made with ❤️ by <a href="https://ericrosenberg.com">Eric Rosenberg</a>
+  Made with care by <a href="https://ericrosenberg.com">Eric Rosenberg</a>
   <br>
-  <sub>Current Version: <strong>2025.11.01.0</strong></sub>
+  <sub>Version <strong>2025.12.03</strong></sub>
 </p>

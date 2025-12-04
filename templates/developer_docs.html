@@ -8,7 +8,7 @@
     <p class="stat-label mb-2">Developer Documentation</p>
     <h1 class="h2 mb-3">Build & Deploy Sub Search</h1>
     <p class="text-muted mb-0" style="max-width: 700px;">
-      Clone the repo, configure your environment, and start contributing to the subreddit directory. These docs assume you're comfortable with a terminal.
+      Clone the repo, configure your environment, and start contributing to the subreddit directory. Sub Search is built with Django 5.2, Celery for async tasks, and Redis as the message broker. These docs assume you're comfortable with a terminal.
     </p>
   </div>
 </div>
@@ -26,7 +26,7 @@
     <ol class="list-unstyled mb-0">
       <li class="d-flex gap-3 mb-3">
         <span class="text-warning fw-semibold">1.</span>
-        <span>Install Python 3.10+ and git</span>
+        <span>Install Python 3.11+ and git</span>
       </li>
       <li class="d-flex gap-3 mb-3">
         <span class="text-warning fw-semibold">2.</span>
@@ -143,12 +143,52 @@ gunicorn reddit_analyzer.wsgi:application --bind 0.0.0.0:8000 --workers 4</code>
   </div>
 </div>
 
-<!-- Phone Home -->
+<!-- Celery Tasks -->
 <div class="card mb-4">
   <div class="card-body">
     <div class="d-flex align-items-center gap-3 mb-4">
       <div class="rounded d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background-color: rgba(70, 209, 96, 0.2);">
         <span class="text-success fw-bold">4</span>
+      </div>
+      <h4 class="mb-0">Celery Task Architecture</h4>
+    </div>
+
+    <p class="small text-muted mb-3">Sub Search uses a priority-based task queue. Start both worker and beat scheduler:</p>
+    <pre class="p-3 rounded mb-4" style="background-color: var(--ss-bg-page);"><code># Worker (handles task execution)
+celery -A reddit_analyzer worker --loglevel=info
+
+# Beat (schedules periodic tasks)
+celery -A reddit_analyzer beat --loglevel=info</code></pre>
+
+    <div class="row g-3">
+      <div class="col-md-6 col-lg-4">
+        <div class="bg-input rounded p-3 h-100">
+          <h6 class="text-warning mb-2">Priority 0 (User)</h6>
+          <p class="small text-muted mb-0"><code>run_sub_search</code> - User-submitted searches always run first</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="bg-input rounded p-3 h-100">
+          <h6 class="text-warning mb-2">Priority 5 (Retry)</h6>
+          <p class="small text-muted mb-0"><code>retry_errored_searches</code> - Re-queue failed searches every 10 minutes</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="bg-input rounded p-3 h-100">
+          <h6 class="text-warning mb-2">Priority 9 (Auto)</h6>
+          <p class="small text-muted mb-0"><code>run_random_search</code> and <code>run_auto_ingest</code> - Background discovery</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Phone Home -->
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <div class="rounded d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background-color: rgba(70, 209, 96, 0.2);">
+        <span class="text-success fw-bold">5</span>
       </div>
       <h4 class="mb-0">Stream Data with PHONE_HOME</h4>
     </div>
@@ -183,7 +223,7 @@ gunicorn reddit_analyzer.wsgi:application --bind 0.0.0.0:8000 --workers 4</code>
   <div class="card-body">
     <div class="d-flex align-items-center gap-3 mb-4">
       <div class="rounded d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background-color: rgba(70, 209, 96, 0.2);">
-        <span class="text-success fw-bold">5</span>
+        <span class="text-success fw-bold">6</span>
       </div>
       <h4 class="mb-0">Volunteer a Node</h4>
     </div>

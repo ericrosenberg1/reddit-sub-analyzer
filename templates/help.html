@@ -57,6 +57,48 @@
   </div>
 </div>
 
+<!-- How It Works -->
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <div class="rounded d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background-color: rgba(102, 153, 204, 0.2);">
+        <svg width="18" height="18" style="color: #6699cc;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      </div>
+      <h4 class="mb-0">How the System Works</h4>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="bg-input rounded p-4 h-100">
+          <h6 class="text-warning mb-2">Priority Queue</h6>
+          <p class="small text-muted mb-0">Your searches always run first (priority 0). Automated bot searches and auto-ingest run at lower priority (9) only when no users are waiting.</p>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="bg-input rounded p-4 h-100">
+          <h6 class="text-warning mb-2">Accumulated Results</h6>
+          <p class="small text-muted mb-0">Every search adds to the shared database. When you download results, you get ALL matching subreddits ever discovered - not just from your search.</p>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="bg-input rounded p-4 h-100">
+          <h6 class="text-warning mb-2">Smart Idle Detection</h6>
+          <p class="small text-muted mb-0">After 7 minutes of no user activity, the bot automatically runs random keyword searches to continuously grow the database.</p>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="bg-input rounded p-4 h-100">
+          <h6 class="text-warning mb-2">Auto-Retry</h6>
+          <p class="small text-muted mb-0">Failed searches automatically retry every 10 minutes at medium priority. The system self-heals from temporary Reddit API issues.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- FAQ -->
 <div class="card mb-4">
   <div class="card-body">
@@ -72,27 +114,27 @@
     <div class="d-flex flex-column gap-3">
       <div class="bg-input rounded p-4">
         <h5 class="text-success mb-2">What does Sub Search do?</h5>
-        <p class="small text-muted mb-0">It queries Reddit's official API for subreddits matching your filters, enriches them with moderator counts + activity timestamps, and saves everything to the public All The Subs database.</p>
+        <p class="small text-muted mb-0">It queries Reddit's official API for subreddits matching your keyword, enriches them with subscriber counts, moderator info, and activity timestamps, then saves everything to the shared database with 227,000+ subreddits.</p>
       </div>
       <div class="bg-input rounded p-4">
         <h5 class="text-success mb-2">Why is there a queue?</h5>
-        <p class="small text-muted mb-0">The queue protects everyone from Reddit rate limits. Each job runs with paced delays so no single user can overwhelm the API. You can keep browsing while you wait.</p>
+        <p class="small text-muted mb-0">Reddit has strict API rate limits. The priority queue ensures your searches run immediately while background tasks wait. Each job uses 0.15-second delays between API calls to stay within limits.</p>
+      </div>
+      <div class="bg-input rounded p-4">
+        <h5 class="text-success mb-2">How long does a search take?</h5>
+        <p class="small text-muted mb-0">Typically 2-4 minutes for 2,000 subreddits. You'll see real-time progress with a live count and ETA. Results are saved in batches of 32 as they arrive.</p>
+      </div>
+      <div class="bg-input rounded p-4">
+        <h5 class="text-success mb-2">What do I get when I download results?</h5>
+        <p class="small text-muted mb-0">The CSV includes ALL subreddits in the database matching your keyword - from your search plus everyone else's. That's the power of the accumulated database.</p>
       </div>
       <div class="bg-input rounded p-4">
         <h5 class="text-success mb-2">Can I contribute data faster?</h5>
         <p class="small text-muted mb-0">Yes! Enable PHONE_HOME in your self-hosted instance or volunteer a node via the Nodes page. Your local searches will sync to the main database automatically.</p>
       </div>
       <div class="bg-input rounded p-4">
-        <h5 class="text-success mb-2">How do I report bugs or suggest features?</h5>
-        <p class="small text-muted mb-0">Open an issue on <a href="https://github.com/ericrosenberg1/reddit-sub-analyzer/issues" target="_blank" class="text-warning">GitHub</a>. Include as much detail as you can.</p>
-      </div>
-      <div class="bg-input rounded p-4">
         <h5 class="text-success mb-2">Is Sub Search free?</h5>
         <p class="small text-muted mb-0">Absolutely. The goal is a trustworthy, community-maintained directory. Running searches, exporting CSVs, and browsing All The Subs are all free forever.</p>
-      </div>
-      <div class="bg-input rounded p-4">
-        <h5 class="text-success mb-2">How do I help keep data fresh?</h5>
-        <p class="small text-muted mb-0">Run searches for keywords you care about, enable auto-ingest in your deployment, volunteer a node, or submit pull requests if you build something new.</p>
       </div>
     </div>
   </div>
