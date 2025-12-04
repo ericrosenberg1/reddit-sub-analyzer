@@ -347,7 +347,7 @@ def stop_job(request, job_id):
 
 @require_GET
 def job_download_csv(request, job_id):
-    """Download job results as CSV with input validation."""
+    """Download job results as CSV - all DB matches for the keyword."""
     # Sanitize job_id
     sanitized_job_id = InputSanitizer.sanitize_job_id(job_id)
     if not sanitized_job_id:
@@ -358,11 +358,21 @@ def job_download_csv(request, job_id):
     except QueryRun.DoesNotExist:
         return HttpResponse("Job not found", status=404)
 
-    # Get subreddits from this job
-    subreddits = Subreddit.objects.filter(last_seen_run=job).order_by('-subscribers')
+    # Get ALL subreddits matching the keyword in name, title, or description
+    # This matches the count shown in Recent Search Results
+    keyword = job.keyword
+    if keyword:
+        subreddits = Subreddit.objects.filter(
+            Q(name__icontains=keyword) |
+            Q(title__icontains=keyword) |
+            Q(public_description__icontains=keyword)
+        ).order_by('-subscribers')
+    else:
+        # No keyword means no results
+        subreddits = Subreddit.objects.none()
 
     if not subreddits.exists():
-        return HttpResponse("No data available for this job yet.", status=404)
+        return HttpResponse("No matching subreddits found for this keyword.", status=404)
 
     fieldnames = [
         'display_name_prefixed', 'title', 'public_description', 'subscribers',
@@ -398,7 +408,9 @@ def job_download_csv(request, job_id):
             buffer.truncate(0)
 
     response = StreamingHttpResponse(generate(), content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename=subsearch_{job_id}.csv'
+    # Use keyword in filename for clarity
+    safe_keyword = re.sub(r'[^a-zA-Z0-9_-]', '_', keyword or 'all')[:30]
+    response['Content-Disposition'] = f'attachment; filename=subsearch_{safe_keyword}.csv'
     return response
 
 
