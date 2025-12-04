@@ -262,36 +262,41 @@ if AUTO_INGEST_ENABLED:
     CELERY_BEAT_SCHEDULE['auto-ingest'] = {
         'task': 'search.tasks.run_auto_ingest',
         'schedule': AUTO_INGEST_INTERVAL * 60,
-        'options': {'priority': 9},
+        'options': {'priority': 9, 'queue': 'search'},
     }
 
 # Cleanup tasks - run frequently
 CELERY_BEAT_SCHEDULE['cleanup-stale-jobs'] = {
     'task': 'search.tasks.cleanup_stale_jobs',
     'schedule': 300,  # Every 5 minutes
+    'options': {'queue': 'cleanup'},
 }
 
 CELERY_BEAT_SCHEDULE['cleanup-broken-nodes'] = {
     'task': 'search.tasks.cleanup_broken_nodes',
     'schedule': crontab(hour=3, minute=0),  # Daily at 3 AM
+    'options': {'queue': 'cleanup'},
 }
 
 # Rolling stats - refresh every 15 minutes at :00, :15, :30, :45
 CELERY_BEAT_SCHEDULE['refresh-rolling-stats'] = {
     'task': 'search.tasks.refresh_rolling_stats',
     'schedule': crontab(minute='0,15,30,45'),
+    'options': {'queue': 'celery'},
 }
 
 # Retry errored searches - every 10 minutes
 CELERY_BEAT_SCHEDULE['retry-errored-searches'] = {
     'task': 'search.tasks.retry_errored_searches',
     'schedule': 600,  # Every 10 minutes
+    'options': {'queue': 'celery'},
 }
 
 # Smart random search - check every minute if idle for 7+ minutes
 CELERY_BEAT_SCHEDULE['check-idle-random-search'] = {
     'task': 'search.tasks.check_idle_and_run_random',
     'schedule': 60,  # Every minute
+    'options': {'queue': 'celery'},
 }
 
 
@@ -346,8 +351,9 @@ PHONE_HOME_TIMEOUT = float(os.environ.get('PHONE_HOME_TIMEOUT', 10.0))
 PHONE_HOME_BATCH_MAX = int(os.environ.get('PHONE_HOME_BATCH_MAX', 500))
 PHONE_HOME_SOURCE = SITE_URL or os.environ.get('PHONE_HOME_SOURCE', 'self-hosted')
 
-# Job cleanup settings (shorter than before to fix stuck job issues)
-JOB_STALE_THRESHOLD_MINUTES = int(os.environ.get('JOB_STALE_THRESHOLD_MINUTES', 30))  # Reduced from 120
+# Job cleanup settings - must exceed CELERY_TASK_TIME_LIMIT (60 min) to avoid
+# marking active jobs as stale before they finish or hit their time limit
+JOB_STALE_THRESHOLD_MINUTES = int(os.environ.get('JOB_STALE_THRESHOLD_MINUTES', 70))
 
 # GitHub Issue Creation for 5xx Errors
 GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN', '')

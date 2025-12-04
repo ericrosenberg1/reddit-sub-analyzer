@@ -62,6 +62,10 @@ class QueryRun(models.Model):
     # Optional email notification when search completes
     notification_email = models.EmailField(max_length=256, null=True, blank=True)
 
+    # Retry tracking - max 3 retries for errored jobs
+    retry_count = models.IntegerField(default=0)
+    retried_from_job_id = models.CharField(max_length=64, null=True, blank=True)
+
     class Meta:
         ordering = ['-created_at']
         indexes = [

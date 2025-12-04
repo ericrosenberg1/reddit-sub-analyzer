@@ -65,7 +65,7 @@ services:
 
   worker:
     build: .
-    command: celery -A reddit_analyzer worker -l info --concurrency 1
+    command: celery -A reddit_analyzer worker -l info --concurrency 1 -Q celery,search,cleanup
     environment:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       - DB_TYPE=postgres
