@@ -52,27 +52,34 @@ def find_unmoderated_subreddits(
     activity_threshold_utc=None,
     progress_callback=None,
     stop_callback=None,
-    rate_limit_delay=0.15,
+    rate_limit_delay=0.0,  # Deprecated - PRAW handles rate limiting
     include_all=False,
     exclude_names=None,
     result_callback=None,
 ):
     """
     Connect to Reddit API and find subreddits matching the given criteria.
+
+    Optimized for speed:
+    - PRAW handles rate limiting automatically (100 req/min for OAuth)
+    - Moderator lookups only happen when unmoderated_only=True
+    - Activity lookups only happen when activity filtering is enabled
+    - No manual delays between requests
     """
     import praw
     import prawcore
 
     cfg = get_reddit_config()
 
-    # Build Reddit instance
-    requestor_kwargs = {"timeout": max(3, min(int(cfg.get('timeout') or 10), 120))}
+    # Build Reddit instance with higher ratelimit tolerance
+    requestor_kwargs = {"timeout": max(10, min(int(cfg.get('timeout') or 30), 120))}
     reddit_kwargs = {
         'client_id': cfg['client_id'],
         'client_secret': cfg['client_secret'],
         'user_agent': cfg['user_agent'],
         'requestor_kwargs': requestor_kwargs,
         'check_for_async': False,
+        'ratelimit_seconds': 300,  # Allow PRAW to wait up to 5min for rate limits
     }
 
     if cfg.get('username') and cfg.get('password') and \
@@ -95,9 +102,14 @@ def find_unmoderated_subreddits(
     evaluated_subs = []
     checked = 0
 
-    logger.info("Searching subreddits: keyword=%r limit=%d", name_keyword, limit)
+    # Determine what extra API calls we need
+    need_moderator_check = unmoderated_only
+    need_activity_check = activity_mode in ("active_after", "inactive_before") and activity_threshold_utc
 
-    # Get subreddit iterator
+    logger.info("Searching subreddits: keyword=%r limit=%d unmod_check=%s activity_check=%s",
+                name_keyword, limit, need_moderator_check, need_activity_check)
+
+    # Get subreddit iterator - use higher breadth for more discovery
     subreddit_iter = None
     if name_keyword:
         try:
@@ -106,16 +118,20 @@ def find_unmoderated_subreddits(
                 reddit=reddit,
                 query=name_keyword,
                 limit=limit,
-                delay=max(0.0, rate_limit_delay or 0.0),
+                delay=0.0,  # PRAW handles rate limiting
                 include_over_18=not exclude_nsfw,
-                breadth=3,
-                popular_sip=min(300, limit),
+                breadth=5,  # Maximum breadth for thorough discovery
+                popular_sip=min(500, limit),
             )
         except Exception as e:
             logger.warning("Broadened search error: %s. Falling back to new subreddits.", e)
             subreddit_iter = reddit.subreddits.new(limit=limit)
     else:
         subreddit_iter = reddit.subreddits.new(limit=limit)
+
+    # Progress update frequency - don't update too often
+    last_progress_update = 0
+    PROGRESS_UPDATE_INTERVAL = 10
 
     for subreddit in subreddit_iter:
         # Check for stop signal
@@ -124,29 +140,32 @@ def find_unmoderated_subreddits(
             break
 
         checked += 1
-        if progress_callback:
+
+        # Throttle progress updates to reduce DB writes
+        if progress_callback and (checked - last_progress_update) >= PROGRESS_UPDATE_INTERVAL:
             try:
                 progress_callback(checked=checked, found=len(filtered_subs))
+                last_progress_update = checked
             except Exception:
                 pass
 
         latest_post_utc = None
-        passes_filters = True  # Track if sub passes user's filters
+        passes_filters = True
 
         try:
-            # Get basic info first - we save ALL subreddits to database
+            # Get basic info - these are already loaded from the search response
             display_name = getattr(subreddit, 'display_name', 'unknown')
             display_name_prefixed = getattr(subreddit, 'display_name_prefixed', f"r/{display_name}")
             title = getattr(subreddit, 'title', display_name)
             public_description = getattr(subreddit, 'public_description', '') or ''
             is_nsfw = bool(getattr(subreddit, 'over18', False))
 
-            # Skip if already in our exclude set (already in DB from this search)
+            # Skip if already in our exclude set
             name_key = (display_name or "").strip().lower()
             if normalized_excludes and name_key in normalized_excludes:
                 continue
 
-            # Get subscriber count
+            # Get subscriber count (already in response, no extra API call)
             subscribers = None
             try:
                 subscribers = subreddit.subscribers
@@ -154,19 +173,21 @@ def find_unmoderated_subreddits(
                 subscribers = None
             subs_count = subscribers if isinstance(subscribers, int) else (subscribers or 0)
 
-            # Get moderator count
-            try:
-                moderators = list(subreddit.moderator())
-                real_mods = [
-                    mod for mod in moderators
-                    if getattr(mod, 'name', '').lower() not in ('automoderator', '')
-                ]
-                mod_count = len(real_mods)
-            except (praw.exceptions.PRAWException, prawcore.exceptions.PrawcoreException, AttributeError):
-                mod_count = None
+            # OPTIMIZATION: Only fetch moderators if unmoderated_only filter is enabled
+            mod_count = None
+            if need_moderator_check:
+                try:
+                    moderators = list(subreddit.moderator())
+                    real_mods = [
+                        mod for mod in moderators
+                        if getattr(mod, 'name', '').lower() not in ('automoderator', '')
+                    ]
+                    mod_count = len(real_mods)
+                except (praw.exceptions.PRAWException, prawcore.exceptions.PrawcoreException, AttributeError):
+                    mod_count = None
 
-            # Get activity info if filter is active
-            if activity_mode in ("active_after", "inactive_before") and activity_threshold_utc:
+            # OPTIMIZATION: Only fetch activity if activity filter is enabled
+            if need_activity_check:
                 try:
                     for post in subreddit.new(limit=1):
                         latest_post_utc = getattr(post, 'created_utc', None)
@@ -174,7 +195,7 @@ def find_unmoderated_subreddits(
                 except (praw.exceptions.PRAWException, prawcore.exceptions.PrawcoreException, AttributeError):
                     pass
 
-            # Build sub_info - this gets saved to DB regardless of filters
+            # Build sub_info
             sub_info = {
                 'name': display_name,
                 'display_name_prefixed': display_name_prefixed,
@@ -182,13 +203,13 @@ def find_unmoderated_subreddits(
                 'public_description': public_description,
                 'subscribers': subs_count,
                 'url': f"https://reddit.com{getattr(subreddit, 'url', '/')}",
-                'is_unmoderated': bool(mod_count == 0) if mod_count is not None else False,
+                'is_unmoderated': bool(mod_count == 0) if mod_count is not None else None,
                 'is_nsfw': is_nsfw,
                 'mod_count': mod_count,
                 'last_activity_utc': latest_post_utc,
             }
 
-            # ALWAYS save to database via result_callback
+            # Save to database via callback
             if result_callback:
                 try:
                     result_callback(dict(sub_info))
@@ -197,17 +218,14 @@ def find_unmoderated_subreddits(
 
             evaluated_subs.append(sub_info)
 
-            # Now apply user's filters to determine if it counts in results
-            # NSFW filter
+            # Apply filters
             if exclude_nsfw and is_nsfw:
                 passes_filters = False
 
-            # Subscriber count filter
             if passes_filters and subs_count < (min_subscribers or 0):
                 passes_filters = False
 
-            # Activity filter
-            if passes_filters and activity_mode in ("active_after", "inactive_before") and activity_threshold_utc:
+            if passes_filters and need_activity_check:
                 if latest_post_utc is None:
                     passes_filters = False
                 elif activity_mode == "active_after" and latest_post_utc < activity_threshold_utc:
@@ -215,25 +233,28 @@ def find_unmoderated_subreddits(
                 elif activity_mode == "inactive_before" and latest_post_utc >= activity_threshold_utc:
                     passes_filters = False
 
-            # Unmoderated filter
-            if passes_filters and unmoderated_only and not sub_info['is_unmoderated']:
-                passes_filters = False
+            if passes_filters and unmoderated_only:
+                if mod_count is None or mod_count > 0:
+                    passes_filters = False
 
-            # Add to filtered results if passes all filters
             if passes_filters:
                 filtered_subs.append(sub_info)
-                if unmoderated_only and sub_info['is_unmoderated']:
+                if unmoderated_only and sub_info.get('is_unmoderated'):
                     logger.info("Found unmoderated: %s (%s subscribers)",
                                sub_info['display_name_prefixed'], sub_info['subscribers'])
 
         except Exception:
             pass
 
-        if checked % 20 == 0:
+        if checked % 100 == 0:
             logger.debug("Progress: checked=%d found=%d", checked, len(filtered_subs))
 
-        if rate_limit_delay and rate_limit_delay > 0:
-            time.sleep(rate_limit_delay)
+    # Final progress update
+    if progress_callback:
+        try:
+            progress_callback(checked=checked, found=len(filtered_subs))
+        except Exception:
+            pass
 
     logger.info("Total checked: %d, found: %d", checked, len(filtered_subs))
 

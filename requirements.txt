@@ -1,5 +1,6 @@
-# Core framework - Django 5.2 LTS (most stable, security supported)
-Django>=5.2,<5.3
+# Core framework - Django 5.2 LTS (latest patch, security supported)
+# Note: Django 6.0 released Dec 2025 but django-celery-beat doesn't support it yet
+Django>=5.2.9,<6.0
 
 # Task queue - latest stable
 celery>=5.6,<6.0

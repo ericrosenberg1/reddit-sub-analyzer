@@ -317,15 +317,16 @@ REDDIT_TIMEOUT = int(os.environ.get('REDDIT_TIMEOUT', 10))
 
 # Job Queue Configuration
 MAX_CONCURRENT_JOBS = int(os.environ.get('SUBSEARCH_MAX_CONCURRENT_JOBS', 1))
-RATE_LIMIT_DELAY = float(os.environ.get('SUBSEARCH_RATE_LIMIT_DELAY', 0.15))
+# Rate limit delay deprecated - PRAW handles rate limiting automatically (100 req/min for OAuth)
+RATE_LIMIT_DELAY = float(os.environ.get('SUBSEARCH_RATE_LIMIT_DELAY', 0.0))
 PUBLIC_API_LIMIT_CAP = int(os.environ.get('SUBSEARCH_PUBLIC_API_LIMIT', 2000))
 JOB_TIMEOUT_SECONDS = int(os.environ.get('SUBSEARCH_JOB_TIMEOUT_SECONDS', 3600))
-PERSIST_BATCH_SIZE = int(os.environ.get('SUBSEARCH_PERSIST_BATCH_SIZE', 32))
+PERSIST_BATCH_SIZE = int(os.environ.get('SUBSEARCH_PERSIST_BATCH_SIZE', 50))  # Increased for better throughput
 
 # Auto-Ingest Configuration
-AUTO_INGEST_LIMIT = int(os.environ.get('AUTO_INGEST_LIMIT', 1000))
+AUTO_INGEST_LIMIT = int(os.environ.get('AUTO_INGEST_LIMIT', 2000))  # Increased for faster DB building
 AUTO_INGEST_MIN_SUBS = int(os.environ.get('AUTO_INGEST_MIN_SUBS', 0))
-AUTO_INGEST_DELAY = float(os.environ.get('AUTO_INGEST_DELAY_SEC', 0.25))
+AUTO_INGEST_DELAY = float(os.environ.get('AUTO_INGEST_DELAY_SEC', 0.0))  # PRAW handles rate limiting
 AUTO_INGEST_KEYWORDS = [k.strip() for k in os.environ.get('AUTO_INGEST_KEYWORDS', '').split(',') if k.strip()]
 
 # Random Search Configuration
