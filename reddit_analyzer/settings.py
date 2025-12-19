@@ -321,7 +321,7 @@ MAX_CONCURRENT_JOBS = int(os.environ.get('SUBSEARCH_MAX_CONCURRENT_JOBS', 1))
 RATE_LIMIT_DELAY = float(os.environ.get('SUBSEARCH_RATE_LIMIT_DELAY', 0.0))
 PUBLIC_API_LIMIT_CAP = int(os.environ.get('SUBSEARCH_PUBLIC_API_LIMIT', 2000))
 JOB_TIMEOUT_SECONDS = int(os.environ.get('SUBSEARCH_JOB_TIMEOUT_SECONDS', 3600))
-PERSIST_BATCH_SIZE = int(os.environ.get('SUBSEARCH_PERSIST_BATCH_SIZE', 50))  # Increased for better throughput
+PERSIST_BATCH_SIZE = int(os.environ.get('SUBSEARCH_PERSIST_BATCH_SIZE', 200))  # Large batches for bulk upsert efficiency
 
 # Auto-Ingest Configuration
 AUTO_INGEST_LIMIT = int(os.environ.get('AUTO_INGEST_LIMIT', 2000))  # Increased for faster DB building

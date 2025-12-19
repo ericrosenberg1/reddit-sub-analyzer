@@ -109,7 +109,7 @@ def find_unmoderated_subreddits(
     logger.info("Searching subreddits: keyword=%r limit=%d unmod_check=%s activity_check=%s",
                 name_keyword, limit, need_moderator_check, need_activity_check)
 
-    # Get subreddit iterator - use higher breadth for more discovery
+    # Get subreddit iterator - use maximum breadth for thorough discovery
     subreddit_iter = None
     if name_keyword:
         try:
@@ -118,13 +118,10 @@ def find_unmoderated_subreddits(
                 reddit=reddit,
                 query=name_keyword,
                 limit=limit,
-                delay=0.0,  # PRAW handles rate limiting
-                include_over_18=not exclude_nsfw,
-                breadth=5,  # Maximum breadth for thorough discovery
-                popular_sip=min(500, limit),
+                breadth=6,  # Maximum breadth for thorough discovery
             )
         except Exception as e:
-            logger.warning("Broadened search error: %s. Falling back to new subreddits.", e)
+            logger.warning("Broadened search error: %s. Falling back.", e)
             subreddit_iter = reddit.subreddits.new(limit=limit)
     else:
         subreddit_iter = reddit.subreddits.new(limit=limit)
@@ -428,18 +425,18 @@ def _count_keyword_matches(keyword):
 
 
 def _flush_results(query_run, results):
-    """Persist subreddit results to database."""
+    """Persist subreddit results to database using bulk operations."""
     if not results:
-        return
+        return 0, 0
 
-    with transaction.atomic():
-        for sub_info in results:
-            Subreddit.upsert_from_dict(
-                sub_info,
-                query_run=query_run,
-                keyword=query_run.keyword,
-                source=query_run.source
-            )
+    # Use bulk upsert for much better performance
+    # ~2-3 queries instead of ~100-150 queries per batch
+    return Subreddit.bulk_upsert(
+        results,
+        query_run=query_run,
+        keyword=query_run.keyword,
+        source=query_run.source
+    )
 
 
 @shared_task(bind=True, max_retries=0)

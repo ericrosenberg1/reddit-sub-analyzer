@@ -436,7 +436,7 @@ def api_recent_runs(request):
 
     # Build query based on source filter
     if source_filter == 'random':
-        queryset = QueryRun.objects.filter(source=QueryRun.Source.RANDOM)
+        queryset = QueryRun.objects.filter(source=QueryRun.Source.AUTO_RANDOM)
     elif source_filter == 'manual':
         queryset = QueryRun.objects.filter(source=QueryRun.Source.SUB_SEARCH)
     else:

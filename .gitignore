@@ -40,3 +40,4 @@ logs/
 .ssh/
 *.pyc
 staticfiles/
+reddit-sub-analyzer.code-workspace

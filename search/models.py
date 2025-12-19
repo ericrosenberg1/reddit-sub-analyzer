@@ -220,6 +220,8 @@ class Subreddit(models.Model):
         """
         Create or update a subreddit from a dictionary.
         Returns the subreddit instance.
+
+        For bulk operations, use bulk_upsert() instead for much better performance.
         """
         name = (data.get('name') or '').strip()
         if not name:
@@ -266,18 +268,113 @@ class Subreddit(models.Model):
                     return existing
                 raise
 
+    @classmethod
+    def bulk_upsert(cls, data_list, query_run=None, keyword=None, source=None):
+        """
+        Bulk create or update subreddits from a list of dictionaries.
 
-class SummaryCache(models.Model):
-    """
-    Cache for summary statistics to avoid expensive aggregations.
-    """
-    key = models.CharField(max_length=64, primary_key=True)
-    data = models.JSONField()
-    updated_at = models.DateTimeField(auto_now=True)
+        This is MUCH faster than calling upsert_from_dict() in a loop:
+        - Uses 2 queries total (one SELECT, one bulk UPDATE/CREATE) instead of 2-3 per item
+        - For 50 subreddits: ~2-3 queries instead of ~100-150 queries
 
-    class Meta:
-        verbose_name = 'Summary Cache'
-        verbose_name_plural = 'Summary Cache'
+        Returns count of (created, updated) subreddits.
+        """
+        if not data_list:
+            return 0, 0
+
+        # Build lookup dict and prepare data
+        items_by_name = {}
+        for data in data_list:
+            name = (data.get('name') or '').strip()
+            if not name:
+                continue
+            # Use lowercase for dedup key, but preserve original case
+            items_by_name[name.lower()] = {
+                'name': name,
+                'display_name_prefixed': data.get('display_name_prefixed') or f"r/{name}",
+                'title': data.get('title') or name,
+                'public_description': data.get('public_description') or '',
+                'url': data.get('url'),
+                'subscribers': int(data.get('subscribers') or 0),
+                'is_unmoderated': bool(data.get('is_unmoderated')),
+                'is_nsfw': bool(data.get('is_nsfw')),
+                'last_activity_utc': data.get('last_activity_utc'),
+                'mod_count': data.get('mod_count'),
+                'last_keyword': (data.get('keyword') or keyword or '')[:128],
+                'source': (data.get('source') or source or 'manual')[:64],
+                'last_seen_run': query_run,
+            }
+
+        if not items_by_name:
+            return 0, 0
+
+        from django.db.models.functions import Lower
+
+        # Find all existing records using case-insensitive matching
+        name_list = list(items_by_name.keys())
+        existing_subs = {}
+
+        # Query in batches to avoid very long IN clauses
+        for i in range(0, len(name_list), 100):
+            batch = name_list[i:i + 100]
+            # Annotate with lowercase name and filter
+            for sub in cls.objects.annotate(
+                name_lower=Lower('name')
+            ).filter(name_lower__in=batch):
+                existing_subs[sub.name.lower()] = sub
+
+        to_create = []
+        to_update = []
+
+        for name_lower, data in items_by_name.items():
+            if name_lower in existing_subs:
+                # Update existing record
+                sub = existing_subs[name_lower]
+                for key, value in data.items():
+                    if key != 'name':  # Don't change the name
+                        setattr(sub, key, value)
+                to_update.append(sub)
+            else:
+                # Create new record
+                to_create.append(cls(**data))
+
+        created_count = 0
+        updated_count = 0
+
+        # Bulk create new records
+        if to_create:
+            try:
+                cls.objects.bulk_create(to_create, ignore_conflicts=True)
+                created_count = len(to_create)
+            except Exception:
+                # Fallback to individual creates on error
+                for sub in to_create:
+                    try:
+                        sub.save()
+                        created_count += 1
+                    except Exception:
+                        pass
+
+        # Bulk update existing records
+        if to_update:
+            try:
+                update_fields = [
+                    'display_name_prefixed', 'title', 'public_description', 'url',
+                    'subscribers', 'is_unmoderated', 'is_nsfw', 'last_activity_utc',
+                    'mod_count', 'last_keyword', 'source', 'last_seen_run', 'updated_at'
+                ]
+                cls.objects.bulk_update(to_update, update_fields, batch_size=100)
+                updated_count = len(to_update)
+            except Exception:
+                # Fallback to individual saves on error
+                for sub in to_update:
+                    try:
+                        sub.save()
+                        updated_count += 1
+                    except Exception:
+                        pass
+
+        return created_count, updated_count
 
 
 class RollingStats(models.Model):
