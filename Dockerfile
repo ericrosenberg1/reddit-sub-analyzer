@@ -1,4 +1,5 @@
-FROM python:3.12-slim
+# Python 3.13 - latest stable (Django 6.0 supports 3.12, 3.13, 3.14)
+FROM python:3.13-slim
 
 WORKDIR /app
 
@@ -10,8 +11,9 @@ RUN apt-get update && apt-get install -y \
 
 # Install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir psycopg2-binary
+# Use --ignore-installed to handle django-celery version constraints with Django 6.0
+RUN pip install --no-cache-dir -r requirements.txt || \
+    pip install --no-cache-dir --ignore-installed -r requirements.txt
 
 # Copy application code
 COPY . .
