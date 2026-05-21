@@ -456,3 +456,21 @@ LOGGING = {
     },
 }
 
+
+# =============================================================================
+# Sentry Error Monitoring (opt-in via environment variable)
+# =============================================================================
+
+import sentry_sdk
+
+_dsn = os.getenv("REDDIT_ANALYZER_SENTRY_DSN")
+if _dsn:
+    sentry_sdk.init(
+        dsn=_dsn,
+        integrations=[
+            sentry_sdk.integrations.django.DjangoIntegration(),
+        ],
+        traces_sample_rate=0.1,
+        send_default_pii=False,
+    )
+

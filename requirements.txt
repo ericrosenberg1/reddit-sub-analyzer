@@ -28,3 +28,6 @@ psycopg2-binary>=2.9,<3.0
 # Security minimums (transitive deps)
 urllib3>=2.5
 certifi>=2025.11
+
+# Error monitoring
+sentry-sdk[django]>=2.18
