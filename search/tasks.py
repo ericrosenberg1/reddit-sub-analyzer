@@ -342,7 +342,7 @@ def run_sub_search(self, job_id: str):
         total_count = _count_keyword_matches(query_run.keyword)
 
         query_run.mark_complete(result_count=total_count)
-        api_evaluated = payload.get('evaluated', []) if isinstance(payload, dict) else payload
+        api_evaluated = payload['evaluated']
         logger.info("Job %s completed with %d total matches in DB (%d evaluated from API)",
                    job_id, total_count, len(api_evaluated))
 
@@ -353,7 +353,7 @@ def run_sub_search(self, job_id: str):
         return {
             'job_id': job_id,
             'result_count': total_count,
-            'checked': payload.get('checked', 0) if isinstance(payload, dict) else len(api_results),
+            'checked': payload['checked'],
         }
 
     except SoftTimeLimitExceeded:
@@ -497,7 +497,7 @@ def run_random_search(self):
         if results_buffer:
             _flush_results(query_run, results_buffer)
 
-        api_results = payload.get('results', []) if isinstance(payload, dict) else payload
+        api_results = payload['results']
         query_run.mark_complete(result_count=len(api_results))
 
         logger.info("Random search %s completed: %d results", job_id, len(api_results))
@@ -569,7 +569,7 @@ def run_auto_ingest(self):
             if results_buffer:
                 _flush_results(query_run, results_buffer)
 
-            api_results = payload.get('results', []) if isinstance(payload, dict) else payload
+            api_results = payload['results']
             query_run.mark_complete(result_count=len(api_results))
 
             logger.info("Auto-ingest %s completed: %d results", job_id, len(api_results))
