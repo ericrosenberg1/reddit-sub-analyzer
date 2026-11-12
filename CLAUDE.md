@@ -31,7 +31,3 @@ Nothing runs this app in production as of 2026-10-12. The self-hosted stack
 and its `allthesubs.ericrosenberg.com` DNS record are gone, so a push to
 `main` is the whole release. `ops/` describes the old webhook deploy, which no
 longer exists.
-
-## Writing voice
-
-Every word of prose in this repo follows Eric's voice card at `~/Code/content-toolkit/voice/voice-card.md`. That covers UI copy, emails, docs, release notes, store listings, commit messages, and PR bodies. Point at the card and never paste its rules here, since a copy drifts. Gate short copy with `python3 ~/Code/content-toolkit/scorer/ai_tells.py FILE --profile article|email|social|title|description --brief` (zero blocks, 80 or higher) and long-form with `content-voice FILE` (90 or higher, 85 is the floor).
